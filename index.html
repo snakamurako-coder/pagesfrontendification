@@ -1,0 +1,358 @@
+function doGet(e) {
+  
+  return HtmlService.createHtmlOutput("API Running")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doPost(e) {
+  const request = JSON.parse(e.postData.contents);
+  const action = request.action;
+  const data = request.data;
+  
+  
+  if (typeof this[action] === 'function') {
+    const result = this[action](data);
+    return ContentService.createTextOutput(JSON.stringify(result || {status: "ok"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/* Code.gs */
+
+// 定数設定
+const FOLDER_NAMES = ['Recordings', 'ShadowingResults', 'AudioFiles', 'InboxSubmissions', 'Processed', 'PassageBooks'];
+const MASTER_SHEET_NAME = 'ResultMaster';
+const WHITELIST_SHEET_NAME = 'whitelist';
+
+/**
+ * Webアプリのエントリーポイント
+ */
+function doGet() {
+  const template = HtmlService.createTemplateFromFile('index');
+  template.userEmail = Session.getActiveUser().getEmail();
+  return template.evaluate()
+    .setTitle('Shadowing Training App')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * 初回起動時の環境構築
+ * 場所とフォルダ名から各フォルダのIDを取得し、スクリプトプロパティに保存する。
+ * それ以後はスクリプトプロパティにてフォルダIDを管理する。
+ */
+function setupEnvironment() {
+  const props = PropertiesService.getScriptProperties();
+  const env = {};
+  let needsUpdate = false;
+
+  // 1. プロパティからID取得を試みる
+  FOLDER_NAMES.forEach(name => {
+    const key = 'FOLDER_ID_' + name;
+    const id = props.getProperty(key);
+    if (id) {
+      env[name] = id;
+    }
+  });
+
+  const masterId = props.getProperty('MASTER_SS_ID');
+  if (masterId) {
+    env.masterSsId = masterId;
+  }
+
+  // 全てのフォルダIDとMasterIDが揃っているか確認
+  const allFoldersFound = FOLDER_NAMES.every(name => env[name]);
+  
+  // キャッシュが完全でない場合は実フォルダを確認・作成 (初回およびプロパティ欠損時)
+  if (!allFoldersFound || !env.masterSsId) {
+    const scriptId = ScriptApp.getScriptId();
+    const scriptFile = DriveApp.getFileById(scriptId);
+    const parentFolder = scriptFile.getParents().next(); // スクリプトのある親フォルダ
+
+    // フォルダ確認・作成
+    FOLDER_NAMES.forEach(name => {
+      if (!env[name]) { // プロパティにない場合のみ検索・作成
+        const folders = parentFolder.getFoldersByName(name);
+        let folderId;
+        if (folders.hasNext()) {
+          folderId = folders.next().getId();
+        } else {
+          const newFolder = parentFolder.createFolder(name);
+          folderId = newFolder.getId();
+        }
+        env[name] = folderId;
+        props.setProperty('FOLDER_ID_' + name, folderId); // プロパティ保存
+      }
+    });
+
+    // Masterスプレッドシート確認・作成
+    if (!env.masterSsId) {
+      const files = parentFolder.getFilesByName('ShadowingApp_Master');
+      let ss;
+      if (files.hasNext()) {
+        ss = SpreadsheetApp.open(files.next());
+      } else {
+        ss = SpreadsheetApp.create('ShadowingApp_Master');
+        DriveApp.getFileById(ss.getId()).moveTo(parentFolder);
+      }
+      env.masterSsId = ss.getId();
+      props.setProperty('MASTER_SS_ID', ss.getId()); // プロパティ保存
+    }
+    
+    // シート初期化等の後続処理のためにSSオブジェクト取得
+    const ss = SpreadsheetApp.openById(env.masterSsId);
+
+    // ResultMasterシート設定
+    let resultSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+    if (!resultSheet) {
+      resultSheet = ss.insertSheet(MASTER_SHEET_NAME);
+      resultSheet.appendRow(['Timestamp', 'Book', 'Unit', 'TaskID', 'UserID', 'ShadowingScore', 'ReadingScore', 'Speed', 'JSON_File', 'Audio_File']); // ヘッダー
+    } else {
+      const header = resultSheet.getRange(1, 1, 1, 10).getValues()[0];
+      if (header[5] === 'Score') {
+        console.warn("ResultMaster has old header format. New columns will be appended.");
+      }
+    }
+
+    // Whitelistシート設定
+    let whiteSheet = ss.getSheetByName(WHITELIST_SHEET_NAME);
+    if (!whiteSheet) {
+      whiteSheet = ss.insertSheet(WHITELIST_SHEET_NAME);
+      whiteSheet.appendRow(['Email', 'Name', '4DigitID']); // ヘッダー
+      whiteSheet.appendRow([Session.getActiveUser().getEmail(), 'Demo User', '0000']);
+    }
+  }
+
+  // --- 【仕様追加】PassageBooksフォルダのチェックとサンプル生成 ---
+  // 常にチェックするか、初回のみにするか。念の為フォルダIDが取れていればチェックする形にする
+  if (env['PassageBooks']) {
+    try {
+      const pbFolder = DriveApp.getFolderById(env['PassageBooks']);
+      if (!pbFolder.getFilesByType(MimeType.GOOGLE_SHEETS).hasNext()) {
+        createSampleBook(pbFolder);
+      }
+    } catch (e) {
+      console.warn("Could not check PassageBooks content via ID: " + e.message);
+      // IDが無効になっている可能性がある場合のリカバリロジックは今回複雑になるため割愛、ログのみ
+    }
+  }
+  // -------------------------------------------------------------
+
+  // 戻り値の形式を維持（互換性確保）
+  return { folderIds: env, masterSsId: env.masterSsId };
+}
+
+/**
+ * サンプル教材ブックの作成（PassageBooksが空の時に実行）
+ */
+function createSampleBook(folder) {
+  const bookName = "Sample_Grade1_English";
+  const sheetName = "Unit1_Greetings";
+
+  const ss = SpreadsheetApp.create(bookName);
+  const file = DriveApp.getFileById(ss.getId());
+  file.moveTo(folder);
+
+  const sheet = ss.getSheets()[0];
+  sheet.setName(sheetName);
+
+  const headers = ['ID', 'Task Title', 'Reference Text (Script)', 'Display Text (Hidden)', 'Audio Filename'];
+  const sampleTasks = [
+    [1, 'Hello', 'Hello, nice to meet you.', '', 'sample_hello.opus'],
+    [2, 'Morning', 'Good morning. How are you doing?', '', 'sample_morning.opus'],
+    [3, 'Weather', 'It is sunny today, isn\'t it?', '', 'sample_weather.opus']
+  ];
+
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(2, 1, sampleTasks.length, sampleTasks[0].length).setValues(sampleTasks);
+
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#f3f3f3');
+  sheet.setColumnWidth(3, 400);
+  sheet.setColumnWidth(5, 200);
+}
+
+/**
+ * ユーザー情報の取得（Whitelist照合）
+ */
+function getUserInfo() {
+  const email = Session.getActiveUser().getEmail();
+  const env = setupEnvironment(); // ここで初回セットアップも兼ねる
+  const ss = SpreadsheetApp.openById(env.masterSsId);
+  const sheet = ss.getSheetByName(WHITELIST_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === email) {
+      return {
+        name: data[i][1],
+        id4: data[i][2],
+        isAuthorized: true
+      };
+    }
+  }
+
+  return { name: 'Guest', id4: '0000', isAuthorized: false };
+}
+
+/**
+ * PassageBooksフォルダ内の教材構造を取得（キャッシュ対応）
+ */
+function getMaterialsStructure() {
+  const props = PropertiesService.getScriptProperties();
+  const cached = props.getProperty('MATERIALS_CACHE');
+
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  return updateMaterialsCache();
+}
+
+/**
+ * 教材構造のキャッシュ強制更新（管理者・任意更新用）
+ */
+function updateMaterialsCache() {
+  const env = setupEnvironment();
+  const folder = DriveApp.getFolderById(env.folderIds['PassageBooks']);
+  const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+
+  const structure = {};
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const bookName = file.getName();
+    const ss = SpreadsheetApp.open(file);
+    structure[bookName] = {};
+
+    const sheets = ss.getSheets();
+    sheets.forEach(sheet => {
+      const sheetName = sheet.getName();
+      const rows = sheet.getDataRange().getValues();
+      const tasks = [];
+
+      // 列構成: 通し番号(0), 見出し(1), 参照文(2), 表示文(3), 音声ファイル名(4)
+      for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0]) { // IDがあれば有効とする（音声ファイルがない場合はReadingOnly）
+          tasks.push({
+            id: rows[i][0],
+            title: rows[i][1],
+            refText: rows[i][2],
+            displayText: rows[i][3], // 表示文も取得
+            audioName: rows[i][4] || "" // 空文字許容
+          });
+        }
+      }
+      if (tasks.length > 0) {
+        structure[bookName][sheetName] = tasks;
+      }
+    });
+  }
+
+  PropertiesService.getScriptProperties().setProperty('MATERIALS_CACHE', JSON.stringify(structure));
+  return structure;
+}
+
+/**
+ * 音声ファイル名からBase64データを取得
+ */
+function getAudioData(filename) {
+  const env = setupEnvironment();
+  const folder = DriveApp.getFolderById(env.folderIds['AudioFiles']);
+  const files = folder.getFilesByName(filename);
+
+  if (files.hasNext()) {
+    const file = files.next();
+    const blob = file.getBlob();
+    return {
+      name: filename,
+      mime: blob.getContentType(),
+      base64: Utilities.base64Encode(blob.getBytes())
+    };
+  } else {
+    // ファイルがない場合のエラーハンドリング
+    throw new Error('Audio file not found: ' + filename);
+  }
+}
+
+/**
+ * 結果の保存（JSONと音声）
+ * 変更点：InboxSubmissionsとRecordingsフォルダに分別して保存
+ */
+function saveSubmission(payload) {
+  // 1. Get User Email safely
+  const email = Session.getActiveUser().getEmail();
+
+  // 2. 環境設定からフォルダIDを取得
+  const env = setupEnvironment();
+  const inboxId = env.folderIds['InboxSubmissions'];
+  const recordingsId = env.folderIds['Recordings'];
+
+  if (!inboxId || !recordingsId) {
+    throw new Error("Configuration Error: Folder IDs for submissions not found.");
+  }
+
+  let inboxFolder, recordingsFolder;
+  try {
+    inboxFolder = DriveApp.getFolderById(inboxId);
+    recordingsFolder = DriveApp.getFolderById(recordingsId);
+  } catch (e) {
+    throw new Error("Cannot access storage folders. Please check folder IDs.");
+  }
+
+  // 3. Inject Email into JSON
+  const data = JSON.parse(payload.jsonStr);
+  data.verifiedEmail = email; // FORCE OVERWRITE or ADD
+  const secureJsonStr = JSON.stringify(data);
+
+  // 4. Save Files
+  // JSON -> InboxSubmissions
+  const jsonName = payload.filenameBase + '.json';
+  inboxFolder.createFile(jsonName, secureJsonStr, MimeType.PLAIN_TEXT);
+
+  // WebM -> Recordings
+  const audioName = payload.filenameBase + '.webm';
+  const audioBlob = Utilities.newBlob(
+    Utilities.base64Decode(payload.audioBase64),
+    'audio/webm;codecs=opus',
+    audioName
+  );
+  recordingsFolder.createFile(audioBlob);
+
+  return "Success";
+}
+
+/**
+ * トリガー実行用：InboxSubmissionsの処理
+ */
+function processInboxQueue() {
+  const env = setupEnvironment();
+  const inbox = DriveApp.getFolderById(env.folderIds['InboxSubmissions']);
+  const processed = DriveApp.getFolderById(env.folderIds['Processed']);
+  const files = inbox.getFiles();
+  const ss = SpreadsheetApp.openById(env.masterSsId);
+  const sheet = ss.getSheetByName(MASTER_SHEET_NAME);
+
+  while (files.hasNext()) {
+    const file = files.next();
+    try {
+      const content = file.getBlob().getDataAsString();
+      const data = JSON.parse(content);
+
+      sheet.appendRow([
+        new Date(),
+        data.book,
+        data.unit,
+        data.taskId,
+        data.userId,
+        data.shadowing_score, // New
+        data.reading_score,   // New
+        data.playback_speed,  // New
+        file.getName(),
+        data.filenameBase + '.webm'
+      ]);
+
+      file.moveTo(processed);
+    } catch (e) {
+      console.error("Error processing file " + file.getName() + ": " + e.message);
+    }
+  }
+}
