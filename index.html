@@ -8,7 +8,7 @@
 <body>
 
   <div id="g_id_onload"
-       data-client_id="【Step2で取得したクライアントID】"
+       data-client_id="505252303455-84r495bnnsgiefcrv24ro2qtohlgbk2h.apps.googleusercontent.com"
        data-context="signin"
        data-ux_mode="popup"
        data-callback="handleCredentialResponse"
@@ -22,7 +22,7 @@
     function handleCredentialResponse(response) {
       const idToken = response.credential;
       // あなたのGASウェブアプリのURLに変更してください
-      const gasApiUrl = "【Step3で取得したGASのURL】";
+      const gasApiUrl = "https://script.google.com/macros/s/AKfycbxGgT4nZO2qqATW_TpOam3AHBqhmyu7e-uF2Q6FA56nqri5Bc_Y-a2PtwJ987IWE2zS/exec";
 
       document.getElementById('message').innerText = "認証情報を確認しています...";
 
