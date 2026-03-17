@@ -1,358 +1,1455 @@
-function doGet(e) {
-  
-  return HtmlService.createHtmlOutput("API Running")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
+<!DOCTYPE html>
+<html>
 
-function doPost(e) {
-  const request = JSON.parse(e.postData.contents);
-  const action = request.action;
-  const data = request.data;
-  
-  
-  if (typeof this[action] === 'function') {
-    const result = this[action](data);
-    return ContentService.createTextOutput(JSON.stringify(result || {status: "ok"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-/* Code.gs */
-
-// 定数設定
-const FOLDER_NAMES = ['Recordings', 'ShadowingResults', 'AudioFiles', 'InboxSubmissions', 'Processed', 'PassageBooks'];
-const MASTER_SHEET_NAME = 'ResultMaster';
-const WHITELIST_SHEET_NAME = 'whitelist';
-
-/**
- * Webアプリのエントリーポイント
- */
-function doGet() {
-  const template = HtmlService.createTemplateFromFile('index');
-  template.userEmail = Session.getActiveUser().getEmail();
-  return template.evaluate()
-    .setTitle('Shadowing Training App')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-}
-
-/**
- * 初回起動時の環境構築
- * 場所とフォルダ名から各フォルダのIDを取得し、スクリプトプロパティに保存する。
- * それ以後はスクリプトプロパティにてフォルダIDを管理する。
- */
-function setupEnvironment() {
-  const props = PropertiesService.getScriptProperties();
-  const env = {};
-  let needsUpdate = false;
-
-  // 1. プロパティからID取得を試みる
-  FOLDER_NAMES.forEach(name => {
-    const key = 'FOLDER_ID_' + name;
-    const id = props.getProperty(key);
-    if (id) {
-      env[name] = id;
+<head>
+<script>const GAS_EXTERNAL_URL = "https://script.google.com/a/macros/touohgakkan.ed.jp/s/AKfycbwsaN6iKYgCeyA0YfzgMVyUTQPBlPtsuLUFez6Xj6ca1cW-YQOeADbxOzyvqPmxHRs2Ow/exec";</script>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
     }
-  });
 
-  const masterId = props.getProperty('MASTER_SS_ID');
-  if (masterId) {
-    env.masterSsId = masterId;
-  }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
 
-  // 全てのフォルダIDとMasterIDが揃っているか確認
-  const allFoldersFound = FOLDER_NAMES.every(name => env[name]);
-  
-  // キャッシュが完全でない場合は実フォルダを確認・作成 (初回およびプロパティ欠損時)
-  if (!allFoldersFound || !env.masterSsId) {
-    const scriptId = ScriptApp.getScriptId();
-    const scriptFile = DriveApp.getFileById(scriptId);
-    const parentFolder = scriptFile.getParents().next(); // スクリプトのある親フォルダ
+    h2 {
+      color: #2c3e50;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
 
-    // フォルダ確認・作成
-    FOLDER_NAMES.forEach(name => {
-      if (!env[name]) { // プロパティにない場合のみ検索・作成
-        const folders = parentFolder.getFoldersByName(name);
-        let folderId;
-        if (folders.hasNext()) {
-          folderId = folders.next().getId();
+    /* Control Panel */
+    .controls-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+      align-items: start;
+    }
+
+    .controls-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    select,
+    button {
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      width: 100%;
+      font-size: 16px;
+    }
+
+    select:disabled {
+      background-color: #f2f2f2;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .small-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      width: auto;
+    }
+
+    /* Submission overlay */
+    #submission-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .submission-modal {
+      background: #fff;
+      padding: 20px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      line-height: 1.6;
+    }
+
+    .submission-modal button {
+      margin-top: 12px;
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:disabled {
+      background-color: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    button.record-btn {
+      background-color: #e74c3c;
+    }
+
+    /* Status & Loader */
+    #status-area {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+      height: 24px;
+      color: #e67e22;
+    }
+
+    #loader {
+      display: none;
+      width: 100%;
+      height: 4px;
+      background-color: #f3f3f3;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    #loader-bar {
+      width: 50%;
+      height: 100%;
+      background-color: #3498db;
+      animation: loading 1s infinite ease-in-out;
+    }
+
+    @keyframes loading {
+      0% {
+        transform: translateX(-100%);
+      }
+
+      100% {
+        transform: translateX(200%);
+      }
+    }
+
+    /* Results */
+    #result-area {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      display: none;
+    }
+
+    .score-display {
+      font-size: 1.6em;
+      font-weight: bold;
+      color: #27ae60;
+      padding: 0 6px;
+    }
+
+    .score-container {
+      display: inline-block;
+      margin: 0 10px;
+    }
+
+    .score-formula {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .diff-text {
+      white-space: pre-wrap;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+
+    /* New UI Elements */
+    .stt-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .stt-box {
+      padding: 10px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .stt-box h4 {
+      margin-top: 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .highlight-added {
+      background-color: #e3f2fd;
+      color: #1976d2;
+    }
+
+    /* Blue for added words */
+    .highlight-missing {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    /* Red for missing words */
+    .highlight-wildcard {
+      background-color: #fff9c4;
+      color: #f57f17;
+      font-weight: bold;
+    }
+
+    /* Yellow for wildcard matches */
+
+    .practice-list {
+      margin-top: 20px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+
+    .practice-item {
+      display: inline-block;
+      margin: 5px;
+      padding: 5px 10px;
+      background: #fff3e0;
+      border-radius: 15px;
+      font-size: 14px;
+    }
+
+    .speak-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #e67e22;
+      font-size: 1.2em;
+      padding: 0 0 0 5px;
+    }
+
+    .volume-meter {
+      width: 100%;
+      height: 10px;
+      background: #eee;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .volume-bar {
+      height: 100%;
+      width: 0%;
+      background: #27ae60;
+      transition: width 0.1s;
+    }
+
+    .volume-bar.warning {
+      background: #f1c40f;
+    }
+
+    .volume-bar.clip {
+      background: #e74c3c;
+    }
+
+    #reading-mode-area {
+      display: none;
+      margin-top: 20px;
+    }
+
+    #reading-text-area {
+      width: 100%;
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 15px;
+      background: #fff;
+      font-size: 24px;
+      line-height: 3.2;
+    }
+
+    .scroll-btn {
+      width: 100%;
+      margin-top: 5px;
+      background: #bdc3c7;
+      color: #333;
+      font-size: 12px;
+      padding: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2>音読スコアリングアプリ</h2>
+      <div style="text-align:right;">
+        <div id="user-display">Login:
+          <?= userEmail ?>
+        </div>
+        <div id="user-info-display" style="font-size:10px; color:#555;">(Loading info...)</div>
+        <button onclick="loadMaterials(true)"
+          style="width:auto; padding: 2px 8px; font-size:10px; margin-top:5px;">教材を更新</button>
+      </div>
+    </div>
+
+    <div class="controls-2col">
+      <!-- 左列: 学年＋科目 / 単元 / 課題 -->
+      <div class="controls-stack">
+        <select id="sel-book" onchange="onBookChange()" disabled>
+          <option value="">学年＋科目を選択</option>
+        </select>
+        <select id="sel-unit" onchange="onUnitChange()" disabled>
+          <option value="">単元を選択</option>
+        </select>
+        <select id="sel-task" onchange="onTaskChange()" disabled>
+          <option value="">課題を選択</option>
+        </select>
+        <select id="sel-speed">
+          <option value="0.6">速度: x0.6</option>
+          <option value="0.7">速度: x0.7</option>
+          <option value="0.8">速度: x0.8</option>
+          <option value="0.9">速度: x0.9</option>
+          <option value="1.0" selected>速度: x1.0（通常）</option>
+          <option value="1.1">速度: x1.1</option>
+          <option value="1.2">速度: x1.2</option>
+        </select>
+      </div>
+
+      <!-- 右列: アクセント / マイク音量・インジケーター -->
+      <div class="controls-stack">
+        <div>
+          <label style="font-size:12px; color:#666;">アクセント</label>
+          <select id="sel-accent" style="margin-top:5px;" disabled>
+            <option value="en-US" selected>米国英語</option>
+            <option value="en-GB">英国英語</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:12px; color:#666;">マイク音量（調整用）</label>
+          <input type="range" id="mic-gain" min="0.5" max="3.0" step="0.1" value="1.0"
+            style="width:100%; margin-top:5px;">
+        </div>
+        <div>
+          <label style="font-size:12px; color:#666;">音量インジケーター</label>
+          <div class="volume-meter">
+            <div id="volume-bar" class="volume-bar"></div>
+          </div>
+          <button id="btn-volume-check" class="small-btn" style="margin-top:8px;"
+            onclick="startVolumeCheck()">音量確認</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="button-area"
+      style="text-align:center; margin-top: 20px; display:flex; justify-content: center; gap: 20px;">
+      <button id="btn-start" onclick="startShadowing()" disabled style="width: 180px; height: 50px; font-size: 18px;">
+        開始
+      </button>
+      <button id="btn-finish-reading" onclick="finishReading()" disabled
+        style="width: 150px; height: 50px; font-size: 18px; background-color: #27ae60; display: none;">
+        終了
+      </button>
+      <button id="btn-stop" onclick="stopShadowingWithConfirm()" disabled
+        style="width: 100px; height: 50px; font-size: 18px; background-color: #95a5a6;">
+        中断
+      </button>
+    </div>
+
+    <div id="loader">
+      <div id="loader-bar"></div>
+    </div>
+    <div id="status-area">Ready</div>
+
+    <audio id="audio-player" style="display:none;"></audio>
+
+    <div id="reading-mode-area">
+      <button class="scroll-btn" onclick="scrollRead(1)">▼ 次の行へ</button>
+      <div id="reading-text-area"></div>
+    </div>
+
+    <div id="result-area">
+      <div style="margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <div class="score-container">
+            音読スコア: <span id="score-val" class="score-display">--</span>
+          </div>
+          <div class="score-container" id="shadowing-score-container" style="display: none;">
+            <span style="margin: 0 10px;">|</span>
+            シャドイングスコア: <span id="shadow-score-val" class="score-display">--</span>
+            <div class="score-formula" id="shadowing-formula"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stt-comparison">
+        <div class="stt-box">
+          <h4>あなたの発話（STT）</h4>
+          <div id="user-stt-display"></div>
+        </div>
+        <div class="stt-box">
+          <h4>参照テキスト</h4>
+          <div id="ref-text-display"></div>
+        </div>
+      </div>
+
+      <div class="practice-list" id="practice-area">
+        <h4>発音練習</h4>
+        <div id="practice-items"></div>
+      </div>
+
+      <div id="playback-area" style="margin-top:10px; display:none;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <audio id="playback-audio" controls style="max-width:300px;"></audio>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <a id="download-link" href="#" download="recording.webm"
+              style="font-size:14px; color:#1976d2;">録音をダウンロード（webm）</a>
+            <span style="font-size:12px; color:#777;">※記録用としては、こちらのwebm形式が一般的なので、こちらを保存してください。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Global Variables ---
+    let currentUser = { name: '', id4: '' };
+    let materials = {};
+    let currentTask = null;
+    let audioBlobUrl = null;
+    let recognition = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let finalTranscript = '';
+    let isShadowing = false;
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let gainNode = null;
+    let silenceTimer = null;
+    let isReadingMode = false;
+    let isVolumeCheckActive = false;
+    let volumeCheckStream = null;
+    let volumeCheckTimer = null;
+
+    // --- Initialization ---
+    // --- Initialization ---
+    window.onload = function () {
+      // サーバーから渡されたemailはHTMLレンダリング時に埋め込まれている (<?= userEmail ?>)
+      // 表示は既にサーバサイドレンダリングで行われているが、JS変数としても保持可能。
+
+      // 念のためWhitelistから詳細情報を取得して表示（必須ではないが便利機能として維持）
+      google.script.run.withSuccessHandler(user => {
+        currentUser = user;
+        const display = document.getElementById('user-info-display');
+
+        if (user.name && user.name !== 'Guest') {
+          display.innerText = `${user.name} (${user.id4})`;
         } else {
-          const newFolder = parentFolder.createFolder(name);
-          folderId = newFolder.getId();
+          display.innerText = "Guest / Unregistered (Recording will be saved with email)";
         }
-        env[name] = folderId;
-        props.setProperty('FOLDER_ID_' + name, folderId); // プロパティ保存
-      }
-    });
 
-    // Masterスプレッドシート確認・作成
-    if (!env.masterSsId) {
-      const files = parentFolder.getFilesByName('ShadowingApp_Master');
-      let ss;
-      if (files.hasNext()) {
-        ss = SpreadsheetApp.open(files.next());
+        // Load Materials regardless of verify status (Open Access)
+        loadMaterials();
+      }).getUserInfo(); // getUserInfo側は変更なし（Whitelistチェック）
+    };
+
+
+
+    function loadMaterials(forceUpdate = false) {
+      // Disable selects during loading
+      ['sel-book', 'sel-unit', 'sel-task', 'sel-accent', 'sel-speed'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+
+      if (forceUpdate) setStatus("Updating Materials Cache...", true);
+
+      const runner = forceUpdate ? fetch("https://script.google.com/a/macros/touohgakkan.ed.jp/s/AKfycbwsaN6iKYgCeyA0YfzgMVyUTQPBlPtsuLUFez6Xj6ca1cW-YQOeADbxOzyvqPmxHRs2Ow/exec", {
+          method: "POST",
+          body: JSON.stringify({ action: "updateMaterialsCache", data: null })
+        })
+        .then(response => response.json())
+        .then(data => updateUIWithMaterials(data))
+        .catch(err => console.error("GAS Error:", err))
+        : fetch("https://script.google.com/a/macros/touohgakkan.ed.jp/s/AKfycbwsaN6iKYgCeyA0YfzgMVyUTQPBlPtsuLUFez6Xj6ca1cW-YQOeADbxOzyvqPmxHRs2Ow/exec", {
+          method: "POST",
+          body: JSON.stringify({ action: "getMaterialsStructure", data: null })
+        })
+        .then(response => response.json())
+        .then(data => updateUIWithMaterials(data))
+        .catch(err => console.error("GAS Error:", err));
+    }
+
+    function updateUIWithMaterials(data) {
+      materials = data;
+      const bookSel = document.getElementById('sel-book');
+      bookSel.innerHTML = '<option value="">学年＋科目を選択</option>';
+      for (let book in materials) {
+        let opt = document.createElement('option');
+        opt.value = book;
+        opt.text = book;
+        bookSel.add(opt);
+      }
+      // Re-enable top-level selects after loading
+      if (document.getElementById('sel-accent')) document.getElementById('sel-accent').disabled = false;
+      if (document.getElementById('sel-speed')) document.getElementById('sel-speed').disabled = false;
+      bookSel.disabled = false;
+      setStatus("Ready", false);
+    }
+
+    // --- Dropdown Logic ---
+    function onBookChange() {
+      const book = document.getElementById('sel-book').value;
+      const unitSel = document.getElementById('sel-unit');
+      unitSel.innerHTML = '<option value="">単元を選択</option>';
+      unitSel.disabled = !book;
+      document.getElementById('sel-task').innerHTML = '<option value="">課題を選択</option>';
+      document.getElementById('sel-task').disabled = true;
+      document.getElementById('btn-start').disabled = true;
+
+      if (book) {
+        for (let unit in materials[book]) {
+          let opt = document.createElement('option');
+          opt.value = unit;
+          opt.text = unit;
+          unitSel.add(opt);
+        }
+      }
+    }
+
+    function onUnitChange() {
+      const book = document.getElementById('sel-book').value;
+      const unit = document.getElementById('sel-unit').value;
+      const taskSel = document.getElementById('sel-task');
+      taskSel.innerHTML = '<option value="">課題を選択</option>';
+      taskSel.disabled = !unit;
+      document.getElementById('btn-start').disabled = true;
+
+      if (unit) {
+        const tasks = materials[book][unit];
+        tasks.forEach(t => {
+          let opt = document.createElement('option');
+          opt.value = JSON.stringify(t); // Store whole object
+          opt.text = `No.${t.id}: ${t.title}`;
+          taskSel.add(opt);
+        });
+      }
+    }
+
+    function onTaskChange() {
+      const val = document.getElementById('sel-task').value;
+      const btn = document.getElementById('btn-start');
+
+      if (val) {
+        currentTask = JSON.parse(val);
+
+        // Check for Reading Mode (No Audio)
+        if (!currentTask.audioName) {
+          isReadingMode = true;
+          document.getElementById('reading-mode-area').style.display = 'block';
+          document.getElementById('reading-text-area').innerText = currentTask.displayText || currentTask.refText;
+          document.getElementById('btn-start').innerHTML = "音読開始";
+          document.getElementById('btn-start').disabled = false;
+          document.getElementById('btn-finish-reading').style.display = 'none'; // Hide until recording starts
+          document.getElementById('sel-speed').disabled = true; // No speed for reading
+          // Adjust button area spacing for reading mode
+          document.getElementById('button-area').style.gap = '20px';
+          setStatus('Reading Mode', false);
+        } else {
+          isReadingMode = false;
+          document.getElementById('reading-mode-area').style.display = 'none';
+          document.getElementById('btn-start').innerHTML = "シャドイング開始";
+          document.getElementById('btn-start').disabled = true; // Wait for audio
+          document.getElementById('btn-finish-reading').style.display = 'none'; // Hide in shadowing mode
+          document.getElementById('sel-speed').disabled = false;
+          // Reset button area spacing for shadowing mode
+          document.getElementById('button-area').style.gap = '20px';
+          downloadAudio(currentTask.audioName);
+        }
       } else {
-        ss = SpreadsheetApp.create('ShadowingApp_Master');
-        DriveApp.getFileById(ss.getId()).moveTo(parentFolder);
-      }
-      env.masterSsId = ss.getId();
-      props.setProperty('MASTER_SS_ID', ss.getId()); // プロパティ保存
-    }
-    
-    // シート初期化等の後続処理のためにSSオブジェクト取得
-    const ss = SpreadsheetApp.openById(env.masterSsId);
-
-    // ResultMasterシート設定
-    let resultSheet = ss.getSheetByName(MASTER_SHEET_NAME);
-    if (!resultSheet) {
-      resultSheet = ss.insertSheet(MASTER_SHEET_NAME);
-      resultSheet.appendRow(['Timestamp', 'Book', 'Unit', 'TaskID', 'UserID', 'ShadowingScore', 'ReadingScore', 'Speed', 'JSON_File', 'Audio_File']); // ヘッダー
-    } else {
-      const header = resultSheet.getRange(1, 1, 1, 10).getValues()[0];
-      if (header[5] === 'Score') {
-        console.warn("ResultMaster has old header format. New columns will be appended.");
+        document.getElementById('btn-start').disabled = true;
       }
     }
 
-    // Whitelistシート設定
-    let whiteSheet = ss.getSheetByName(WHITELIST_SHEET_NAME);
-    if (!whiteSheet) {
-      whiteSheet = ss.insertSheet(WHITELIST_SHEET_NAME);
-      whiteSheet.appendRow(['Email', 'Name', '4DigitID']); // ヘッダー
-      whiteSheet.appendRow([Session.getActiveUser().getEmail(), 'Demo User', '0000']);
+    function scrollRead(lines = 1) {
+      const el = document.getElementById('reading-text-area');
+      const lineHeightStr = getComputedStyle(el).lineHeight;
+      const lineHeight = parseFloat(lineHeightStr) || 24;
+      el.scrollTop += lineHeight * lines;
     }
-  }
 
-  // --- 【仕様追加】PassageBooksフォルダのチェックとサンプル生成 ---
-  // 常にチェックするか、初回のみにするか。念の為フォルダIDが取れていればチェックする形にする
-  if (env['PassageBooks']) {
-    try {
-      const pbFolder = DriveApp.getFolderById(env['PassageBooks']);
-      if (!pbFolder.getFilesByType(MimeType.GOOGLE_SHEETS).hasNext()) {
-        createSampleBook(pbFolder);
+    function finishReading() {
+      // Finish Reading button - submit the recording
+      stopShadowing(true);
+    }
+
+    // --- Audio Loading ---
+    function downloadAudio(filename) {
+      setStatus('Downloading audio...', true);
+      google.script.run.withSuccessHandler(res => {
+        // Convert Base64 to Blob URL for caching in browser memory
+        const byteCharacters = atob(res.base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: res.mime }); // Opus or MP3
+
+        if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+        audioBlobUrl = URL.createObjectURL(blob);
+
+        const audioEl = document.getElementById('audio-player');
+        audioEl.src = audioBlobUrl;
+
+        setStatus('Ready to Start', false);
+        document.getElementById('btn-start').disabled = false;
+      }).getAudioData(filename);
+    }
+
+    // --- Shadowing Logic ---
+    async function setupAudioContext(stream) {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      microphone = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+
+      // Gain Node for Mic Volume Logic if needed (digital gain)
+      gainNode = audioContext.createGain();
+      const gainVal = parseFloat(document.getElementById('mic-gain').value);
+      gainNode.gain.value = gainVal;
+
+      microphone.connect(gainNode);
+      gainNode.connect(analyser); // Do not connect to destination to avoid feedback
+
+      drawVolume();
+    }
+
+    function drawVolume() {
+      if (!isShadowing && !isVolumeCheckActive) return;
+      requestAnimationFrame(drawVolume);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(dataArray);
+
+      // Average volume
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+      let average = sum / bufferLength;
+
+      // 0-255 -> 0-100%
+      let vol = (average / 100) * 100;
+      if (vol > 100) vol = 100;
+
+      const bar = document.getElementById('volume-bar');
+      bar.style.width = vol + '%';
+
+      // Colors
+      if (vol > 90) { bar.className = 'volume-bar clip'; }
+      else if (vol < 10) { bar.className = 'volume-bar warning'; }
+      else { bar.className = 'volume-bar'; }
+
+      // Updating Gain dynamically if slider moves
+      const currentGain = parseFloat(document.getElementById('mic-gain').value);
+      if (gainNode && Math.abs(gainNode.gain.value - currentGain) > 0.1) {
+        gainNode.gain.setValueAtTime(currentGain, audioContext.currentTime);
       }
-    } catch (e) {
-      console.warn("Could not check PassageBooks content via ID: " + e.message);
-      // IDが無効になっている可能性がある場合のリカバリロジックは今回複雑になるため割愛、ログのみ
     }
-  }
-  // -------------------------------------------------------------
 
-  // 戻り値の形式を維持（互換性確保）
-  return { folderIds: env, masterSsId: env.masterSsId };
-}
+    async function startShadowing() {
+      if (isShadowing) return;
+      isShadowing = true;
+      finalTranscript = '';
+      audioChunks = [];
 
-/**
- * サンプル教材ブックの作成（PassageBooksが空の時に実行）
- */
-function createSampleBook(folder) {
-  const bookName = "Sample_Grade1_English";
-  const sheetName = "Unit1_Greetings";
+      const audioEl = document.getElementById('audio-player');
+      const speed = parseFloat(document.getElementById('sel-speed').value);
+      audioEl.playbackRate = speed;
 
-  const ss = SpreadsheetApp.create(bookName);
-  const file = DriveApp.getFileById(ss.getId());
-  file.moveTo(folder);
+      // UI Update
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('btn-stop').disabled = false;
+      if (isReadingMode) {
+        document.getElementById('btn-finish-reading').style.display = 'inline-block';
+        document.getElementById('btn-finish-reading').disabled = false;
+        // Adjust spacing: Finish Reading and Stop buttons with wider gap
+        document.getElementById('button-area').style.gap = '60px';
+      }
+      document.getElementById('result-area').style.display = 'none';
 
-  const sheet = ss.getSheets()[0];
-  sheet.setName(sheetName);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
 
-  const headers = ['ID', 'Task Title', 'Reference Text (Script)', 'Display Text (Hidden)', 'Audio Filename'];
-  const sampleTasks = [
-    [1, 'Hello', 'Hello, nice to meet you.', '', 'sample_hello.opus'],
-    [2, 'Morning', 'Good morning. How are you doing?', '', 'sample_morning.opus'],
-    [3, 'Weather', 'It is sunny today, isn\'t it?', '', 'sample_weather.opus']
-  ];
+        // Audio Context (Volume)
+        setupAudioContext(stream);
 
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(2, 1, sampleTasks.length, sampleTasks[0].length).setValues(sampleTasks);
+        // Recorder Init
+        const options = { mimeType: 'audio/webm;codecs=opus' };
+        mediaRecorder = new MediaRecorder(stream, options);
 
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#f3f3f3');
-  sheet.setColumnWidth(3, 400);
-  sheet.setColumnWidth(5, 200);
-}
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
 
-/**
- * ユーザー情報の取得（Whitelist照合）
- */
-function getUserInfo() {
-  const email = Session.getActiveUser().getEmail();
-  const env = setupEnvironment(); // ここで初回セットアップも兼ねる
-  const ss = SpreadsheetApp.openById(env.masterSsId);
-  const sheet = ss.getSheetByName(WHITELIST_SHEET_NAME);
-  const data = sheet.getDataRange().getValues();
+        // STT Init
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        const accent = document.getElementById('sel-accent').value;
+        recognition.lang = accent;
+        recognition.interimResults = false;
+        recognition.continuous = true;
 
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === email) {
+        // Error Handler
+        recognition.onerror = event => {
+          console.warn("Speech recognition error", event.error);
+          if (event.error === 'not-allowed') {
+            alert("マイクへのアクセスが許可されていません。ブラウザの設定を確認してください。");
+            stopShadowing(false);
+          }
+          // 'no-speech' happens often and is not fatal, just ignore.
+          // Other errors: we will try to restart in onend.
+        };
+
+        // End Handler (Auto-restart)
+        recognition.onend = () => {
+          if (isShadowing) {
+            console.log("Recognition ended, restarting...");
+            try {
+              recognition.start();
+            } catch (e) {
+              console.error("Failed to restart recognition:", e);
+              // If restart fails (e.g. already started), just let it be.
+            }
+          }
+        };
+
+        recognition.onresult = event => {
+          // Reset silence timer if needed (though we rely on continuous now)
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              const transcript = event.results[i][0].transcript;
+              finalTranscript += transcript + ' ';
+              // Optional: Update UI real-time?
+              // document.getElementById('user-stt-display').innerText = finalTranscript; 
+            }
+          }
+        };
+
+        // Start Logic
+        if (isReadingMode) {
+          setStatus("Reading... (Recording)", true);
+          mediaRecorder.start();
+          recognition.start();
+        } else {
+          // Shadowing Mode
+          setStatus("Wait 3s... (Get Ready)", true);
+          mediaRecorder.start();
+          recognition.start();
+
+          setTimeout(() => {
+            setStatus("Shadowing! (Listening & Recording)", true);
+            audioEl.play();
+
+            audioEl.onended = () => {
+              setStatus("Audio Ended. Waiting 3s...", true);
+              setTimeout(() => { stopShadowing(true); }, 3000); // Auto submit
+            };
+          }, 3000);
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert("Microphone error: " + err.message);
+        isShadowing = false;
+        setStatus("Error", false);
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+        // Revert reading mode button state changes
+        if (isReadingMode) {
+          document.getElementById('btn-finish-reading').style.display = 'none';
+          document.getElementById('btn-finish-reading').disabled = true;
+          // Reset button spacing
+          document.getElementById('button-area').style.gap = '20px';
+        }
+      }
+    }
+
+    // Stop button with confirmation dialog
+    function stopShadowingWithConfirm() {
+      if (isVolumeCheckActive && !isShadowing) {
+        stopVolumeCheck();
+        return;
+      }
+      if (!isShadowing) return;
+
+      const confirmed = confirm("途中までの記録は、文字起こし・音声ともにデータは削除されてしまいますが、良いですか？\n\nはい（OK）: 削除して中断\nいいえ（キャンセル）: 続行");
+
+      if (confirmed) {
+        // はい = 削除して中断
+        stopShadowing(false);
+      }
+      // いいえ = 続行（何もしない）
+    }
+
+    function stopShadowing(isSubmit = true) {
+      if (!isShadowing) return;
+
+      // Stop STT & Audio
+      if (recognition) recognition.stop();
+      const audioEl = document.getElementById('audio-player');
+      audioEl.pause();
+      audioEl.currentTime = 0;
+
+      // Stop Recorder
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+
+        if (mediaRecorder) {
+          mediaRecorder.onstop = async () => {
+            // Stop Tracks
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            isShadowing = false;
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-stop').disabled = true;
+            if (isReadingMode) {
+              document.getElementById('btn-finish-reading').style.display = 'none';
+              document.getElementById('btn-finish-reading').disabled = true;
+              // Reset button spacing
+              document.getElementById('button-area').style.gap = '20px';
+            }
+
+            if (!isSubmit) {
+              setStatus("Stopped.", false);
+              return; // Exit without processing
+            }
+
+            setStatus("Processing results...", true);
+
+            const blob = new Blob(audioChunks, { 'type': 'audio/webm;codecs=opus' });
+
+            // --- Scoring Logic ---
+            const refText = currentTask.refText;
+            const userText = finalTranscript.trim();
+
+            // 1. Reading Score (Base) - WER based
+            const { wer: rate, dist, refLen, hypLen } = wer(refText, userText);
+            // Simple score: 1 - WER, floored at 0
+            const readingScore = Math.max(0, Math.round(100 * (1 - rate)));
+
+            // 2. Shadowing Score (Correction)
+            // Score = Reading Score * (1 + (Speed - 1) / 2)
+            const speed = parseFloat(document.getElementById('sel-speed').value);
+            // If Reading Mode (No Speed), treat as 1.0
+            const usedSpeed = isReadingMode ? 1.0 : speed;
+
+            // 補正係数の計算: correctionFactor = 1 + (playbackSpeed - 1) / 2
+            const correctionFactor = 1 + (usedSpeed - 1) / 2;
+            // シャドイングスコアの計算: accuracy × correctionFactor（最大100）
+            const shadowingScore = Math.min(100, Math.round(readingScore * correctionFactor));
+
+            // Display Results
+            document.getElementById('result-area').style.display = 'block';
+
+            // Display Reading Score (数値のみ)
+            displayScoreStatic('score-val', readingScore);
+
+            // Display Shadowing Score only if not in reading mode
+            if (!isReadingMode) {
+              document.getElementById('shadowing-score-container').style.display = 'block';
+              const shadowingFormula = `シャドイングスコア = min(100, 音読スコア × (1 + (再生速度 - 1) / 2)) = min(100, ${readingScore} × ${correctionFactor.toFixed(2)}) = ${shadowingScore}`;
+              displayScoreStatic('shadow-score-val', shadowingScore);
+              document.getElementById('shadowing-formula').textContent = shadowingFormula;
+            } else {
+              document.getElementById('shadowing-score-container').style.display = 'none';
+            }
+
+            // Visual Comparison
+            compareAndVisualize(refText, userText);
+
+            // Playback & download setup
+            const filenameBase = (() => {
+              const now = new Date();
+              const pad = (n) => (n < 10 ? '0' + n : n);
+              const yy = now.getFullYear().toString().substr(-2);
+              const mm = pad(now.getMonth() + 1);
+              const dd = pad(now.getDate());
+              const hh = pad(now.getHours());
+              const mi = pad(now.getMinutes());
+              const ss = pad(now.getSeconds());
+              return `${document.getElementById('sel-book').value || 'book'}_${document.getElementById('sel-unit').value || 'unit'}_${currentTask?.id || 'task'}_${yy}${mm}${dd}_${hh}${mi}${ss}`;
+            })();
+            const playbackUrl = URL.createObjectURL(blob);
+            const playbackAudio = document.getElementById('playback-audio');
+            const downloadLink = document.getElementById('download-link');
+            if (playbackAudio) playbackAudio.src = playbackUrl;
+            if (downloadLink) {
+              downloadLink.href = playbackUrl;
+              downloadLink.download = `${filenameBase}.webm`;
+            }
+            const playbackArea = document.getElementById('playback-area');
+            if (playbackArea) playbackArea.style.display = 'block';
+
+            // Upload
+            uploadData(blob, shadowingScore, readingScore, usedSpeed, userText);
+            setStatus("Finished", false);
+          };
+        }
+      } else {
+        isShadowing = false;
+      }
+    }
+
+    // --- Wildcard-aware tokenization & utilities ---
+    const WILDCARD_MAX_CONSUME = 2; // How many user tokens a wildcard can absorb
+    const FUZZY_DISTANCE_THRESHOLD = 1; // Levenshtein distance threshold for fuzzy match
+
+    // Helper: wildcard marker check (case-insensitive)
+    function isWildcard(word) {
+      return /^__WILDCARD_\d+__$/i.test(word);
+    }
+
+    // Levenshtein distance (small tokens, simple implementation)
+    function levenshtein(a, b) {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return dp[m][n];
+    }
+
+    // Fuzzy match - DISABLE per user request (strict matching)
+    function isFuzzyMatch(a, b) {
+      return false;
+    }
+
+    // Normalize quotes (smart quotes → ASCII apostrophe)
+    function normalizeQuotes(text) {
+      return text.replace(/[’‘`]/g, "'"); // extend if needed
+    }
+
+    // Normalize Roman numerals to ASCII for matching (raw display keeps originals)
+    function normalizeRomanForMatch(token) {
+      const map = {
+        'Ⅰ': 'I', 'Ⅱ': 'II', 'Ⅲ': 'III', 'Ⅳ': 'IV', 'Ⅴ': 'V',
+        'Ⅵ': 'VI', 'Ⅶ': 'VII', 'Ⅷ': 'VIII', 'Ⅸ': 'IX', 'Ⅹ': 'X',
+        'ⅰ': 'i', 'ⅱ': 'ii', 'ⅲ': 'iii', 'ⅳ': 'iv', 'ⅴ': 'v',
+        'ⅵ': 'vi', 'ⅶ': 'vii', 'ⅷ': 'viii', 'ⅸ': 'ix', 'ⅹ': 'x'
+      };
+      let out = token;
+      for (const [k, v] of Object.entries(map)) {
+        out = out.split(k).join(v);
+      }
+      return out;
+    }
+
+    // Tokenize reference text, marking wildcard spans without inserting tokens
+    function tokenizeRefWithWildcards(text) {
+      text = normalizeQuotes(text);
+      const segments = [];
+      let last = 0;
+      let wildcardId = 0;
+      const regex = /【([^】]*)】/g;
+      let m;
+      const wildcardTexts = [];
+      while ((m = regex.exec(text)) !== null) {
+        if (m.index > last) segments.push({ text: text.slice(last, m.index), wildcard: false });
+        segments.push({ text: m[1], wildcard: true, spanId: wildcardId });
+        wildcardTexts[wildcardId] = m[1];
+        wildcardId++;
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) segments.push({ text: text.slice(last), wildcard: false });
+
+      const rawTokens = [];
+      const normTokens = [];
+      const isWildcardToken = [];
+      const spanIds = [];
+
+      const wordRegex = /[A-Za-z0-9'ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+/g;
+      segments.forEach(seg => {
+        let w;
+        while ((w = wordRegex.exec(seg.text)) !== null) {
+          const raw = w[0];
+          rawTokens.push(raw);
+          normTokens.push(normalizeRomanForMatch(raw.toLowerCase()));
+          isWildcardToken.push(!!seg.wildcard);
+          spanIds.push(seg.wildcard ? seg.spanId : -1);
+        }
+      });
+
+      return { rawTokens, normTokens, isWildcardToken, spanIds, wildcardTexts };
+    }
+
+    // Tokenize user text (no wildcards)
+    function tokenizeUser(text) {
+      text = normalizeQuotes(text);
+      const wordRegex = /[A-Za-z0-9'ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+/g;
+      const rawTokens = [];
+      const normTokens = [];
+      let m;
+      while ((m = wordRegex.exec(text)) !== null) {
+        const raw = m[0];
+        rawTokens.push(raw);
+        normTokens.push(normalizeRomanForMatch(raw.toLowerCase()));
+      }
+      return { rawTokens, normTokens };
+    }
+
+    // Wildcard-aware diff with fuzzy match
+    function diffWordsWithIndex(r, h) {
+      const ref = tokenizeRefWithWildcards(r);
+      const user = tokenizeUser(h);
+      const R = ref.normTokens;
+      const H = user.normTokens;
+      const n = R.length;
+      const m = H.length;
+
+      const dp = Array.from({ length: n + 1 }, () =>
+        Array.from({ length: m + 1 }, () => ({ cost: Infinity, prev: null }))
+      );
+      dp[0][0].cost = 0;
+      for (let j = 1; j <= m; j++) {
+        dp[0][j].cost = j;
+        dp[0][j].prev = { i: 0, j: j - 1, op: 'ins' };
+      }
+      for (let i = 1; i <= n; i++) {
+        const wild = ref.isWildcardToken[i - 1];
+        dp[i][0].cost = wild ? 0 : i;
+        dp[i][0].prev = { i: i - 1, j: 0, op: wild ? 'w0' : 'del' };
+      }
+
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j <= m; j++) {
+          const cur = dp[i][j];
+          if (cur.cost === Infinity) continue;
+          const isWild = ref.isWildcardToken[i];
+
+          if (isWild) {
+            // consume 0
+            if (cur.cost < dp[i + 1][j].cost) {
+              dp[i + 1][j] = { cost: cur.cost, prev: { i, j, op: 'w0' } };
+            }
+            // consume 1
+            if (j < m && cur.cost < dp[i + 1][j + 1].cost) {
+              dp[i + 1][j + 1] = { cost: cur.cost, prev: { i, j, op: 'w1' } };
+            }
+            // consume 2
+            if (j + 1 < m && cur.cost < dp[i + 1][j + 2].cost) {
+              dp[i + 1][j + 2] = { cost: cur.cost, prev: { i, j, op: 'w2' } };
+            }
+          } else {
+            // match (STRICT only, fuzzy removed)
+            if (j < m) {
+              const cost = R[i] === H[j] ? 0 : 1;
+              const op = cost === 0 ? 'match' : 'sub';
+              if (cur.cost + cost < dp[i + 1][j + 1].cost) {
+                dp[i + 1][j + 1] = { cost: cur.cost + cost, prev: { i, j, op } };
+              }
+            }
+            // deletion
+            if (cur.cost + 1 < dp[i + 1][j].cost) {
+              dp[i + 1][j] = { cost: cur.cost + 1, prev: { i, j, op: 'del' } };
+            }
+            // insertion
+            if (j < m && cur.cost + 1 < dp[i][j + 1].cost) {
+              dp[i][j + 1] = { cost: cur.cost + 1, prev: { i, j, op: 'ins' } };
+            }
+          }
+        }
+      }
+
+      // Traceback
+      let i = n, j = m;
+      const matchR = new Set();
+      const matchH = new Set();
+      const fuzzyR = new Set();
+      const fuzzyH = new Set();
+      const wildcardToUserWords = new Map();
+      const userMatchedToWildcard = new Set();
+      const missedIdx = [];
+      const addedIdx = [];
+
+      while (i > 0 || j > 0) {
+        const node = dp[i][j];
+        if (!node || !node.prev) break;
+        const { i: pi, j: pj, op } = node.prev;
+
+        if (op === 'match') {
+          matchR.add(i - 1);
+          matchH.add(j - 1);
+        } else if (op === 'sub') {
+          missedIdx.push(i - 1);
+          addedIdx.push(j - 1);
+        } else if (op === 'del') {
+          missedIdx.push(i - 1);
+        } else if (op === 'ins') {
+          addedIdx.push(j - 1);
+        } else if (op === 'w0') {
+          // no consumption
+        } else if (op === 'w1') {
+          if (!wildcardToUserWords.has(i - 1)) wildcardToUserWords.set(i - 1, []);
+          wildcardToUserWords.get(i - 1).push(pj);
+          userMatchedToWildcard.add(pj);
+        } else if (op === 'w2') {
+          if (!wildcardToUserWords.has(i - 1)) wildcardToUserWords.set(i - 1, []);
+          wildcardToUserWords.get(i - 1).push(pj);
+          wildcardToUserWords.get(i - 1).push(pj + 1);
+          userMatchedToWildcard.add(pj);
+          userMatchedToWildcard.add(pj + 1);
+        }
+
+        i = pi;
+        j = pj;
+      }
+
+      missedIdx.reverse();
+      addedIdx.reverse();
+
       return {
-        name: data[i][1],
-        id4: data[i][2],
-        isAuthorized: true
+        R: ref.rawTokens,
+        H: user.rawTokens,
+        isWildcardToken: ref.isWildcardToken,
+        spanIds: ref.spanIds,
+        wildcardTexts: ref.wildcardTexts,
+        missedIdx,
+        addedIdx,
+        missed: missedIdx.map(k => ref.rawTokens[k]),
+        added: addedIdx.map(k => user.rawTokens[k]),
+        matchR,
+        matchH,
+        wildcardToUserWords,
+        userMatchedToWildcard,
+        fuzzyR,
+        fuzzyH,
+        totalCost: dp[n][m].cost,
+        nonWildcardCount: ref.isWildcardToken.filter(v => !v).length
       };
     }
-  }
 
-  return { name: 'Guest', id4: '0000', isAuthorized: false };
-}
+    // --- Visual Comparison Logic (alignment-based) ---
+    function compareAndVisualize(ref, user) {
+      const diff = diffWordsWithIndex(ref, user);
+      const {
+        R, H, missedIdx, addedIdx, matchR, matchH,
+        wildcardToUserWords, userMatchedToWildcard, fuzzyR, fuzzyH, isWildcardToken, spanIds, wildcardTexts
+      } = diff;
 
-/**
- * PassageBooksフォルダ内の教材構造を取得（キャッシュ対応）
- */
-function getMaterialsStructure() {
-  const props = PropertiesService.getScriptProperties();
-  const cached = props.getProperty('MATERIALS_CACHE');
-
-  if (cached) {
-    return JSON.parse(cached);
-  }
-
-  return updateMaterialsCache();
-}
-
-/**
- * 教材構造のキャッシュ強制更新（管理者・任意更新用）
- */
-function updateMaterialsCache() {
-  const env = setupEnvironment();
-  const folder = DriveApp.getFolderById(env.folderIds['PassageBooks']);
-  const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
-
-  const structure = {};
-
-  while (files.hasNext()) {
-    const file = files.next();
-    const bookName = file.getName();
-    const ss = SpreadsheetApp.open(file);
-    structure[bookName] = {};
-
-    const sheets = ss.getSheets();
-    sheets.forEach(sheet => {
-      const sheetName = sheet.getName();
-      const rows = sheet.getDataRange().getValues();
-      const tasks = [];
-
-      // 列構成: 通し番号(0), 見出し(1), 参照文(2), 表示文(3), 音声ファイル名(4)
-      for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0]) { // IDがあれば有効とする（音声ファイルがない場合はReadingOnly）
-          tasks.push({
-            id: rows[i][0],
-            title: rows[i][1],
-            refText: rows[i][2],
-            displayText: rows[i][3], // 表示文も取得
-            audioName: rows[i][4] || "" // 空文字許容
+      // Map user index -> wildcard replacement text (first consumed word shows replacement, second hidden)
+      const userIdxToWildcardText = new Map();
+      if (wildcardToUserWords && spanIds && wildcardTexts) {
+        for (const [refIdx, userIdxList] of wildcardToUserWords.entries()) {
+          const spanId = spanIds[refIdx];
+          const rep = spanId >= 0 && wildcardTexts[spanId] ? wildcardTexts[spanId] : R[refIdx];
+          userIdxList.forEach((uIdx, pos) => {
+            userIdxToWildcardText.set(uIdx, pos === 0 ? rep : '');
           });
         }
       }
-      if (tasks.length > 0) {
-        structure[bookName][sheetName] = tasks;
+
+      let refHTML = "";
+      let userHTML = "";
+      const missingWords = [];
+
+      // Reference side
+      for (let i = 0; i < R.length; i++) {
+        if (isWildcardToken[i]) {
+          refHTML += `<span>${R[i]} </span>`;
+        } else if (missedIdx.includes(i)) {
+          refHTML += `<span class="highlight-missing">${R[i]} </span>`;
+          missingWords.push(R[i]);
+        } else if (matchR.has(i)) {
+          refHTML += `<span>${R[i]} </span>`;
+        } else {
+          refHTML += `<span>${R[i]} </span>`;
+        }
       }
-    });
-  }
 
-  PropertiesService.getScriptProperties().setProperty('MATERIALS_CACHE', JSON.stringify(structure));
-  return structure;
-}
+      // User side
+      for (let i = 0; i < H.length; i++) {
+        if (userIdxToWildcardText.has(i)) {
+          const rep = userIdxToWildcardText.get(i);
+          userHTML += rep ? `<span>${rep} </span>` : `<span></span>`;
+        } else if (userMatchedToWildcard.has(i)) {
+          userHTML += `<span>${H[i]} </span>`;
+        } else if (addedIdx.includes(i)) {
+          userHTML += `<span class="highlight-added">${H[i]} </span>`;
+        } else if (matchH.has(i)) {
+          userHTML += `<span>${H[i]} </span>`;
+        } else {
+          userHTML += `<span>${H[i]} </span>`;
+        }
+      }
 
-/**
- * 音声ファイル名からBase64データを取得
- */
-function getAudioData(filename) {
-  const env = setupEnvironment();
-  const folder = DriveApp.getFolderById(env.folderIds['AudioFiles']);
-  const files = folder.getFilesByName(filename);
+      document.getElementById('user-stt-display').innerHTML = userHTML;
+      document.getElementById('ref-text-display').innerHTML = refHTML;
 
-  if (files.hasNext()) {
-    const file = files.next();
-    const blob = file.getBlob();
-    return {
-      name: filename,
-      mime: blob.getContentType(),
-      base64: Utilities.base64Encode(blob.getBytes())
-    };
-  } else {
-    // ファイルがない場合のエラーハンドリング
-    throw new Error('Audio file not found: ' + filename);
-  }
-}
-
-/**
- * 結果の保存（JSONと音声）
- * 変更点：InboxSubmissionsとRecordingsフォルダに分別して保存
- */
-function saveSubmission(payload) {
-  // 1. Get User Email safely
-  const email = Session.getActiveUser().getEmail();
-
-  // 2. 環境設定からフォルダIDを取得
-  const env = setupEnvironment();
-  const inboxId = env.folderIds['InboxSubmissions'];
-  const recordingsId = env.folderIds['Recordings'];
-
-  if (!inboxId || !recordingsId) {
-    throw new Error("Configuration Error: Folder IDs for submissions not found.");
-  }
-
-  let inboxFolder, recordingsFolder;
-  try {
-    inboxFolder = DriveApp.getFolderById(inboxId);
-    recordingsFolder = DriveApp.getFolderById(recordingsId);
-  } catch (e) {
-    throw new Error("Cannot access storage folders. Please check folder IDs.");
-  }
-
-  // 3. Inject Email into JSON
-  const data = JSON.parse(payload.jsonStr);
-  data.verifiedEmail = email; // FORCE OVERWRITE or ADD
-  const secureJsonStr = JSON.stringify(data);
-
-  // 4. Save Files
-  // JSON -> InboxSubmissions
-  const jsonName = payload.filenameBase + '.json';
-  inboxFolder.createFile(jsonName, secureJsonStr, MimeType.PLAIN_TEXT);
-
-  // WebM -> Recordings
-  const audioName = payload.filenameBase + '.webm';
-  const audioBlob = Utilities.newBlob(
-    Utilities.base64Decode(payload.audioBase64),
-    'audio/webm;codecs=opus',
-    audioName
-  );
-  recordingsFolder.createFile(audioBlob);
-
-  return "Success";
-}
-
-/**
- * トリガー実行用：InboxSubmissionsの処理
- */
-function processInboxQueue() {
-  const env = setupEnvironment();
-  const inbox = DriveApp.getFolderById(env.folderIds['InboxSubmissions']);
-  const processed = DriveApp.getFolderById(env.folderIds['Processed']);
-  const files = inbox.getFiles();
-  const ss = SpreadsheetApp.openById(env.masterSsId);
-  const sheet = ss.getSheetByName(MASTER_SHEET_NAME);
-
-  while (files.hasNext()) {
-    const file = files.next();
-    try {
-      const content = file.getBlob().getDataAsString();
-      const data = JSON.parse(content);
-
-      sheet.appendRow([
-        new Date(),
-        data.book,
-        data.unit,
-        data.taskId,
-        data.userId,
-        data.shadowing_score, // New
-        data.reading_score,   // New
-        data.playback_speed,  // New
-        file.getName(),
-        data.filenameBase + '.webm'
-      ]);
-
-      file.moveTo(processed);
-    } catch (e) {
-      console.error("Error processing file " + file.getName() + ": " + e.message);
+      // Practice Items: only ref-side deletions outside wildcards
+      const pArea = document.getElementById('practice-items');
+      pArea.innerHTML = '';
+      const seenWords = new Set();
+      missingWords.forEach(word => {
+        const isWildcardWord = /^__WILDCARD_\d+__$/i.test(word);
+        if (!isWildcardWord && !seenWords.has(word)) {
+          seenWords.add(word);
+          const d = document.createElement('span');
+          d.className = 'practice-item';
+          d.innerHTML = `${word} <button class="speak-btn" onclick="playTTS('${word}')">🔊</button>`;
+          pArea.appendChild(d);
+        }
+      });
     }
-  }
-}
+
+    function playTTS(text) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = document.getElementById('sel-accent').value;
+      window.speechSynthesis.speak(u);
+    }
+
+    // Display score without animation; set color by value
+    function displayScoreStatic(scoreElementId, score) {
+      const scoreElement = document.getElementById(scoreElementId);
+      let color;
+      if (score >= 90) color = '#27ae60';
+      else if (score >= 70) color = '#f39c12';
+      else if (score >= 50) color = '#e67e22';
+      else color = '#e74c3c';
+      scoreElement.textContent = score;
+      scoreElement.style.color = color;
+    }
+
+    // --- Upload & Naming ---
+    function uploadData(audioBlob, shadowScore, readScore, speed, userTranscript) {
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = function () {
+        const base64Audio = reader.result.split(',')[1];
+
+        // Filename Construction
+        const now = new Date();
+        const dateStr = formatDate(now, 'YYMMDD');
+        const timeStr = formatDate(now, 'HHMMSS');
+
+        const book = document.getElementById('sel-book').value;
+        const unit = document.getElementById('sel-unit').value;
+
+        const filenameBase = `${book}_${unit}_${currentTask.id}_${currentUser.id4}_${shadowScore}_${dateStr}_${timeStr}`;
+
+        const payload = {
+          filenameBase: filenameBase,
+          audioBase64: base64Audio,
+          reading_score: readScore,
+          shadowing_score: shadowScore,
+          playback_speed: speed,
+          jsonStr: JSON.stringify({
+            book: book,
+            unit: unit,
+            taskId: currentTask.id,
+            userId: currentUser.id4,
+            reading_score: readScore,
+            shadowing_score: shadowScore,
+            playback_speed: speed,
+            refText: currentTask.refText,
+            userText: userTranscript,
+            timestamp: now.toISOString(),
+            filenameBase: filenameBase
+          })
+        };
+
+        google.script.run
+          .withSuccessHandler(() => {
+            console.log("Upload Complete");
+            showSubmissionStatus(true);
+          })
+          .withFailureHandler(err => {
+            console.error("Upload Failed", err);
+            showSubmissionStatus(false);
+            setStatus("Error", false);
+          })
+          .saveSubmission(payload);
+      };
+    }
+
+    // --- Utilities ---
+    function setStatus(msg, isLoading) {
+      document.getElementById('status-area').innerText = msg;
+      document.getElementById('loader').style.display = isLoading ? 'block' : 'none';
+    }
+
+    function showSubmissionStatus(isSuccess) {
+      const overlay = document.getElementById('submission-overlay');
+      const msgEl = document.getElementById('submission-message');
+      if (!overlay || !msgEl) return;
+      if (isSuccess) {
+        msgEl.innerText = '提出が完了しました。';
+      } else {
+        msgEl.innerText = '提出に失敗しました。管理者に問い合わせてください。';
+      }
+      overlay.style.display = 'flex';
+    }
+
+    function hideSubmissionStatus() {
+      const overlay = document.getElementById('submission-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    // --- Volume Check (10s) ---
+    async function startVolumeCheck() {
+      if (isVolumeCheckActive || isShadowing) return;
+      isVolumeCheckActive = true;
+      setStatus('音量確認中（10秒）', true);
+      const btnStart = document.getElementById('btn-start');
+      const btnVolumeCheck = document.getElementById('btn-volume-check');
+      if (btnStart) btnStart.disabled = true;
+      if (btnVolumeCheck) btnVolumeCheck.disabled = true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 24000,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+        volumeCheckStream = stream;
+        setupAudioContext(stream);
+        volumeCheckTimer = setTimeout(() => {
+          stopVolumeCheck();
+        }, 10000);
+      } catch (err) {
+        console.error(err);
+        alert("音量確認の開始に失敗しました: " + err.message);
+        stopVolumeCheck();
+      }
+    }
+
+    function stopVolumeCheck() {
+      if (!isVolumeCheckActive) return;
+      isVolumeCheckActive = false;
+      if (volumeCheckTimer) {
+        clearTimeout(volumeCheckTimer);
+        volumeCheckTimer = null;
+      }
+      if (volumeCheckStream) {
+        volumeCheckStream.getTracks().forEach(t => t.stop());
+        volumeCheckStream = null;
+      }
+      const btnStart = document.getElementById('btn-start');
+      const btnVolumeCheck = document.getElementById('btn-volume-check');
+      if (!isShadowing && btnStart) btnStart.disabled = false;
+      if (btnVolumeCheck) btnVolumeCheck.disabled = false;
+      setStatus('Ready', false);
+    }
+
+    function formatDate(date, format) {
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      const yy = date.getFullYear().toString().substr(-2);
+      const mm = pad(date.getMonth() + 1);
+      const dd = pad(date.getDate());
+      const hh = pad(date.getHours());
+      const min = pad(date.getMinutes());
+      const ss = pad(date.getSeconds());
+
+      if (format === 'YYMMDD') return yy + mm + dd;
+      if (format === 'HHMMSS') return hh + min + ss;
+      return '';
+    }
+
+    // Tokenize function: Split text into words (normalized)
+    function tokenize(text) {
+      const normalized = normalizeTextForComparison(text);
+      // Remove wildcard markers for tokenization (they're handled separately in comparison)
+      const cleaned = normalized.replace(/__WILDCARD_\d+__/g, '');
+      return cleaned.split(/\s+/).filter(w => w);
+    }
+
+    // WER using wildcard-aware diff (non-wildcard count as denominator)
+    function wer(r, h) {
+      const diff = diffWordsWithIndex(r, h);
+      const nonWildcardCount = diff.isWildcardToken.filter(v => !v).length;
+      const dist = diff.totalCost;
+
+      // FIX: If reference has no valid words (e.g. only symbols or empty), 
+      // treat as 100% error (Score 0) instead of 0% error (Score 100).
+      if (nonWildcardCount === 0) {
+        return {
+          wer: 1.0,
+          dist: dist,
+          refLen: 0,
+          hypLen: diff.H.length
+        };
+      }
+
+      return {
+        wer: dist / nonWildcardCount,
+        dist: dist,
+        refLen: nonWildcardCount,
+        hypLen: diff.H.length
+      };
+    }
+  </script>
+
+  <div class="footer">
+    Voice by Ondoku3.com<br>
+    Powered by ElevenLabs<br>
+    © 2025 Kojiro Nakamura. All rights reserved.<br>
+    Unauthorized reproduction or redistribution is prohibited.<br>
+    Contact: snakamurako@yamagataps.jp
+  </div>
+
+  <div id="submission-overlay">
+    <div class="submission-modal">
+      <div id="submission-message">提出が完了しました。</div>
+      <button onclick="hideSubmissionStatus()">確認</button>
+    </div>
+  </div>
+
+</body>
+
+</html>
