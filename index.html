@@ -24,9 +24,9 @@
     #message { margin-top: 20px; color: #ff4d4d; font-weight: bold; }
 
     /* 設定・クイズ画面 */
-    .setting-group { margin: 25px 0; background: #222; padding: 15px; border-radius: 10px; }
+    .setting-group { margin: 20px 0; background: #222; padding: 15px; border-radius: 10px; }
     .large-select { padding: 15px; font-size: 20px; border-radius: 8px; width: 80%; max-width: 350px; background: #fff; color: #000; border: none; }
-    #quiz-q-text { font-size: 36px; margin: 30px 0; font-weight: bold; }
+    #quiz-q-text { font-size: 36px; margin: 20px 0; font-weight: bold; }
     .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .choice-btn:active { background: #555; transform: scale(0.98); }
     .large-input { padding: 15px; font-size: 24px; width: 80%; max-width: 350px; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; }
@@ -34,7 +34,11 @@
     #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
     .next-btn { padding: 15px 50px; font-size: 24px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; display: none; margin: 0 auto; }
 
-    /* ★景品交換画面のスタイル */
+    /* ★ヒント機能のスタイル */
+    .hint-btn { background: #FF9800; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+    #hint-text { color: #FFEB3B; font-size: 22px; margin-top: 15px; font-weight: bold; display: none; background: #333; padding: 10px; border-radius: 8px; width: 80%; max-width: 350px; margin-left: auto; margin-right: auto; }
+
+    /* 景品交換画面 */
     .reward-card { background: #222; border: 2px solid #e50914; border-radius: 10px; padding: 15px; margin: 15px auto; max-width: 400px; text-align: left; }
     .reward-title { font-size: 22px; font-weight: bold; color: gold; margin: 0 0 10px 0; }
     .reward-desc { font-size: 14px; color: #ccc; margin-bottom: 15px; }
@@ -75,24 +79,17 @@
     <h1>ホームメニュー</h1>
     <h2 id="welcome-message"></h2>
     <p>げんざいのポイント: <span id="user-points" style="color: gold; font-size: 32px; font-weight: bold;">0</span> Pt</p>
-    
     <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center;">
       <button style="padding: 20px 40px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px;" onclick="loadMaterials()">▶ 学習をはじめる</button>
-      
       <button style="padding: 15px 30px; font-size: 20px; font-weight: bold; background: #FF9800; color: white; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px;" onclick="loadRewards()">🎁 けいひんを もらう</button>
     </div>
-    
     <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">ログアウト</button>
   </div>
 
   <div id="section-rewards" class="section">
     <h1>🎁 けいひん こうかんじょ</h1>
     <p>あなたのポイント: <span id="reward-user-points" style="color: gold; font-size: 24px; font-weight: bold;">0</span> Pt</p>
-    
-    <div id="rewards-container">
-      <p>けいひんを さがしています...</p>
-    </div>
-    
+    <div id="rewards-container"><p>けいひんを さがしています...</p></div>
     <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="margin-top: 30px; padding: 10px 30px; font-size: 18px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ホームにもどる</button>
   </div>
 
@@ -104,26 +101,42 @@
 
   <div id="section-settings" class="section">
     <h1 id="settings-title">設定</h1>
+    
+    <div class="setting-group" style="border: 2px solid #FF9800;">
+      <h3 style="color: #FF9800; margin-top: 0;">🔥 学習モード</h3>
+      <select id="setting-play-mode" class="large-select">
+        <option value="normal">通常（ぜんぶ出題）</option>
+        <option value="review">ニガテ特訓（まちがえた問題だけ）</option>
+      </select>
+    </div>
+
     <div class="setting-group">
-      <h3>1. もんだいの形式</h3>
+      <h3 style="margin-top: 0;">1. もんだいの形式</h3>
       <select id="setting-format" class="large-select"><option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option></select>
     </div>
     <div class="setting-group">
-      <h3>2. こたえ方</h3>
+      <h3 style="margin-top: 0;">2. こたえ方</h3>
       <select id="setting-answer-type" class="large-select"><option value="4choice">４択（えらぶ）</option><option value="typing">タイピング（入力する）</option></select>
     </div>
     <div class="setting-group">
-      <h3>3. 出し方</h3>
+      <h3 style="margin-top: 0;">3. 出し方</h3>
       <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
     </div>
-    <button onclick="fetchQuestionsAndStart()" style="padding: 15px 50px; font-size: 26px; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
+    <button onclick="fetchQuestionsAndStart()" style="margin-top: 10px; padding: 15px 50px; font-size: 26px; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
     <br><button onclick="switchSection('section-materials')" style="margin-top: 20px; padding: 10px 20px;">もどる</button>
   </div>
 
   <div id="section-quiz" class="section">
     <h3 id="quiz-progress" style="color: #aaa;">第 1 問</h3>
     <div id="quiz-q-text">もんだい文</div>
+    
     <div id="quiz-answer-area"></div>
+    
+    <div id="quiz-hint-area">
+      <button id="hint-btn" onclick="showHint()" class="hint-btn">💡 ヒントをみる（ポイント半分）</button>
+      <div id="hint-text"></div>
+    </div>
+
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="next-btn" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
@@ -131,16 +144,21 @@
   <div id="section-result" class="section">
     <h1>けっかはっぴょう！</h1>
     <div id="result-content" style="background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;"></div>
-    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" style="padding: 15px 30px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; display: none;">ホームにもどる</button>
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" style="padding: 15px 30px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; display: none; margin: 0 auto;">ホームにもどる</button>
   </div>
 
   <script>
     // ★GASのURLを忘れずに変更してください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwC3GDUpcsMey-wCcFVedx1SCscoAclaywZ1MW3KFDVgDCk8r7ymqwEaB3NUXC4BoAzBg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwnPKUnVNxHVR4OqL03zNUMAuLdOYnOp8dOVqlbJ7mw808uSUiCfaXJGO9d0vQ1kGU2ng/exec";
     
     let selectedUserId = null; let currentPin = "";
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
-    let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; let quizResults = []; let questionStartTime = 0;
+    let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
+    let quizResults = []; let questionStartTime = 0;
+    
+    // ★ヒント・特訓用の変数
+    let hintUsed = false;
+    let currentIsReviewMode = false;
 
     window.onload = () => { const saved = localStorage.getItem('app_kid_user'); if (saved) showHome(JSON.parse(saved)); else fetchUsers(); };
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -165,66 +183,29 @@
     function showHome(user) { switchSection('section-home'); document.getElementById('welcome-message').innerText = `ようこそ、${user.name} さん！`; document.getElementById('user-points').innerText = user.points; }
     function logout() { localStorage.removeItem('app_kid_user'); showUserSelection(); }
 
-    // --- ★景品交換システム（ここが新しい機能です！） ---
+    // --- 景品交換 ---
     function loadRewards() {
-      switchSection('section-rewards');
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      document.getElementById('reward-user-points').innerText = user.points;
-      document.getElementById('rewards-container').innerHTML = "<p>けいひんを さがしています...</p>";
-
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) })
-      .then(r => r.json())
-      .then(data => {
-        if(data.status === "success") renderRewards(data.rewards, user.points);
-        else alert("エラー: " + data.message);
-      });
+      switchSection('section-rewards'); const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      document.getElementById('reward-user-points').innerText = user.points; document.getElementById('rewards-container').innerHTML = "<p>けいひんを さがしています...</p>";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) }).then(r => r.json()).then(d => { if(d.status === "success") renderRewards(d.rewards, user.points); });
     }
-
     function renderRewards(rewards, currentPoints) {
-      const container = document.getElementById('rewards-container');
-      container.innerHTML = "";
-
+      const container = document.getElementById('rewards-container'); container.innerHTML = "";
       rewards.forEach(reward => {
-        const canExchange = currentPoints >= reward.points; // ポイントが足りているか判定
-        const div = document.createElement('div');
-        div.className = "reward-card";
-        div.innerHTML = `
-          <h3 class="reward-title">${reward.name}</h3>
-          <p class="reward-desc">${reward.desc}</p>
-          <button class="exchange-btn" ${canExchange ? "" : "disabled"} 
-                  onclick="exchangeReward('${reward.id}', '${reward.name}', ${reward.points})">
-            ${reward.points} Pt で こうかんする
-          </button>
-        `;
+        const canExchange = currentPoints >= reward.points; const div = document.createElement('div'); div.className = "reward-card";
+        div.innerHTML = `<h3 class="reward-title">${reward.name}</h3><p class="reward-desc">${reward.desc}</p><button class="exchange-btn" ${canExchange ? "" : "disabled"} onclick="exchangeReward('${reward.id}', '${reward.name}', ${reward.points})">${reward.points} Pt で こうかん</button>`;
         container.appendChild(div);
       });
     }
-
-    function exchangeReward(rewardId, rewardName, points) {
-      if(!confirm(`「${rewardName}」を こうかんしますか？\n（${points} Pt つかいます）`)) return;
-
+    function exchangeReward(rId, rName, pts) {
+      if(!confirm(`「${rName}」を こうかんしますか？\n（${pts} Pt つかいます）`)) return;
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rewardId })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if(data.status === "success") {
-          alert("🎉 " + data.message + "\n（管理者の人に伝えてね！）");
-          // ローカルのポイントを更新
-          user.points = data.newPoints;
-          localStorage.setItem('app_kid_user', JSON.stringify(user));
-          // ホーム画面に戻る
-          showHome(user);
-        } else {
-          alert("エラー: " + data.message);
-        }
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rId }) }).then(r => r.json()).then(d => {
+        if(d.status === "success") { alert("🎉 " + d.message); user.points = d.newPoints; localStorage.setItem('app_kid_user', JSON.stringify(user)); showHome(user); }
       });
     }
 
-    // --- クイズ関連 ---
+    // --- クイズ準備 ---
     function loadMaterials() {
       switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>";
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderMaterials(d.materials); });
@@ -240,22 +221,60 @@
       });
     }
     function showSettingsScreen(mId, mName, uName) { currentModeId = mId; currentModeName = mName; currentUnitName = uName; switchSection('section-settings'); document.getElementById('settings-title').innerText = `【${mName}】${uName}`; }
+    
     function fetchQuestionsAndStart() {
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ currentQuestions = d.questions; prepareQuiz(); } });
     }
+    
     function prepareQuiz() {
+      currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
       const order = document.getElementById('setting-order').value;
       filteredQuestions = [...currentQuestions];
+
+      // ★ニガテ特訓の絞り込み処理
+      if (currentIsReviewMode) {
+        const user = JSON.parse(localStorage.getItem('app_kid_user'));
+        const unitKey = `${currentModeName}_${currentUnitName}`;
+        const history = user.historyJson[unitKey] || {};
+
+        filteredQuestions = filteredQuestions.filter(q => {
+          const h = history[q["通し番号"]];
+          if (!h) return false; // まだ解いたことがない問題は除外
+          const recentResults = h.results.slice(-3); // 直近3回の結果を見る
+          return recentResults.includes(0); // 1回でも間違えていればニガテ判定
+        });
+
+        if (filteredQuestions.length === 0) {
+          alert("✨ ニガテなもんだい はありません！バッチリです！\n通常モードでスタートします。");
+          currentIsReviewMode = false;
+          document.getElementById('setting-play-mode').value = 'normal';
+          filteredQuestions = [...currentQuestions];
+        }
+      }
+
       if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
       currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
     }
+
     function showQuestion() {
       if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
+      hintUsed = false; // ヒントをリセット
+      
       const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; const answerType = document.getElementById('setting-answer-type').value;
-      document.getElementById('quiz-progress').innerText = `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
+      
+      let titleText = `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
+      if(currentIsReviewMode) titleText = "🔥特訓中! " + titleText;
+      document.getElementById('quiz-progress').innerText = titleText;
+      
       let enText = q["英単語"] || q["英文"]; let jaText = q["日本語"]; let qText = "", correctA = "";
       if (format === "ja_to_en") { qText = jaText; correctA = enText; } else { qText = enText; correctA = jaText; }
-      document.getElementById('quiz-q-text').innerText = qText; document.getElementById('quiz-feedback').innerHTML = ""; document.getElementById('quiz-next-btn').style.display = "none";
+      
+      document.getElementById('quiz-q-text').innerText = qText; 
+      document.getElementById('quiz-feedback').innerHTML = ""; 
+      document.getElementById('quiz-next-btn').style.display = "none";
+      document.getElementById('hint-btn').style.display = "inline-block";
+      document.getElementById('hint-text').style.display = "none";
+      
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = "";
       questionStartTime = Date.now();
 
@@ -269,29 +288,64 @@
         answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" autocomplete="off"><br><button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>`;
       }
     }
+
+    // ★ヒントを表示する処理
+    function showHint() {
+      hintUsed = true;
+      document.getElementById('hint-btn').style.display = "none";
+      const q = filteredQuestions[currentQuestionIndex];
+      // スプレッドシートからヒントやイニシャルを拾う
+      let hintStr = q["ヒント"] || q["イニシャルと文字数"] || q["イニシャル"] || "ヒントはないよ！自力でがんばれ！";
+      document.getElementById('hint-text').innerText = "💡 " + hintStr;
+      document.getElementById('hint-text').style.display = "block";
+    }
+
     function checkTypingAnswer() {
       const userA = document.getElementById('type-answer').value; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value;
       checkAnswer(userA, format === "ja_to_en" ? (q["英単語"] || q["英文"]) : q["日本語"], q);
     }
+
     function checkAnswer(userA, correctA, q) {
-      document.querySelectorAll('.choice-btn, .submit-btn').forEach(b => b.disabled = true);
+      document.querySelectorAll('.choice-btn, .submit-btn, .hint-btn').forEach(b => b.disabled = true);
       const isCorrect = userA.trim().toLowerCase() === correctA.trim().toLowerCase();
-      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: 10, deduction: 0 });
+      
+      // ★ヒントを使っていたら減点（10点中、5点マイナス）
+      let deductionPts = hintUsed ? 5 : 0;
+
+      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: 10, deduction: deductionPts });
       const feedback = document.getElementById('quiz-feedback');
-      if (isCorrect) feedback.innerHTML = "<span style='color: #4CAF50; font-size: 30px; font-weight: bold;'>⭕️ せいかい！</span>";
-      else feedback.innerHTML = `<span style='color: #F44336; font-size: 30px; font-weight: bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color: #fff;">${correctA}</b>`;
+      
+      if (isCorrect) {
+        let msg = "<span style='color: #4CAF50; font-size: 30px; font-weight: bold;'>⭕️ せいかい！</span>";
+        if(hintUsed) msg += "<br><span style='font-size: 16px; color: #FF9800;'>ヒントをつかったので ポイントは半分です</span>";
+        feedback.innerHTML = msg;
+      } else {
+        feedback.innerHTML = `<span style='color: #F44336; font-size: 30px; font-weight: bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color: #fff;">${correctA}</b>`;
+      }
       document.getElementById('quiz-next-btn').style.display = "block";
     }
+
     function nextQuestion() { currentQuestionIndex++; showQuestion(); }
     
     function finishQuiz() {
       switchSection('section-result'); document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; document.getElementById('result-home-btn').style.display = "none";
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: `${currentModeName}_${currentUnitName}`, isReviewMode: false, results: quizResults }) })
+      
+      // ★ isReviewMode に現在のモード（true/false）を渡す
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: `${currentModeName}_${currentUnitName}`, isReviewMode: currentIsReviewMode, results: quizResults }) })
       .then(r => r.json()).then(d => {
         if(d.status === "success") {
-          document.getElementById('result-content').innerHTML = `<h2 style="color: #4CAF50;">✨ おつかれさま！ ✨</h2><p>かくとくポイント: <span style="color: gold; font-size: 30px;">+${d.earnedPoints}</span></p><hr><p>合計ポイント: ${d.newTotal}</p>`;
-          user.points = d.newTotal; localStorage.setItem('app_kid_user', JSON.stringify(user));
+          let html = `<h2 style="color: #4CAF50;">✨ おつかれさま！ ✨</h2>`;
+          if (currentIsReviewMode) html += `<p style="color: #FF9800; font-weight:bold;">🔥 ニガテ特訓ボーナス発動！</p>`;
+          html += `<p>かくとくポイント: <span style="color: gold; font-size: 30px;">+${d.earnedPoints}</span></p><hr><p>合計ポイント: ${d.newTotal}</p>`;
+          
+          document.getElementById('result-content').innerHTML = html;
+          
+          // 最新のポイントとニガテ履歴(historyJson)を保存
+          user.points = d.newTotal; 
+          user.historyJson = d.historyJson;
+          localStorage.setItem('app_kid_user', JSON.stringify(user));
+          
           document.getElementById('result-home-btn').style.display = "block";
         }
       });
