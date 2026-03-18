@@ -42,7 +42,6 @@
     /* 独自キーボード用のCSS（サイズ自動調整・伸縮対応） */
     .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
     .key-row { display: flex; justify-content: center; gap: 4px; }
-    /* max-widthを削除し、画面幅に合わせて自動で伸び縮みするように変更 */
     .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
     .key:active { transform: translateY(4px); box-shadow: 0 0 #333; background: #777; }
     .key-wide { flex: 1.5; font-size: 16px; background: #444; }
@@ -140,7 +139,7 @@
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
     function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
-    // ユーザー・PIN認証・ホーム・インベントリ関連（省略せずそのまま）
+    // ユーザー・PIN認証・ホーム・インベントリ関連
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
@@ -200,17 +199,18 @@
       }
     }
 
-    // --- 【アップデート】独自キーボードの実装 ---
+    // --- 【アップデート】独自キーボードの実装（記号列追加・5段構成） ---
     let isShift = false;
     function renderCustomKeyboard() {
       const container = document.getElementById('keyboard-container');
       if(!container) return;
       container.innerHTML = "";
       
-      // PCに近い配列に変更（アポストロフィー、カンマ、ピリオド、クエスチョンマーク、ハイフンを追加）
+      // 一番上の列に記号を追加
       const rows = [
-        ['q','w','e','r','t','y','u','i','o','p','-'],
-        ['a','s','d','f','g','h','j','k','l','\''],
+        ['!', '"', '$', '%', '&', "'", '(', ')', '-', '¥'],
+        ['q','w','e','r','t','y','u','i','o','p'],
+        ['a','s','d','f','g','h','j','k','l'],
         ['z','x','c','v','b','n','m',',','.','?']
       ];
       
@@ -221,8 +221,8 @@
         const rowDiv = document.createElement('div');
         rowDiv.className = 'key-row';
         
-        // 3段目の左端にShiftキー
-        if(rIdx === 2) {
+        // 4段目（zの行）の左端にShiftキー
+        if(rIdx === 3) {
           const shiftBtn = document.createElement('button');
           shiftBtn.className = 'key key-wide';
           shiftBtn.innerText = '⇧';
@@ -237,17 +237,16 @@
           keyBtn.className = 'key';
           
           let displayChar = char;
-          // Shift時の挙動（アルファベットは大文字、シングルクォーテーションはダブルクォーテーションへ）
+          // Shift時の挙動（アルファベットのみ大文字へ）
           if (/[a-z]/.test(char)) displayChar = isShift ? char.toUpperCase() : char;
-          else if (char === '\'') displayChar = isShift ? '"' : '\'';
           
           keyBtn.innerText = displayChar;
           keyBtn.onclick = () => { document.getElementById('type-answer').value += displayChar; };
           rowDiv.appendChild(keyBtn);
         });
         
-        // 3段目の右端にBackspaceキー
-        if(rIdx === 2) {
+        // 4段目（zの行）の右端にBackspaceキー
+        if(rIdx === 3) {
           const bsBtn = document.createElement('button');
           bsBtn.className = 'key key-wide';
           bsBtn.innerText = '⌫';
@@ -260,7 +259,7 @@
         board.appendChild(rowDiv);
       });
       
-      // 4段目（スペースと決定ボタン）
+      // 5段目（スペースと決定ボタン）
       const bottomRow = document.createElement('div');
       bottomRow.className = 'key-row';
       const spaceBtn = document.createElement('button');
@@ -344,7 +343,6 @@
       const hintTextDisplay = document.getElementById('hint-display-text');
       hintTextDisplay.style.display = "none"; hintTextDisplay.innerText = "";
       
-      // 【アップデート】表現練習モードの場合は、ボタンの表記を「ヒントを見る」に変更
       document.getElementById('hint-btn-2').innerText = isWord ? "💡 イニシャルと文字数を見る（-7 Pt）" : "💡 ヒントを見る（-7 Pt）";
 
       if (answerType === "4choice" || format.includes("en_to_ja") || format === "en_audio_to_ja") {
@@ -353,7 +351,7 @@
         hintArea.style.display = "flex";
         document.getElementById('hint-btn-1').disabled = false;
         document.getElementById('hint-btn-2').disabled = false;
-        document.getElementById('hint-btn-3').disabled = false; // 音声ヒントは常に有効な状態からスタート
+        document.getElementById('hint-btn-3').disabled = false;
       }
 
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
@@ -378,7 +376,6 @@
       }
     }
 
-    // --- 【アップデート】ヒント使用処理 ---
     function useHint(type, penalty) {
       const q = filteredQuestions[currentQuestionIndex];
       const hintTextDisplay = document.getElementById('hint-display-text');
@@ -387,7 +384,6 @@
       
       maxDeduction = Math.max(maxDeduction, penalty);
       
-      // 読み上げヒント(type=3)は何度でも押せるよう、ボタンを無効化しない
       if (type !== 3) {
         document.getElementById(`hint-btn-${type}`).disabled = true;
       }
@@ -397,7 +393,6 @@
         if (type === 1) {
           hintStr = q["イニシャル"] || "ヒントなし";
         } else if (type === 2) {
-          // 単語モードなら「イニシャルと文字数」、表現モードなら「ヒント」の列を参照する
           hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし");
         }
         hintTextDisplay.innerText = hintStr;
@@ -461,14 +456,14 @@
       });
     }
 
-    // --- 物理キーボードの入力検知 ---
+    // --- 物理キーボードの入力検知（記号許容を追加） ---
     document.addEventListener('keydown', (e) => {
       const answerInput = document.getElementById('type-answer');
       const quizSection = document.getElementById('section-quiz');
       if (!answerInput || !quizSection.classList.contains('active')) return;
 
-      // 予測変換を止める
-      if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[a-zA-Z0-9\-\'\"\,\.\?\!\:\;]$/.test(e.key))) {
+      // 予測変換を止める（半角の印字可能文字全体を許容）
+      if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key))) {
         e.preventDefault(); 
       }
 
@@ -486,7 +481,8 @@
         isShift = !isShift;
         renderCustomKeyboard();
       } 
-      else if (e.key.length === 1 && /^[a-zA-Z0-9\-\'\"\,\.\?\!\:\;]$/.test(e.key)) {
+      // 半角の印字可能文字と ¥ 記号を許可
+      else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) {
         answerInput.value += e.key;
       }
     });
