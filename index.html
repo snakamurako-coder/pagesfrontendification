@@ -17,8 +17,24 @@
   
   <div class="g_id_signin" data-type="standard"></div>
   <div id="message" style="margin-top: 20px; font-weight: bold;"></div>
+  
+  <button onclick="testAppFunction()" style="margin-top: 20px;">アプリからユーザー情報を呼び出すテスト</button>
 
   <script>
+    // --------------------------------------------------------
+    // 【重要】アプリ内のどこからでもユーザー情報を呼び出せる関数
+    // --------------------------------------------------------
+    function getUserInfo() {
+      const storedData = localStorage.getItem('app_user_data');
+      if (storedData) {
+        return JSON.parse(storedData); // JSON文字列をオブジェクトに戻して返す
+      }
+      return null; // ログインしていない場合はnull
+    }
+
+    // --------------------------------------------------------
+    // 認証処理
+    // --------------------------------------------------------
     function handleCredentialResponse(response) {
       const idToken = response.credential;
       // あなたのGASウェブアプリのURLに変更してください
@@ -34,21 +50,16 @@
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          // 認証成功時：GASから username や role が返ってくる！
           const user = data.user;
-          document.getElementById('message').innerText = 
-            `ようこそ、${user.username} さん！ (権限: ${user.role})`;
-            
-          // 例: role によって処理を分ける
-          if (user.role === 'admin') {
-            console.log("管理者メニューを展開します");
-          } else {
-            console.log("一般ユーザー用の画面を展開します");
-          }
-          // ここからメインアプリの起動処理などを呼ぶ
           
+          // ★ここでブラウザ(localStorage)にユーザーの全データを保存する
+          localStorage.setItem('app_user_data', JSON.stringify(user));
+
+          // 画面表示
+          document.getElementById('message').innerText = 
+            `ようこそ、${user.username} さん！ (ID: ${user.id}, 権限: ${user.role})`;
+            
         } else {
-          // 認証失敗時
           document.getElementById('message').innerText = `エラー: ${data.message}`;
         }
       })
@@ -56,6 +67,21 @@
         console.error("通信エラー:", error);
         document.getElementById('message').innerText = "サーバーとの通信に失敗しました。";
       });
+    }
+
+    // --------------------------------------------------------
+    // アプリ側から呼び出すテスト関数（使い方）
+    // --------------------------------------------------------
+    function testAppFunction() {
+      const currentUser = getUserInfo(); // 保存されたデータを呼び出し
+      
+      if (currentUser) {
+        // スプレッドシートの見出し名（キー）で自由にデータを取り出せます
+        console.log("取り出したユーザー情報:", currentUser);
+        alert(`現在のログインユーザーのIDは ${currentUser.id} です。\n（その他の任意項目もConsoleで確認できます）`);
+      } else {
+        alert("まだログインしていません。");
+      }
     }
   </script>
 </body>
