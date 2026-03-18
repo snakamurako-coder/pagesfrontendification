@@ -430,8 +430,8 @@
       }
     }
     
-    function checkAnswer(userA, correctA, q) {
-      document.querySelectorAll('.choice-btn, .submit-btn, .hint-btn, .key').forEach(b => b.disabled = true);
+function checkAnswer(userA, correctA, q) {
+      document.querySelectorAll('#section-quiz button').forEach(b => b.disabled = true);
       
       const isCorrect = normalizeText(userA) === normalizeText(correctA); 
       const isWord = currentModeName.includes("単語");
