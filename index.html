@@ -39,13 +39,14 @@
     .item-title { font-size: 20px; font-weight: bold; color: #fff; margin: 0 0 5px 0; }
     .footer { position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; font-size: 12px; color: #666; }
 
-    /* 独自キーボード用のCSS */
-    .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; }
+    /* 独自キーボード用のCSS（サイズ自動調整・伸縮対応） */
+    .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
     .key-row { display: flex; justify-content: center; gap: 4px; }
-    .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; max-width: 45px; box-shadow: 0 4px #333; transition: 0.1s; }
+    /* max-widthを削除し、画面幅に合わせて自動で伸び縮みするように変更 */
+    .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
     .key:active { transform: translateY(4px); box-shadow: 0 0 #333; background: #777; }
-    .key-wide { max-width: 65px; font-size: 16px; background: #444; }
-    .key-action { background: #2196F3; max-width: none; flex: 2; box-shadow: 0 4px #0d47a1; }
+    .key-wide { flex: 1.5; font-size: 16px; background: #444; }
+    .key-action { background: #2196F3; flex: 2; box-shadow: 0 4px #0d47a1; }
     .key-action:active { box-shadow: 0 0 #0d47a1; }
   </style>
 </head>
@@ -124,16 +125,13 @@
       recognition.continuous = false;
     }
 
-    // 文字列の正規化（優しい判定用：大文字小文字・記号・余分なスペースを無視）
     const normalizeText = (text) => text.toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
-    // 音声合成（TTS）関数
     function speakText(text, rate = 0.9) {
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // 前の音声をキャンセル
+        window.speechSynthesis.cancel();
         const uttr = new SpeechSynthesisUtterance(text);
-        uttr.lang = 'en-US';
-        uttr.rate = rate; // 少しゆっくり発音
+        uttr.lang = 'en-US'; uttr.rate = rate;
         window.speechSynthesis.speak(uttr);
       }
     }
@@ -142,7 +140,7 @@
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
     function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
-    // ユーザー・PIN認証・ホーム・インベントリ関連
+    // ユーザー・PIN認証・ホーム・インベントリ関連（省略せずそのまま）
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
@@ -178,19 +176,15 @@
     }
     function showHistory() { switchSection('section-history'); const user = JSON.parse(localStorage.getItem('app_kid_user')); const hist = user.historyJson || {}; const c = document.getElementById('history-container'); c.innerHTML = ""; let hasData = false; for(let unitKey in hist) { hasData = true; const div = document.createElement('div'); div.className = "item-card"; div.innerHTML = `<h3 class="item-title" style="color:#2196F3;">📁 ${unitKey}</h3>`; let weakCount = 0; let totalQ = 0; for(let qId in hist[unitKey]) { totalQ++; if(checkIsNigate(hist[unitKey][qId])) weakCount++; } div.innerHTML += `<p>取り組んだ問題数：${totalQ} 問</p><p>🔥 ニガテな問題：<span style="color:#e50914;font-weight:bold;">${weakCount}</span> 問</p>`; c.appendChild(div); } if(!hasData) c.innerHTML = "<p>まだ学習のきろくがありません。</p>"; }
 
-    // --- クイズ準備（設定UIの連動） ---
+    // --- クイズ準備 ---
     function loadMaterials() { switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { currentModeId=m.modeId; currentModeName=m.modeName; currentUnitName=u; openSettingsScreen(); }; c.appendChild(b); }); }); } }); }
     
     function openSettingsScreen() {
       switchSection('section-settings'); 
       document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
-      
       const fSelect = document.getElementById('setting-format');
-      if (currentModeName.includes("単語")) {
-        fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`;
-      } else {
-        fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`;
-      }
+      if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`; } 
+      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`; }
       updateAnswerTypeUI();
     }
 
@@ -198,7 +192,6 @@
       const format = document.getElementById('setting-format').value;
       const aSelect = document.getElementById('setting-answer-type');
       aSelect.innerHTML = "";
-      
       if (format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en") {
         if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
         aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
@@ -207,17 +200,18 @@
       }
     }
 
-    // --- 独自キーボードの実装 ---
+    // --- 【アップデート】独自キーボードの実装 ---
     let isShift = false;
     function renderCustomKeyboard() {
       const container = document.getElementById('keyboard-container');
       if(!container) return;
       container.innerHTML = "";
       
+      // PCに近い配列に変更（アポストロフィー、カンマ、ピリオド、クエスチョンマーク、ハイフンを追加）
       const rows = [
-        ['q','w','e','r','t','y','u','i','o','p'],
-        ['a','s','d','f','g','h','j','k','l'],
-        ['z','x','c','v','b','n','m']
+        ['q','w','e','r','t','y','u','i','o','p','-'],
+        ['a','s','d','f','g','h','j','k','l','\''],
+        ['z','x','c','v','b','n','m',',','.','?']
       ];
       
       const board = document.createElement('div');
@@ -231,17 +225,22 @@
         if(rIdx === 2) {
           const shiftBtn = document.createElement('button');
           shiftBtn.className = 'key key-wide';
-          shiftBtn.innerText = isShift ? '⇧' : '⇧';
+          shiftBtn.innerText = '⇧';
           shiftBtn.style.background = isShift ? '#e50914' : '#444';
           shiftBtn.onclick = () => { isShift = !isShift; renderCustomKeyboard(); };
           rowDiv.appendChild(shiftBtn);
         }
         
-        // アルファベットキー
+        // 文字キーの生成
         row.forEach(char => {
           const keyBtn = document.createElement('button');
           keyBtn.className = 'key';
-          let displayChar = isShift ? char.toUpperCase() : char;
+          
+          let displayChar = char;
+          // Shift時の挙動（アルファベットは大文字、シングルクォーテーションはダブルクォーテーションへ）
+          if (/[a-z]/.test(char)) displayChar = isShift ? char.toUpperCase() : char;
+          else if (char === '\'') displayChar = isShift ? '"' : '\'';
+          
           keyBtn.innerText = displayChar;
           keyBtn.onclick = () => { document.getElementById('type-answer').value += displayChar; };
           rowDiv.appendChild(keyBtn);
@@ -284,53 +283,21 @@
       container.appendChild(board);
     }
 
-    // --- 音声入力（STT）の開始 ---
     function startVoiceInput() {
-      if(!recognition) { 
-        alert("お使いのブラウザは音声入力に対応していません。SafariかChromeを使ってね！"); 
-        return; 
-      }
-      const feedback = document.getElementById('voice-feedback');
-      const btn = document.getElementById('voice-btn');
-      btn.innerText = "🎙️ 聞き取り中...";
-      btn.style.background = "#e50914";
-      feedback.innerHTML = "英語ではなしてください...";
-
+      if(!recognition) { alert("お使いのブラウザは音声入力に対応していません。SafariかChromeを使ってね！"); return; }
+      const feedback = document.getElementById('voice-feedback'); const btn = document.getElementById('voice-btn');
+      btn.innerText = "🎙️ 聞き取り中..."; btn.style.background = "#e50914"; feedback.innerHTML = "英語ではなしてください...";
       recognition.onresult = (event) => {
-        const spokenText = event.results[0][0].transcript;
-        const q = filteredQuestions[currentQuestionIndex];
-        const format = document.getElementById('setting-format').value;
+        const spokenText = event.results[0][0].transcript; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value;
         let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
-
-        // 優しい判定
-        const isMatch = normalizeText(spokenText) === normalizeText(correctA);
-
-        if(isMatch) {
-          checkAnswer(spokenText, correctA, q);
-        } else {
-          feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${spokenText}」</b><br>ちがうみたい！もう一度🎙️をおしてね。`;
-          btn.innerText = "🎙️ マイクでこたえる";
-          btn.style.background = "#2196F3";
-        }
+        if(normalizeText(spokenText) === normalizeText(correctA)) { checkAnswer(spokenText, correctA, q); } 
+        else { feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${spokenText}」</b><br>ちがうみたい！もう一度🎙️をおしてね。`; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; }
       };
-
-      recognition.onerror = (e) => {
-        feedback.innerText = "聞き取れませんでした。もう一度おしてね。";
-        btn.innerText = "🎙️ マイクでこたえる";
-        btn.style.background = "#2196F3";
-      };
-
-      recognition.onend = () => {
-        if(btn.innerText.includes("聞き取り中")) {
-          btn.innerText = "🎙️ マイクでこたえる";
-          btn.style.background = "#2196F3";
-        }
-      };
-
+      recognition.onerror = () => { feedback.innerText = "聞き取れませんでした。もう一度おしてね。"; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; };
+      recognition.onend = () => { if(btn.innerText.includes("聞き取り中")) { btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; } };
       recognition.start();
     }
 
-    // --- クイズ本体 ---
     function fetchQuestionsAndStart() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ currentQuestions = d.questions; prepareQuiz(); } }); }
     
     function prepareQuiz() {
@@ -352,6 +319,7 @@
       const q = filteredQuestions[currentQuestionIndex]; 
       const format = document.getElementById('setting-format').value; 
       const answerType = document.getElementById('setting-answer-type').value;
+      const isWord = currentModeName.includes("単語");
       
       document.getElementById('quiz-progress').innerText = (currentIsReviewMode?"🔥特訓中! ":"") + `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
       
@@ -376,13 +344,16 @@
       const hintTextDisplay = document.getElementById('hint-display-text');
       hintTextDisplay.style.display = "none"; hintTextDisplay.innerText = "";
       
+      // 【アップデート】表現練習モードの場合は、ボタンの表記を「ヒントを見る」に変更
+      document.getElementById('hint-btn-2').innerText = isWord ? "💡 イニシャルと文字数を見る（-7 Pt）" : "💡 ヒントを見る（-7 Pt）";
+
       if (answerType === "4choice" || format.includes("en_to_ja") || format === "en_audio_to_ja") {
         hintArea.style.display = "none";
       } else {
         hintArea.style.display = "flex";
         document.getElementById('hint-btn-1').disabled = false;
         document.getElementById('hint-btn-2').disabled = false;
-        document.getElementById('hint-btn-3').disabled = false;
+        document.getElementById('hint-btn-3').disabled = false; // 音声ヒントは常に有効な状態からスタート
       }
 
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
@@ -393,9 +364,7 @@
           if(format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en") return (item["英単語"] || item["英文"]) !== correctA;
           else return item["日本語"] !== correctA;
         }).sort(() => Math.random() - 0.5);
-        for (let i = 0; i < 3 && i < others.length; i++) {
-          choices.push((format === "ja_to_en" || format.includes("to_en")) ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); 
-        }
+        for (let i = 0; i < 3 && i < others.length; i++) { choices.push((format === "ja_to_en" || format.includes("to_en")) ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); }
         choices.sort(() => Math.random() - 0.5);
         choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
       } 
@@ -405,23 +374,32 @@
         renderCustomKeyboard();
       }
       else if (answerType === "voice") {
-        answerArea.innerHTML = `
-          <button id="voice-btn" class="submit-btn btn-blue" style="padding: 20px 40px; font-size: 24px; border-radius: 50px;" onclick="startVoiceInput()">🎙️ マイクでこたえる</button>
-          <div id="voice-feedback" style="margin-top:15px; font-size:18px; color:#ccc;">おうちの静かな場所でやってみてね。</div>
-        `;
+        answerArea.innerHTML = `<button id="voice-btn" class="submit-btn btn-blue" style="padding: 20px 40px; font-size: 24px; border-radius: 50px;" onclick="startVoiceInput()">🎙️ マイクでこたえる</button><div id="voice-feedback" style="margin-top:15px; font-size:18px; color:#ccc;">おうちの静かな場所でやってみてね。</div>`;
       }
     }
 
+    // --- 【アップデート】ヒント使用処理 ---
     function useHint(type, penalty) {
       const q = filteredQuestions[currentQuestionIndex];
       const hintTextDisplay = document.getElementById('hint-display-text');
       const format = document.getElementById('setting-format').value;
+      const isWord = currentModeName.includes("単語");
       
       maxDeduction = Math.max(maxDeduction, penalty);
-      document.getElementById(`hint-btn-${type}`).disabled = true;
+      
+      // 読み上げヒント(type=3)は何度でも押せるよう、ボタンを無効化しない
+      if (type !== 3) {
+        document.getElementById(`hint-btn-${type}`).disabled = true;
+      }
 
       if (type === 1 || type === 2) {
-        let hintStr = (type === 1) ? (q["イニシャル"] || "ヒントなし") : (q["イニシャルと文字数"] || q["ヒント"] || "ヒントなし");
+        let hintStr = "";
+        if (type === 1) {
+          hintStr = q["イニシャル"] || "ヒントなし";
+        } else if (type === 2) {
+          // 単語モードなら「イニシャルと文字数」、表現モードなら「ヒント」の列を参照する
+          hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし");
+        }
         hintTextDisplay.innerText = hintStr;
         hintTextDisplay.style.display = "block";
       } else if (type === 3) {
@@ -430,7 +408,7 @@
       }
     }
     
-function checkAnswer(userA, correctA, q) {
+    function checkAnswer(userA, correctA, q) {
       document.querySelectorAll('#section-quiz button').forEach(b => b.disabled = true);
       
       const isCorrect = normalizeText(userA) === normalizeText(correctA); 
@@ -483,18 +461,17 @@ function checkAnswer(userA, correctA, q) {
       });
     }
 
-    // --- 物理キーボードの入力検知（予測変換を防ぎつつ入力させる） ---
+    // --- 物理キーボードの入力検知 ---
     document.addEventListener('keydown', (e) => {
       const answerInput = document.getElementById('type-answer');
       const quizSection = document.getElementById('section-quiz');
       if (!answerInput || !quizSection.classList.contains('active')) return;
 
-      // 予測変換や意図しないスクロールなどのブラウザ標準の動きを止める
-      if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /[a-zA-Z]/.test(e.key))) {
+      // 予測変換を止める
+      if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[a-zA-Z0-9\-\'\"\,\.\?\!\:\;]$/.test(e.key))) {
         e.preventDefault(); 
       }
 
-      // 各キーの処理（ソフトウェアキーボードのボタンを押したのと同じ挙動にマッピング）
       if (e.key === 'Enter') {
         const enterBtn = Array.from(document.querySelectorAll('.key-action')).find(btn => btn.innerText === "けってい");
         if (enterBtn && !enterBtn.disabled) enterBtn.click();
@@ -507,10 +484,9 @@ function checkAnswer(userA, correctA, q) {
       } 
       else if (e.key === 'Shift') {
         isShift = !isShift;
-        renderCustomKeyboard(); // 画面上のキーボードの見た目も同期
+        renderCustomKeyboard();
       } 
-      else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-        // アルファベット（a-z, A-Z）のみ入力を受け付ける
+      else if (e.key.length === 1 && /^[a-zA-Z0-9\-\'\"\,\.\?\!\:\;]$/.test(e.key)) {
         answerInput.value += e.key;
       }
     });
