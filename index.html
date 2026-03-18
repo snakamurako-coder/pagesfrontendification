@@ -67,12 +67,25 @@
     <h1>ホームメニュー</h1>
     <h2 id="welcome-message"></h2>
     <p>げんざいのポイント: <span id="user-points" style="color: gold; font-size: 24px;">0</span> Pt</p>
-    <button onclick="logout()" style="padding: 10px 20px; margin-top: 20px;">ログアウトして ユーザーをかえる</button>
+    
+    <div style="margin: 30px 0;">
+      <button class="action-btn" style="padding: 15px 30px; font-size: 24px; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer;" onclick="loadMaterials()">▶ 学習をはじめる</button>
+    </div>
+
+    <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ログアウトして ユーザーをかえる</button>
+  </div>
+
+  <div id="section-materials" class="section">
+    <h1>なにを勉強する？</h1>
+    <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
+      </div>
+    <br>
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 10px 20px;">ホームにもどる</button>
   </div>
 
   <script>
-    // ★デプロイしたGASのURLに変更してください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw4_F51gg2GMNiMZ3ERNB78jACM7sa6P71PsHUzbgdWWKvEjWDX_mji9tD0SbnXBdQCPA/exec";
+    // ★デプロイした最新のGASのURLに変更してください
+    const GAS_API_URL = "https://script.google.com/macros/s/ここにあなたのURLを入れる/exec";
     
     let selectedUserId = null;
     let currentPin = "";
@@ -133,6 +146,7 @@
       document.getElementById('section-users').classList.add('active');
       document.getElementById('section-pin').classList.remove('active');
       document.getElementById('section-home').classList.remove('active');
+      document.getElementById('section-materials').classList.remove('active');
       currentPin = "";
       updatePinDisplay();
       document.getElementById('message').innerText = "";
@@ -215,6 +229,7 @@
       document.getElementById('section-users').classList.remove('active');
       document.getElementById('section-pin').classList.remove('active');
       document.getElementById('section-home').classList.add('active');
+      document.getElementById('section-materials').classList.remove('active');
       
       document.getElementById('welcome-message').innerText = `ようこそ、${user.name} さん！`;
       document.getElementById('user-points').innerText = user.points;
@@ -223,6 +238,62 @@
     function logout() {
       localStorage.removeItem('app_kid_user');
       showUserSelection();
+    }
+
+    // --- ⑥ 教材リストの取得と表示 ---
+    function loadMaterials() {
+      document.getElementById('section-home').classList.remove('active');
+      document.getElementById('section-materials').classList.add('active');
+      document.getElementById('materials-container').innerHTML = "<p>きょうざいを さがしています...</p>";
+
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: "get_materials_list" })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          renderMaterials(data.materials);
+        } else {
+          document.getElementById('materials-container').innerText = "エラー: " + data.message;
+        }
+      })
+      .catch(error => {
+        document.getElementById('materials-container').innerText = "つうしんエラーです";
+      });
+    }
+
+    function renderMaterials(materials) {
+      const container = document.getElementById('materials-container');
+      container.innerHTML = "";
+
+      materials.forEach(mode => {
+        // モード名の見出し
+        const modeTitle = document.createElement('h2');
+        modeTitle.innerText = `📁 ${mode.modeName}`;
+        modeTitle.style.borderBottom = "2px solid #555";
+        modeTitle.style.paddingBottom = "5px";
+        container.appendChild(modeTitle);
+
+        // そのモードに含まれる単元（シート）のボタン
+        mode.units.forEach(unit => {
+          const btn = document.createElement('button');
+          btn.innerText = `📄 ${unit}`;
+          btn.style.padding = "15px";
+          btn.style.fontSize = "18px";
+          btn.style.borderRadius = "8px";
+          btn.style.border = "none";
+          btn.style.background = "#333";
+          btn.style.color = "white";
+          btn.style.cursor = "pointer";
+          
+          btn.onclick = () => {
+            alert(`「${mode.modeName}」の「${unit}」をえらびました！\n（次は問題形式の選択画面を作ります）`);
+          };
+          container.appendChild(btn);
+        });
+      });
     }
   </script>
 </body>
