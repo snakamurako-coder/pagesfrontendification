@@ -6,44 +6,41 @@
   <title>学習アプリ</title>
   <style>
     body { font-family: 'Hiragino Maru Gothic ProN', sans-serif; background-color: #141414; color: white; text-align: center; margin: 0; padding: 20px; }
-    h1, h2 { color: #fff; }
+    h1, h2, h3 { color: #fff; }
     
-    /* セクションの切り替え用 */
     .section { display: none; }
     .active { display: block; }
 
-    /* ユーザー選択画面のスタイル */
+    /* ユーザー・PIN画面 */
     .user-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
     .user-card { background: #333; padding: 20px; border-radius: 15px; width: 120px; cursor: pointer; transition: 0.2s; }
     .user-card:active { transform: scale(0.95); background: #555; }
     .user-icon { width: 80px; height: 80px; background: #e50914; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; }
 
-    /* PIN入力画面のスタイル */
     .pin-display { font-size: 40px; letter-spacing: 15px; margin: 20px 0; height: 50px; }
     .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 15px; justify-content: center; margin-top: 20px; }
     .num-btn { background: #333; color: white; border: none; font-size: 28px; width: 80px; height: 80px; border-radius: 50%; cursor: pointer; }
     .num-btn:active { background: #666; }
     .action-btn { font-size: 20px; background: #555; }
     .cancel-btn { margin-top: 30px; background: none; color: #aaa; border: none; font-size: 18px; cursor: pointer; }
-
     #message { margin-top: 20px; color: #ff4d4d; font-weight: bold; }
+
+    /* 設定画面のスタイル（iPad向けに大きく） */
+    .setting-group { margin: 25px 0; background: #222; padding: 15px; border-radius: 10px; }
+    .large-select { padding: 15px; font-size: 20px; border-radius: 8px; width: 80%; max-width: 350px; background: #fff; color: #000; border: none; }
   </style>
 </head>
 <body>
 
   <div id="section-users" class="section active">
     <h1>だれがプレイする？</h1>
-    <div id="user-container" class="user-list">
-      <p>ユーザーデータをよみこみ中...</p>
-    </div>
+    <div id="user-container" class="user-list"><p>よみこみ中...</p></div>
   </div>
 
   <div id="section-pin" class="section">
     <h2 id="selected-user-name">名前</h2>
     <p>あんしょうばんごう（4ケタ）をいれてね</p>
-    
     <div class="pin-display" id="pin-dots">_ _ _ _</div>
-    
     <div class="numpad">
       <button class="num-btn" onclick="addPin(1)">1</button>
       <button class="num-btn" onclick="addPin(2)">2</button>
@@ -58,7 +55,6 @@
       <button class="num-btn" onclick="addPin(0)">0</button>
       <button class="num-btn action-btn" onclick="deletePin()">もどる</button>
     </div>
-    
     <div id="message"></div>
     <button class="cancel-btn" onclick="showUserSelection()">やめる</button>
   </div>
@@ -67,232 +63,225 @@
     <h1>ホームメニュー</h1>
     <h2 id="welcome-message"></h2>
     <p>げんざいのポイント: <span id="user-points" style="color: gold; font-size: 24px;">0</span> Pt</p>
-    
     <div style="margin: 30px 0;">
-      <button class="action-btn" style="padding: 15px 30px; font-size: 24px; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer;" onclick="loadMaterials()">▶ 学習をはじめる</button>
+      <button style="padding: 15px 30px; font-size: 24px; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer;" onclick="loadMaterials()">▶ 学習をはじめる</button>
     </div>
-
-    <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ログアウトして ユーザーをかえる</button>
+    <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ログアウト</button>
   </div>
 
   <div id="section-materials" class="section">
     <h1>なにを勉強する？</h1>
-    <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
-      </div>
+    <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div>
     <br>
-    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 10px 20px;">ホームにもどる</button>
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 10px 20px;">もどる</button>
+  </div>
+
+  <div id="section-settings" class="section">
+    <h1 id="settings-title">設定をえらんでね</h1>
+    
+    <div class="setting-group">
+      <h3>1. もんだいの形式</h3>
+      <select id="setting-format" class="large-select">
+        <option value="ja_to_en">日本語 ➔ 英語にする</option>
+        <option value="en_to_ja">英語 ➔ 日本語にする</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <h3>2. こたえ方</h3>
+      <select id="setting-answer-type" class="large-select">
+        <option value="4choice">４択（えらぶ）</option>
+        <option value="typing">タイピング（入力する）</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <h3>3. 出し方</h3>
+      <select id="setting-order" class="large-select">
+        <option value="normal">順番どおり（1番から）</option>
+        <option value="random">ランダム（ばらばら）</option>
+        <option value="review">ニガテ特訓（ボーナスPtあり！）</option>
+      </select>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <button onclick="startStudy()" style="padding: 15px 50px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
+    </div>
+    <button onclick="document.getElementById('section-settings').classList.remove('active'); document.getElementById('section-materials').classList.add('active');" style="margin-top: 20px; padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px;">もどる</button>
+  </div>
+
+  <div id="section-quiz" class="section">
+    <h1 id="quiz-loading">もんだいを よみこみ中...</h1>
+    <p>しばらく おまちください</p>
   </div>
 
   <script>
-    // ★デプロイした最新のGASのURLに変更してください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzwva1bYPWIXYpx4h56BYtHMEjpGYT7IR9khpCsyCgMdlpcTj9kVglVBK6NjYKHCKTYNg/exec";
+    // ★GASのURLを忘れずに変更してください
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwuDEEU5XX4QMOEReUOAhZG-ou3-JWdYH8eZjMWDTDKGeDYPYfWBcPv3DUVJ4BKoXtTSw/exec";
     
     let selectedUserId = null;
     let currentPin = "";
+    
+    // 現在選択中の教材データ
+    let currentModeId = "";
+    let currentModeName = "";
+    let currentUnitName = "";
+    let currentQuestions = []; // GASから取ってきた問題が入るハコ
 
-    // ページ読み込み時にユーザー一覧を取得
     window.onload = () => {
-      // 既にログイン済みならホーム画面へ
       const savedUser = localStorage.getItem('app_kid_user');
-      if (savedUser) {
-        showHome(JSON.parse(savedUser));
-      } else {
-        fetchUsers();
-      }
+      if (savedUser) showHome(JSON.parse(savedUser));
+      else fetchUsers();
     };
 
-    // --- ① ユーザー一覧の取得 ---
-    function fetchUsers() {
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: "get_child_users" })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          renderUsers(data.users);
-        } else {
-          document.getElementById('user-container').innerText = "エラーが起きました: " + data.message;
-        }
-      })
-      .catch(error => {
-        document.getElementById('user-container').innerText = "つうしんエラーです";
-      });
+    function switchSection(sectionId) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
     }
 
-    // --- ② ユーザーカードの描画 ---
+    function fetchUsers() {
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) })
+      .then(res => res.json())
+      .then(data => data.status === "success" ? renderUsers(data.users) : alert(data.message));
+    }
+
     function renderUsers(users) {
       const container = document.getElementById('user-container');
       container.innerHTML = "";
-      
       users.forEach(user => {
         const div = document.createElement('div');
         div.className = 'user-card';
         div.onclick = () => showPinScreen(user.id, user.name);
-        
-        // 名前の頭文字をアイコンにする
-        const initial = user.name.charAt(0).toUpperCase();
-        div.innerHTML = `
-          <div class="user-icon">${initial}</div>
-          <div style="font-size: 18px; font-weight: bold;">${user.name}</div>
-        `;
+        div.innerHTML = `<div class="user-icon">${user.name.charAt(0).toUpperCase()}</div><div style="font-size: 18px; font-weight: bold;">${user.name}</div>`;
         container.appendChild(div);
       });
     }
 
-    // --- ③ 画面切り替えとPIN入力ロジック ---
     function showUserSelection() {
-      document.getElementById('section-users').classList.add('active');
-      document.getElementById('section-pin').classList.remove('active');
-      document.getElementById('section-home').classList.remove('active');
-      document.getElementById('section-materials').classList.remove('active');
-      currentPin = "";
-      updatePinDisplay();
-      document.getElementById('message').innerText = "";
+      switchSection('section-users');
+      currentPin = ""; updatePinDisplay(); document.getElementById('message').innerText = "";
     }
 
     function showPinScreen(userId, userName) {
-      selectedUserId = userId;
-      currentPin = "";
-      updatePinDisplay();
+      selectedUserId = userId; currentPin = ""; updatePinDisplay();
       document.getElementById('selected-user-name').innerText = userName;
       document.getElementById('message').innerText = "";
-      
-      document.getElementById('section-users').classList.remove('active');
-      document.getElementById('section-pin').classList.add('active');
+      switchSection('section-pin');
     }
 
     function addPin(num) {
       if (currentPin.length < 4) {
-        currentPin += num;
-        updatePinDisplay();
-        
-        // 4桁入力されたら自動でサーバーに確認（API送信）
-        if (currentPin.length === 4) {
-          verifyPin();
-        }
+        currentPin += num; updatePinDisplay();
+        if (currentPin.length === 4) verifyPin();
       }
     }
 
-    function deletePin() {
-      currentPin = currentPin.slice(0, -1);
-      updatePinDisplay();
-      document.getElementById('message').innerText = "";
-    }
-
-    function clearPin() {
-      currentPin = "";
-      updatePinDisplay();
-      document.getElementById('message').innerText = "";
-    }
-
+    function deletePin() { currentPin = currentPin.slice(0, -1); updatePinDisplay(); document.getElementById('message').innerText = ""; }
+    function clearPin() { currentPin = ""; updatePinDisplay(); document.getElementById('message').innerText = ""; }
+    
     function updatePinDisplay() {
-      // 入力された文字数だけ「●」、残りを「_」で表示
       let display = "";
-      for (let i = 0; i < 4; i++) {
-        display += (i < currentPin.length) ? "● " : "_ ";
-      }
+      for (let i = 0; i < 4; i++) display += (i < currentPin.length) ? "● " : "_ ";
       document.getElementById('pin-dots').innerText = display.trim();
     }
 
-    // --- ④ PINの認証 ---
     function verifyPin() {
       document.getElementById('message').innerText = "かくにん中...";
-      
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin })
-      })
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin }) })
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          // ログイン成功！データを保存してホーム画面へ
           localStorage.setItem('app_kid_user', JSON.stringify(data.user));
           showHome(data.user);
         } else {
           document.getElementById('message').innerText = data.message;
-          currentPin = ""; // エラーならPINをリセット
-          updatePinDisplay();
+          currentPin = ""; updatePinDisplay();
         }
-      })
-      .catch(error => {
-        document.getElementById('message').innerText = "つうしんエラーです";
-        currentPin = "";
-        updatePinDisplay();
       });
     }
 
-    // --- ⑤ ホーム画面の表示 ---
     function showHome(user) {
-      document.getElementById('section-users').classList.remove('active');
-      document.getElementById('section-pin').classList.remove('active');
-      document.getElementById('section-home').classList.add('active');
-      document.getElementById('section-materials').classList.remove('active');
-      
+      switchSection('section-home');
       document.getElementById('welcome-message').innerText = `ようこそ、${user.name} さん！`;
       document.getElementById('user-points').innerText = user.points;
     }
 
-    function logout() {
-      localStorage.removeItem('app_kid_user');
-      showUserSelection();
-    }
+    function logout() { localStorage.removeItem('app_kid_user'); showUserSelection(); }
 
-    // --- ⑥ 教材リストの取得と表示 ---
     function loadMaterials() {
-      document.getElementById('section-home').classList.remove('active');
-      document.getElementById('section-materials').classList.add('active');
+      switchSection('section-materials');
       document.getElementById('materials-container').innerHTML = "<p>きょうざいを さがしています...</p>";
-
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: "get_materials_list" })
-      })
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
       .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          renderMaterials(data.materials);
-        } else {
-          document.getElementById('materials-container').innerText = "エラー: " + data.message;
-        }
-      })
-      .catch(error => {
-        document.getElementById('materials-container').innerText = "つうしんエラーです";
-      });
+      .then(data => data.status === "success" ? renderMaterials(data.materials) : alert("エラー: " + data.message));
     }
 
     function renderMaterials(materials) {
       const container = document.getElementById('materials-container');
       container.innerHTML = "";
-
       materials.forEach(mode => {
-        // モード名の見出し
         const modeTitle = document.createElement('h2');
         modeTitle.innerText = `📁 ${mode.modeName}`;
-        modeTitle.style.borderBottom = "2px solid #555";
-        modeTitle.style.paddingBottom = "5px";
+        modeTitle.style.borderBottom = "2px solid #555"; modeTitle.style.paddingBottom = "5px";
         container.appendChild(modeTitle);
 
-        // そのモードに含まれる単元（シート）のボタン
         mode.units.forEach(unit => {
           const btn = document.createElement('button');
           btn.innerText = `📄 ${unit}`;
-          btn.style.padding = "15px";
-          btn.style.fontSize = "18px";
-          btn.style.borderRadius = "8px";
-          btn.style.border = "none";
-          btn.style.background = "#333";
-          btn.style.color = "white";
-          btn.style.cursor = "pointer";
+          btn.style.padding = "15px"; btn.style.fontSize = "18px"; btn.style.borderRadius = "8px";
+          btn.style.border = "none"; btn.style.background = "#333"; btn.style.color = "white"; btn.style.cursor = "pointer";
           
-          btn.onclick = () => {
-            alert(`「${mode.modeName}」の「${unit}」をえらびました！\n（次は問題形式の選択画面を作ります）`);
-          };
+          // ★ボタンを押した時の動作を「設定画面を開く」に変更
+          btn.onclick = () => showSettingsScreen(mode.modeId, mode.modeName, unit);
           container.appendChild(btn);
         });
+      });
+    }
+
+    // --- ★設定画面の表示 ---
+    function showSettingsScreen(modeId, modeName, unitName) {
+      currentModeId = modeId;
+      currentModeName = modeName;
+      currentUnitName = unitName;
+      
+      switchSection('section-settings');
+      document.getElementById('settings-title').innerText = `【${modeName}】${unitName}`;
+    }
+
+    // --- ★学習スタート（問題をスプレッドシートから読み込む） ---
+    function startStudy() {
+      switchSection('section-quiz');
+      document.getElementById('quiz-loading').innerText = "もんだいを よみこみ中...";
+
+      // 子供が選んだ設定を取得（次回のクイズ画面作成で使います！）
+      const format = document.getElementById('setting-format').value;
+      const answerType = document.getElementById('setting-answer-type').value;
+      const order = document.getElementById('setting-order').value;
+
+      // GASに問題データを要求
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ 
+          action: "get_questions", 
+          modeId: currentModeId, 
+          unitName: currentUnitName 
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          currentQuestions = data.questions; // 問題データを配列に保存！
+          
+          // 問題が無事に読み込めたことを確認
+          document.getElementById('quiz-loading').innerText = `大成功！\nもんだいを ${currentQuestions.length} 問よみこみました！\n\n（つぎは、いよいよクイズ画面をつくります！）`;
+          console.log("読み込んだ問題データ:", currentQuestions);
+        } else {
+          document.getElementById('quiz-loading').innerText = "エラー: " + data.message;
+        }
+      })
+      .catch(error => {
+        document.getElementById('quiz-loading').innerText = "つうしんエラーです";
       });
     }
   </script>
