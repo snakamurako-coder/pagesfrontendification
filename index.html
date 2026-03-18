@@ -9,8 +9,6 @@
     h1, h2, h3 { color: #fff; }
     .section { display: none; }
     .active { display: block; }
-
-    /* ユーザー・PIN・各種ボタン */
     .user-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
     .user-card { background: #333; padding: 20px; border-radius: 15px; width: 120px; cursor: pointer; transition: 0.2s; }
     .user-icon { width: 80px; height: 80px; background: #e50914; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; }
@@ -19,360 +17,172 @@
     .num-btn { background: #333; color: white; border: none; font-size: 28px; width: 80px; height: 80px; border-radius: 50%; cursor: pointer; }
     .action-btn { font-size: 20px; background: #555; }
     .cancel-btn { margin-top: 30px; background: none; color: #aaa; border: none; font-size: 18px; cursor: pointer; }
-    
     .menu-btn { padding: 15px 20px; font-size: 20px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px; margin: 10px 0; }
     .btn-red { background: #e50914; color: white; }
     .btn-orange { background: #FF9800; color: white; }
     .btn-blue { background: #2196F3; color: white; }
     .btn-green { background: #4CAF50; color: white; }
     .btn-gray { background: #555; color: white; }
-
-    /* 設定・クイズ画面 */
-    .setting-group { margin: 20px 0; background: #222; padding: 15px; border-radius: 10px; }
-    .large-select { padding: 15px; font-size: 20px; border-radius: 8px; width: 80%; max-width: 350px; background: #fff; color: #000; border: none; }
+    .setting-group { margin: 20px auto; background: #222; padding: 15px; border-radius: 10px; max-width: 350px; text-align: left;}
+    .setting-group h3 { margin-top: 0; font-size: 18px; }
+    .large-select { padding: 12px; font-size: 18px; border-radius: 8px; width: 100%; background: #fff; color: #000; border: none; }
+    .bonus-badge { display: inline-block; background: #e50914; color: white; padding: 2px 8px; border-radius: 5px; font-size: 12px; margin-left: 10px; vertical-align: middle;}
     #quiz-q-text { font-size: 36px; margin: 20px 0; font-weight: bold; }
     .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .large-input { padding: 15px; font-size: 24px; width: 80%; max-width: 350px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-    .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top:10px; }
     #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
-    .hint-btn { background: #FF9800; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; }
-    
-    /* カード類 */
+    .hint-btn-group { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px; }
+    .hint-btn { background: #FF9800; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; width: 90%; max-width: 350px;}
+    .hint-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
     .item-card { background: #222; border: 2px solid #555; border-radius: 10px; padding: 15px; margin: 15px auto; max-width: 400px; text-align: left; }
     .item-title { font-size: 20px; font-weight: bold; color: #fff; margin: 0 0 5px 0; }
-    
-    /* フッター */
     .footer { position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
 
-  <div id="section-users" class="section active">
-    <h1>だれがプレイする？</h1>
-    <div id="user-container" class="user-list"><p>よみこみ中...</p></div>
-  </div>
-
-  <div id="section-pin" class="section">
-    <h2 id="selected-user-name">名前</h2>
-    <p id="pin-instruction">あんしょうばんごう（4ケタ）</p>
-    <div class="pin-display" id="pin-dots">_ _ _ _</div>
-    <div class="numpad">
-      <button class="num-btn" onclick="addPin(1)">1</button><button class="num-btn" onclick="addPin(2)">2</button><button class="num-btn" onclick="addPin(3)">3</button>
-      <button class="num-btn" onclick="addPin(4)">4</button><button class="num-btn" onclick="addPin(5)">5</button><button class="num-btn" onclick="addPin(6)">6</button>
-      <button class="num-btn" onclick="addPin(7)">7</button><button class="num-btn" onclick="addPin(8)">8</button><button class="num-btn" onclick="addPin(9)">9</button>
-      <button class="num-btn action-btn" onclick="clearPin()">クリア</button><button class="num-btn" onclick="addPin(0)">0</button><button class="num-btn action-btn" onclick="deletePin()">もどる</button>
-    </div>
-    <div id="message" style="color:#ff4d4d; margin-top:15px; font-weight:bold;"></div>
-    <button class="cancel-btn" onclick="cancelPin()">やめる</button>
-  </div>
-
-  <div id="section-home" class="section">
-    <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;">
-      <h2 id="welcome-message" style="margin: 0;"></h2>
-      <button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button>
-    </div>
-    
-    <div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;">
-      <p style="margin:0; font-size:18px;">げんざいのポイント</p>
-      <div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div>
-      <hr style="border-color:#444; margin:15px 0;">
-      <p style="margin:0; font-size:14px; color:#aaa;">過去30日間の 1日平均</p>
-      <div style="color: #4CAF50; font-size: 24px; font-weight: bold;"><span id="avg-points">0</span> Pt / 日</div>
-    </div>
-
-    <div style="display: flex; flex-direction: column; align-items: center;">
-      <button class="menu-btn btn-red" style="padding: 25px 20px; font-size: 24px;" onclick="loadMaterials()">▶ 学習をはじめる</button>
-      <button class="menu-btn btn-orange" onclick="loadRewards()">🎁 けいひんを もらう</button>
-      <button class="menu-btn btn-blue" onclick="loadInventory()">🎒 もちもの（けいひんを使う）</button>
-      <button class="menu-btn btn-green" onclick="showHistory()">📊 学習のきろく</button>
-      <button class="menu-btn btn-gray" onclick="logout()" style="margin-top: 20px; width:auto; padding: 10px 20px; font-size:16px;">ログアウト</button>
-    </div>
-  </div>
-
-  <div id="section-rewards" class="section">
-    <h1>🎁 けいひん こうかんじょ</h1>
-    <div id="rewards-container"><p>よみこみ中...</p></div>
-    <button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
-  </div>
-
-  <div id="section-inventory" class="section">
-    <h1>🎒 もちもの</h1>
-    <p>ゲットしたけいひんを使うときは、<br>おうちの人に画面を見せてボタンをおしてね。</p>
-    
-    <div style="margin-bottom: 15px;">
-      <button id="toggle-inventory-btn" class="menu-btn btn-gray" onclick="toggleInventoryView()" style="width: auto; padding: 10px 20px; font-size: 16px;">すべて表示する</button>
-    </div>
-    
-    <div id="inventory-container"><p>よみこみ中...</p></div>
-    <button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
-  </div>
-
-  <div id="section-history" class="section">
-    <h1>📊 学習のきろく</h1>
-    <p>ニガテな問題がないかチェックしよう！</p>
-    <div id="history-container" style="text-align:left; max-width:400px; margin:0 auto;"><p>よみこみ中...</p></div>
-    <button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
-  </div>
-
-  <div id="section-materials" class="section">
-    <h1>なにを勉強する？</h1>
-    <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div>
-    <button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">もどる</button>
-  </div>
-
-  <div id="section-settings" class="section">
-    <h1 id="settings-title">設定</h1>
-    <div class="setting-group" style="border: 2px solid #FF9800;">
-      <h3 style="color: #FF9800; margin-top: 0;">🔥 学習モード</h3>
-      <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（まちがえた問題）</option></select>
+  <div id="section-users" class="section active"><h1>だれがプレイする？</h1><div id="user-container" class="user-list"><p>よみこみ中...</p></div></div>
+  <div id="section-pin" class="section"><h2 id="selected-user-name">名前</h2><p id="pin-instruction">あんしょうばんごう</p><div class="pin-display" id="pin-dots">_ _ _ _</div><div class="numpad"><button class="num-btn" onclick="addPin(1)">1</button><button class="num-btn" onclick="addPin(2)">2</button><button class="num-btn" onclick="addPin(3)">3</button><button class="num-btn" onclick="addPin(4)">4</button><button class="num-btn" onclick="addPin(5)">5</button><button class="num-btn" onclick="addPin(6)">6</button><button class="num-btn" onclick="addPin(7)">7</button><button class="num-btn" onclick="addPin(8)">8</button><button class="num-btn" onclick="addPin(9)">9</button><button class="num-btn action-btn" onclick="clearPin()">クリア</button><button class="num-btn" onclick="addPin(0)">0</button><button class="num-btn action-btn" onclick="deletePin()">もどる</button></div><div id="message" style="color:#ff4d4d; margin-top:15px; font-weight:bold;"></div><button class="cancel-btn" onclick="cancelPin()">やめる</button></div>
+  <div id="section-home" class="section"><div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;"><h2 id="welcome-message" style="margin: 0;"></h2><button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button></div><div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;"><p style="margin:0; font-size:18px;">げんざいのポイント</p><div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div><hr style="border-color:#444; margin:15px 0;"><p style="margin:0; font-size:14px; color:#aaa;">過去30日間の 1日平均</p><div style="color: #4CAF50; font-size: 24px; font-weight: bold;"><span id="avg-points">0</span> Pt / 日</div></div><div style="display: flex; flex-direction: column; align-items: center;"><button class="menu-btn btn-red" style="padding: 25px 20px; font-size: 24px;" onclick="loadMaterials()">▶ 学習をはじめる</button><button class="menu-btn btn-orange" onclick="loadRewards()">🎁 けいひんを もらう</button><button class="menu-btn btn-blue" onclick="loadInventory()">🎒 もちもの（けいひんを使う）</button><button class="menu-btn btn-green" onclick="showHistory()">📊 学習のきろく</button><button class="menu-btn btn-gray" onclick="logout()" style="margin-top: 20px; width:auto; padding: 10px 20px; font-size:16px;">ログアウト</button></div></div>
+  <div id="section-rewards" class="section"><h1>🎁 けいひん こうかんじょ</h1><div id="rewards-container"><p>よみこみ中...</p></div><button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
+  <div id="section-inventory" class="section"><h1>🎒 もちもの</h1><p>おうちの人に画面を見せてボタンをおしてね。</p><div style="margin-bottom: 15px;"><button id="toggle-inventory-btn" class="menu-btn btn-gray" onclick="toggleInventoryView()" style="width: auto; padding: 10px 20px; font-size: 16px;">すべて表示する</button></div><div id="inventory-container"><p>よみこみ中...</p></div><button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
+  <div id="section-history" class="section"><h1>📊 学習のきろく</h1><p>ニガテな問題がないかチェックしよう！</p><div id="history-container" style="text-align:left; max-width:400px; margin:0 auto;"><p>よみこみ中...</p></div><button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
+  <div id="section-materials" class="section"><h1>なにを勉強する？</h1><div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div><button class="cancel-btn" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">もどる</button></div>
+  
+  <div id="section-settings" class="section"><h2 id="settings-title">設定</h2>
+    <div class="setting-group" style="border: 2px solid #FF9800; text-align:center;">
+      <h3 style="color: #FF9800; text-align:center;">🔥 学習モード</h3>
+      <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
     </div>
     <div class="setting-group">
-      <h3 style="margin-top: 0;">1. もんだいの形式</h3>
-      <select id="setting-format" class="large-select"><option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option></select>
+      <h3>1. もんだいの形式</h3>
+      <select id="setting-format" class="large-select" onchange="updateAnswerTypeUI()"></select>
     </div>
     <div class="setting-group">
-      <h3 style="margin-top: 0;">2. こたえ方</h3>
-      <select id="setting-answer-type" class="large-select"><option value="4choice">４択（えらぶ）</option><option value="typing">タイピング（入力する）</option></select>
+      <h3>2. こたえ方</h3>
+      <select id="setting-answer-type" class="large-select"></select>
     </div>
     <div class="setting-group">
-      <h3 style="margin-top: 0;">3. 出し方</h3>
-      <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
+      <h3>3. 出し方 <span class="bonus-badge" id="random-bonus-badge" style="display:none;">ボーナス +10%</span></h3>
+      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none';">
+        <option value="normal">順番どおり</option><option value="random">ランダム</option>
+      </select>
     </div>
-    <button onclick="fetchQuestionsAndStart()" class="submit-btn" style="margin-top:10px; width:80%; max-width:350px;">🚀 スタート！</button>
-    <br><button class="cancel-btn" onclick="switchSection('section-materials')">もどる</button>
+    <button onclick="fetchQuestionsAndStart()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
+    <button class="cancel-btn" onclick="switchSection('section-materials')">もどる</button>
   </div>
-
+  
   <div id="section-quiz" class="section">
     <h3 id="quiz-progress" style="color: #aaa;">第 1 問</h3>
     <div id="quiz-q-text">もんだい文</div>
     <div id="quiz-answer-area"></div>
-    <div id="quiz-hint-area" style="margin-top:15px;">
-      <button id="hint-btn" onclick="showHint()" class="hint-btn">💡 ヒントをみる（ポイント半分）</button>
-      <div id="hint-text" style="color: #FFEB3B; font-size: 22px; font-weight: bold; display: none; background: #333; padding: 10px; border-radius: 8px; width: 80%; max-width: 350px; margin: 0 auto;"></div>
+    
+    <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
+      <button id="hint-btn-1" onclick="useHint(1, 5)" class="hint-btn">💡 イニシャルを見る（-5 Pt）</button>
+      <button id="hint-btn-2" onclick="useHint(2, 7)" class="hint-btn">💡 イニシャルと文字数を見る（-7 Pt）</button>
+      <button id="hint-btn-3" disabled class="hint-btn">🔊 答えを読み上げる（-10 Pt / 準備中）</button>
+      <div id="hint-display-text" style="color: #FFEB3B; font-size: 24px; font-weight: bold; background: #333; padding: 10px; border-radius: 8px; width: 90%; margin-top:10px; display:none; letter-spacing: 5px;"></div>
     </div>
+    
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
-
-  <div id="section-result" class="section">
-    <h1>けっかはっぴょう！</h1>
-    <div id="result-content" class="item-card" style="text-align:center;"></div>
-    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" class="submit-btn" style="display:none; margin:0 auto;">ホームにもどる</button>
-  </div>
+  
+  <div id="section-result" class="section"><h1>けっかはっぴょう！</h1><div id="result-content" class="item-card" style="text-align:center;"></div><button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" class="submit-btn" style="display:none; margin:0 auto;">ホームにもどる</button></div>
 
   <div class="footer">Kojiro Nakamura all rights reserved</div>
 
   <script>
-    // ★GASのURLを忘れずに変更してください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzI5tN0a0TRtsosvwZ-JMbKxG6MzFfkH_qoxQsXlY_wPx8BgpcTgMiKfyJuz7WBpYaf2Q/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyXqyKEaqgDOV588VcM-VMjYFpVY6EyJ8zY43iFaRu0JFc0GaT8J4axfrzACmymB63qQw/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
     let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
-    let quizResults = []; let questionStartTime = 0; let hintUsed = false; let currentIsReviewMode = false;
+    let quizResults = []; let questionStartTime = 0; let currentIsReviewMode = false;
+    let userInventoryData = []; let showAllInventory = false;
+    let appSettings = {}; 
+    let maxDeduction = 0; // その問題での最大減点ポイント
 
-    // グローバル変数（インベントリ用）
-    let userInventoryData = []; 
-    let showAllInventory = false;
-
-    window.onload = () => { const saved = localStorage.getItem('app_kid_user'); if (saved) showHome(JSON.parse(saved)); else fetchUsers(); };
+    window.onload = () => { const saved = localStorage.getItem('app_kid_user'); if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); } else fetchUsers(); };
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
+    function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
-    // --- PIN操作系 ---
+    // ユーザー・PIN認証・ホーム・インベントリ関連は変更なし（省略）
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
-    
-    function showPinScreen(id, name, isReset) { 
-      selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); 
-      document.getElementById('selected-user-name').innerText = name; 
-      document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）";
-      switchSection('section-pin'); 
-    }
-    
-    function addPin(num) { 
-      if(currentPin.length<4){ 
-        currentPin+=num; updatePinDisplay(); 
-        if(currentPin.length===4) {
-          if(isPinResetMode) executePinReset(); else verifyPin(); 
-        }
-      } 
-    }
+    function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
+    function addPin(num) { if(currentPin.length<4){ currentPin+=num; updatePinDisplay(); if(currentPin.length===4) { if(isPinResetMode) executePinReset(); else verifyPin(); } } }
     function deletePin() { currentPin = currentPin.slice(0,-1); updatePinDisplay(); }
     function clearPin() { currentPin = ""; updatePinDisplay(); }
     function updatePinDisplay() { let d=""; for(let i=0;i<4;i++) d+=(i<currentPin.length)?"● ":"_ "; document.getElementById('pin-dots').innerText=d.trim(); }
     function cancelPin() { if(isPinResetMode) showHome(JSON.parse(localStorage.getItem('app_kid_user'))); else showUserSelection(); }
     function showUserSelection() { switchSection('section-users'); currentPin = ""; }
-
-    function verifyPin() {
-      document.getElementById('message').innerText = "かくにん中...";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin }) })
-      .then(r=>r.json()).then(d=>{ if(d.status==="success"){ localStorage.setItem('app_kid_user', JSON.stringify(d.user)); showHome(d.user); } else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); } });
-    }
-
-    function preparePinReset() {
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      showPinScreen(user.id, user.name, true);
-    }
-    function executePinReset() {
-      document.getElementById('message').innerText = "へんこう中...";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "change_pin", userId: selectedUserId, newPin: currentPin }) })
-      .then(r=>r.json()).then(d=>{
-        if(d.status==="success") { alert(d.message); showHome(JSON.parse(localStorage.getItem('app_kid_user'))); }
-        else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); }
-      });
-    }
-
-    // --- ホーム画面とデータ計算 ---
-    function showHome(user) { 
-      switchSection('section-home'); 
-      document.getElementById('welcome-message').innerText = `${user.name} さん`; 
-      document.getElementById('user-points').innerText = user.points; 
-      
-      const daily = user.dailyPointsJson || {};
-      const now = new Date(); let total30 = 0;
-      for(let i=0; i<30; i++) {
-        const d = new Date(now); d.setDate(now.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        if(daily[dateStr]) total30 += daily[dateStr];
-      }
-      document.getElementById('avg-points').innerText = Math.round((total30 / 30) * 10) / 10;
-    }
+    function verifyPin() { document.getElementById('message').innerText = "かくにん中..."; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ localStorage.setItem('app_kid_user', JSON.stringify(d.user)); showHome(d.user); fetchAppSettings(); } else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); } }); }
+    function preparePinReset() { const user = JSON.parse(localStorage.getItem('app_kid_user')); showPinScreen(user.id, user.name, true); }
+    function executePinReset() { document.getElementById('message').innerText = "へんこう中..."; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "change_pin", userId: selectedUserId, newPin: currentPin }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") { alert(d.message); showHome(JSON.parse(localStorage.getItem('app_kid_user'))); } else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); } }); }
+    function showHome(user) { switchSection('section-home'); document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; const daily = user.dailyPointsJson || {}; const now = new Date(); let total30 = 0; for(let i=0; i<30; i++) { const d = new Date(now); d.setDate(now.getDate() - i); const dateStr = d.toISOString().split('T')[0]; if(daily[dateStr]) total30 += daily[dateStr]; } document.getElementById('avg-points').innerText = Math.round((total30 / 30) * 10) / 10; }
     function logout() { localStorage.removeItem('app_kid_user'); showUserSelection(); }
+    function loadRewards() { switchSection('section-rewards'); const user = JSON.parse(localStorage.getItem('app_kid_user')); document.getElementById('rewards-container').innerHTML = "<p>さがしています...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) }).then(r=>r.json()).then(d=>{ if(d.status === "success") { const c = document.getElementById('rewards-container'); c.innerHTML = ""; d.rewards.forEach(rw => { const canEx = user.points >= rw.points; const div = document.createElement('div'); div.className = "item-card"; div.innerHTML = `<h3 class="item-title" style="color:gold;">${rw.name}</h3><p style="font-size:14px;color:#ccc;">${rw.desc}</p><button class="menu-btn ${canEx?'btn-green':'btn-gray'}" ${canEx?'':'disabled'} onclick="exchangeReward('${rw.id}','${rw.name}',${rw.points})">${rw.points} Pt で こうかん</button>`; c.appendChild(div); }); } }); }
+    function exchangeReward(rId, rName, pts) { if(!confirm(`「${rName}」をこうかんしますか？`)) return; const user = JSON.parse(localStorage.getItem('app_kid_user')); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rId }) }).then(r=>r.json()).then(d=>{ if(d.status === "success") { alert(d.message); user.points = d.newPoints; localStorage.setItem('app_kid_user', JSON.stringify(user)); showHome(user); } else alert(d.message); }); }
+    function loadInventory() { switchSection('section-inventory'); const user = JSON.parse(localStorage.getItem('app_kid_user')); document.getElementById('inventory-container').innerHTML = "<p>カバンをさがしています...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_inventory", userId: user.id }) }).then(r=>r.json()).then(d=>{ if(d.status === "success") { userInventoryData = d.inventory; showAllInventory = false; updateInventoryToggleBtn(); renderInventory(); } }); }
+    function toggleInventoryView() { showAllInventory = !showAllInventory; updateInventoryToggleBtn(); renderInventory(); }
+    function updateInventoryToggleBtn() { const btn = document.getElementById('toggle-inventory-btn'); if(showAllInventory) { btn.innerText = "未使用のみ表示する"; btn.className = "menu-btn btn-orange"; } else { btn.innerText = "すべて表示する"; btn.className = "menu-btn btn-gray"; } }
+    function renderInventory() { const c = document.getElementById('inventory-container'); c.innerHTML = ""; const filtered = showAllInventory ? userInventoryData : userInventoryData.filter(inv => inv.status === "未消化"); if(filtered.length === 0) { c.innerHTML = "<p>ひょうじする けいひん がありません。</p>"; return; } filtered.forEach(inv => { const div = document.createElement('div'); div.className = "item-card"; const isUsed = inv.status === "使用済み"; let btnHtml = !isUsed ? `<button class="menu-btn btn-blue" onclick="consumeReward(${inv.rowIdx}, '${inv.rewardName}')">この券をつかう！</button>` : `<div style="color:#e50914; font-weight:bold; margin-top:10px;">❌ 使用済み</div>`; div.innerHTML = `<h3 class="item-title" style="color:${isUsed ? '#888' : '#fff'};">${inv.rewardName}</h3><p style="font-size:12px;color:#888;">ゲットした日: ${inv.date}</p>${btnHtml}`; c.appendChild(div); }); }
+    function consumeReward(rowIdx, name) { if(!confirm(`おうちの人にかくにんしましたか？\n「${name}」をつかいます！`)) return; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "consume_reward", rowIdx: rowIdx }) }).then(r=>r.json()).then(d=>{ if(d.status === "success") { alert(d.message); loadInventory(); } }); }
 
-    // --- 景品とインベントリ ---
-    function loadRewards() {
-      switchSection('section-rewards'); const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      document.getElementById('rewards-container').innerHTML = "<p>さがしています...</p>";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) }).then(r=>r.json()).then(d=>{ 
-        if(d.status === "success") {
-          const c = document.getElementById('rewards-container'); c.innerHTML = "";
-          d.rewards.forEach(rw => {
-            const canEx = user.points >= rw.points; const div = document.createElement('div'); div.className = "item-card";
-            div.innerHTML = `<h3 class="item-title" style="color:gold;">${rw.name}</h3><p style="font-size:14px;color:#ccc;">${rw.desc}</p>
-            <button class="menu-btn ${canEx?'btn-green':'btn-gray'}" ${canEx?'':'disabled'} onclick="exchangeReward('${rw.id}','${rw.name}',${rw.points})">${rw.points} Pt で こうかん</button>`;
-            c.appendChild(div);
-          });
-        }
-      });
+    function checkIsNigate(historyObj) {
+      if(!historyObj || !historyObj.results || historyObj.results.length === 0) return false;
+      const rMissLimit = Number(appSettings["苦手_直近ミス判定"]) || 1;
+      const timeLimit = Number(appSettings["苦手_時間判定_秒"]) || 15;
+      const rateLimit = Number(appSettings["苦手_全体正答率_未満"]) || 80;
+      const recentResults = historyObj.results.slice(-3);
+      if (recentResults.filter(r => r === 0).length >= rMissLimit) return true;
+      if (((historyObj.results.filter(r => r === 1).length / historyObj.results.length) * 100) < rateLimit) return true;
+      if (historyObj.times && historyObj.times.length > 0 && (historyObj.times.reduce((a,b)=>a+b, 0) / historyObj.times.length) >= timeLimit) return true;
+      return false;
     }
-    function exchangeReward(rId, rName, pts) {
-      if(!confirm(`「${rName}」をこうかんしますか？`)) return;
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rId }) }).then(r=>r.json()).then(d=>{
-        if(d.status === "success") { alert(d.message); user.points = d.newPoints; localStorage.setItem('app_kid_user', JSON.stringify(user)); showHome(user); }
-        else alert(d.message);
-      });
-    }
+    function showHistory() { switchSection('section-history'); const user = JSON.parse(localStorage.getItem('app_kid_user')); const hist = user.historyJson || {}; const c = document.getElementById('history-container'); c.innerHTML = ""; let hasData = false; for(let unitKey in hist) { hasData = true; const div = document.createElement('div'); div.className = "item-card"; div.innerHTML = `<h3 class="item-title" style="color:#2196F3;">📁 ${unitKey}</h3>`; let weakCount = 0; let totalQ = 0; for(let qId in hist[unitKey]) { totalQ++; if(checkIsNigate(hist[unitKey][qId])) weakCount++; } div.innerHTML += `<p>取り組んだ問題数：${totalQ} 問</p><p>🔥 ニガテな問題：<span style="color:#e50914;font-weight:bold;">${weakCount}</span> 問</p>`; c.appendChild(div); } if(!hasData) c.innerHTML = "<p>まだ学習のきろくがありません。</p>"; }
 
-    function loadInventory() {
-      switchSection('section-inventory'); 
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      document.getElementById('inventory-container').innerHTML = "<p>カバンをさがしています...</p>";
-      
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_inventory", userId: user.id }) })
-      .then(r=>r.json()).then(d=>{
-        if(d.status === "success") {
-          userInventoryData = d.inventory;
-          showAllInventory = false; 
-          updateInventoryToggleBtn();
-          renderInventory();
-        }
-      });
-    }
-
-    function toggleInventoryView() {
-      showAllInventory = !showAllInventory;
-      updateInventoryToggleBtn();
-      renderInventory();
-    }
-
-    function updateInventoryToggleBtn() {
-      const btn = document.getElementById('toggle-inventory-btn');
-      if(showAllInventory) {
-        btn.innerText = "未使用のみ表示する";
-        btn.className = "menu-btn btn-orange";
-      } else {
-        btn.innerText = "すべて表示する";
-        btn.className = "menu-btn btn-gray";
-      }
-    }
-
-    function renderInventory() {
-      const c = document.getElementById('inventory-container');
-      c.innerHTML = "";
-      
-      const filtered = showAllInventory ? userInventoryData : userInventoryData.filter(inv => inv.status === "未消化");
-
-      if(filtered.length === 0) { 
-        c.innerHTML = "<p>ひょうじする けいひん がありません。</p>"; 
-        return; 
-      }
-      
-      filtered.forEach(inv => {
-        const div = document.createElement('div'); 
-        div.className = "item-card";
-        const isUsed = inv.status === "使用済み";
-        
-        let btnHtml = "";
-        if(!isUsed) {
-          btnHtml = `<button class="menu-btn btn-blue" onclick="consumeReward(${inv.rowIdx}, '${inv.rewardName}')">この券をつかう！</button>`;
-        } else {
-          btnHtml = `<div style="color:#e50914; font-weight:bold; margin-top:10px;">❌ 使用済み</div>`;
-        }
-
-        div.innerHTML = `<h3 class="item-title" style="color:${isUsed ? '#888' : '#fff'};">${inv.rewardName}</h3>
-        <p style="font-size:12px;color:#888;">ゲットした日: ${inv.date}</p>
-        ${btnHtml}`;
-        c.appendChild(div);
-      });
-    }
-
-    function consumeReward(rowIdx, name) {
-      if(!confirm(`おうちの人にかくにんしましたか？\n「${name}」をつかいます！`)) return;
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "consume_reward", rowIdx: rowIdx }) })
-      .then(r=>r.json()).then(d=>{
-        if(d.status === "success") { alert(d.message); loadInventory(); }
-      });
-    }
-
-    // --- 学習の記録 (理解度) ---
-    function showHistory() {
-      switchSection('section-history');
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      const hist = user.historyJson || {};
-      const c = document.getElementById('history-container'); c.innerHTML = "";
-      
-      let hasData = false;
-      for(let unitKey in hist) {
-        hasData = true;
-        const div = document.createElement('div'); div.className = "item-card";
-        div.innerHTML = `<h3 class="item-title" style="color:#2196F3;">📁 ${unitKey}</h3>`;
-        
-        let weakCount = 0; let totalQ = 0;
-        for(let qId in hist[unitKey]) {
-          totalQ++;
-          const results = hist[unitKey][qId].results;
-          const correctCount = results.filter(r=>r===1).length;
-          const rate = Math.round((correctCount / results.length) * 100);
-          if(rate < 90) weakCount++; 
-        }
-        div.innerHTML += `<p>取り組んだ問題数：${totalQ} 問</p><p>🔥 ニガテな問題：<span style="color:#e50914;font-weight:bold;">${weakCount}</span> 問</p>`;
-        c.appendChild(div);
-      }
-      if(!hasData) c.innerHTML = "<p>まだ学習のきろくがありません。</p>";
-    }
-
-    // --- クイズロジック ---
-    function loadMaterials() { switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { currentModeId=m.modeId; currentModeName=m.modeName; currentUnitName=u; switchSection('section-settings'); document.getElementById('settings-title').innerText=`【${m.modeName}】${u}`; }; c.appendChild(b); }); }); } }); }
+    // --- クイズ準備（設定UIの連動） ---
+    function loadMaterials() { switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { currentModeId=m.modeId; currentModeName=m.modeName; currentUnitName=u; openSettingsScreen(); }; c.appendChild(b); }); }); } }); }
     
+    function openSettingsScreen() {
+      switchSection('section-settings'); 
+      document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
+      
+      const fSelect = document.getElementById('setting-format');
+      if (currentModeName.includes("単語")) {
+        fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja" disabled>英語読み上げ ➔ 日本語にする（準備中）</option>`;
+      } else {
+        fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en" disabled>疑問文(読み上げ) ➔ 英語にする（準備中）</option>`;
+      }
+      updateAnswerTypeUI();
+    }
+
+    function updateAnswerTypeUI() {
+      const format = document.getElementById('setting-format').value;
+      const aSelect = document.getElementById('setting-answer-type');
+      aSelect.innerHTML = "";
+      
+      if (format === "ja_to_en" || format === "qtext_to_en") {
+        if(format === "ja_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
+        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice" disabled>🎙️ 音声入力（準備中）</option>`;
+      } else if (format === "en_to_ja") {
+        aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`;
+      }
+    }
+
+    // --- クイズ本体 ---
     function fetchQuestionsAndStart() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ currentQuestions = d.questions; prepareQuiz(); } }); }
     
     function prepareQuiz() {
       currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
-      const order = document.getElementById('setting-order').value; filteredQuestions = [...currentQuestions];
+      const order = document.getElementById('setting-order').value; 
+      filteredQuestions = [...currentQuestions];
       if (currentIsReviewMode) {
         const user = JSON.parse(localStorage.getItem('app_kid_user')); const unitKey = `${currentModeName}_${currentUnitName}`; const history = user.historyJson[unitKey] || {};
-        filteredQuestions = filteredQuestions.filter(q => { const h = history[q["通し番号"]]; if (!h) return false; return h.results.slice(-3).includes(0); });
+        filteredQuestions = filteredQuestions.filter(q => checkIsNigate(history[q["通し番号"]]));
         if (filteredQuestions.length === 0) { alert("ニガテな問題はありません！通常モードでスタートします。"); currentIsReviewMode = false; document.getElementById('setting-play-mode').value = 'normal'; filteredQuestions = [...currentQuestions]; }
       }
       if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
@@ -381,40 +191,121 @@
 
     function showQuestion() {
       if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
-      hintUsed = false; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; const answerType = document.getElementById('setting-answer-type').value;
+      maxDeduction = 0; // 減点リセット
+      const q = filteredQuestions[currentQuestionIndex]; 
+      const format = document.getElementById('setting-format').value; 
+      const answerType = document.getElementById('setting-answer-type').value;
+      
       document.getElementById('quiz-progress').innerText = (currentIsReviewMode?"🔥特訓中! ":"") + `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
-      let enText = q["英単語"] || q["英文"]; let jaText = q["日本語"]; let qText = "", correctA = "";
-      if (format === "ja_to_en") { qText = jaText; correctA = enText; } else { qText = enText; correctA = jaText; }
-      document.getElementById('quiz-q-text').innerText = qText; document.getElementById('quiz-feedback').innerHTML = ""; document.getElementById('quiz-next-btn').style.display = "none";
-      document.getElementById('hint-btn').style.display = "inline-block"; document.getElementById('hint-btn').disabled = false; document.getElementById('hint-text').style.display = "none";
-      const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
+      
+      // 問題文と正解の決定
+      let qText = "", correctA = "";
+      if (format === "ja_to_en") { qText = q["日本語"]; correctA = q["英単語"] || q["英文"]; } 
+      else if (format === "en_to_ja") { qText = q["英単語"] || q["英文"]; correctA = q["日本語"]; }
+      else if (format === "qtext_to_en") { qText = q["疑問文"]; correctA = q["英文"]; }
+
+      document.getElementById('quiz-q-text').innerText = qText; 
+      document.getElementById('quiz-feedback').innerHTML = ""; 
+      document.getElementById('quiz-next-btn').style.display = "none";
+      
+      // ヒントエリアの制御 (4択の場合は非表示)
+      const hintArea = document.getElementById('quiz-hint-area');
+      const hintTextDisplay = document.getElementById('hint-display-text');
+      hintTextDisplay.style.display = "none";
+      hintTextDisplay.innerText = "";
+      
       if (answerType === "4choice") {
-        let choices = [correctA]; let others = currentQuestions.filter(item => (item["英単語"] || item["英文"]) !== enText).sort(() => Math.random() - 0.5);
-        for (let i = 0; i < 3 && i < others.length; i++) choices.push(format === "ja_to_en" ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); choices.sort(() => Math.random() - 0.5);
+        hintArea.style.display = "none";
+      } else {
+        hintArea.style.display = "flex";
+        document.getElementById('hint-btn-1').disabled = false;
+        document.getElementById('hint-btn-2').disabled = false;
+      }
+
+      const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
+      
+      // 回答エリアの生成
+      if (answerType === "4choice") {
+        let choices = [correctA]; 
+        let others = currentQuestions.filter(item => {
+          if(format === "ja_to_en") return (item["英単語"] || item["英文"]) !== correctA;
+          else return item["日本語"] !== correctA;
+        }).sort(() => Math.random() - 0.5);
+        for (let i = 0; i < 3 && i < others.length; i++) choices.push(format === "ja_to_en" ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); 
+        choices.sort(() => Math.random() - 0.5);
         choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
-      } else { answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" autocomplete="off"><br><button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>`; }
+      } else { 
+        answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" autocomplete="off"><br><button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>`; 
+      }
     }
 
-    function showHint() { hintUsed = true; document.getElementById('hint-btn').style.display = "none"; const q = filteredQuestions[currentQuestionIndex]; document.getElementById('hint-text').innerText = "💡 " + (q["ヒント"] || q["イニシャルと文字数"] || q["イニシャル"] || "ヒントなし"); document.getElementById('hint-text').style.display = "block"; }
-    function checkTypingAnswer() { const userA = document.getElementById('type-answer').value; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; checkAnswer(userA, format === "ja_to_en" ? (q["英単語"] || q["英文"]) : q["日本語"], q); }
+    function useHint(type, penalty) {
+      const q = filteredQuestions[currentQuestionIndex];
+      const hintTextDisplay = document.getElementById('hint-display-text');
+      
+      // 減点ポイントの更新（最大の減点のみ適用）
+      maxDeduction = Math.max(maxDeduction, penalty);
+      
+      let hintStr = "";
+      if (type === 1) hintStr = q["イニシャル"] || "ヒントなし";
+      if (type === 2) hintStr = q["イニシャルと文字数"] || q["ヒント"] || "ヒントなし"; // 表現モードで列がない場合のフォールバック
+      
+      hintTextDisplay.innerText = hintStr;
+      hintTextDisplay.style.display = "block";
+      document.getElementById(`hint-btn-${type}`).disabled = true;
+    }
+
+    function checkTypingAnswer() { 
+      const userA = document.getElementById('type-answer').value; 
+      const q = filteredQuestions[currentQuestionIndex]; 
+      const format = document.getElementById('setting-format').value; 
+      let correctA = (format === "qtext_to_en") ? q["英文"] : (q["英単語"] || q["英文"]);
+      checkAnswer(userA, correctA, q); 
+    }
+    
     function checkAnswer(userA, correctA, q) {
       document.querySelectorAll('.choice-btn, .submit-btn, .hint-btn').forEach(b => b.disabled = true);
-      const isCorrect = userA.trim().toLowerCase() === correctA.trim().toLowerCase(); let deductionPts = hintUsed ? 5 : 0;
-      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: 10, deduction: deductionPts });
+      const isCorrect = userA.trim().toLowerCase() === correctA.trim().toLowerCase(); 
+      
+      const isWord = currentModeName.includes("単語");
+      const format = document.getElementById('setting-format').value; 
+      const ansType = document.getElementById('setting-answer-type').value;
+
+      // 基礎ポイントの計算
+      let basePoint = 0;
+      if (isWord) {
+        if (ansType === "4choice" && format === "ja_to_en") basePoint = 3;
+        else if (ansType === "4choice" && format === "en_to_ja") basePoint = 2;
+        else if (ansType === "typing" && format === "ja_to_en") basePoint = 20;
+      } else {
+        if (ansType === "4choice" && format === "ja_to_en") basePoint = 3;
+        else if (ansType === "4choice" && format === "en_to_ja") basePoint = 2;
+        else if (ansType === "typing" && format === "ja_to_en") basePoint = 25;
+        else if (ansType === "typing" && format === "qtext_to_en") basePoint = 30;
+      }
+
+      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
       const feedback = document.getElementById('quiz-feedback');
-      if (isCorrect) feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (hintUsed?"<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので ポイントは半分です</span>":"");
-      else feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color:#fff;">${correctA}</b>`;
+      if (isCorrect) feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
+      else feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
       document.getElementById('quiz-next-btn').style.display = "block";
     }
+
     function nextQuestion() { currentQuestionIndex++; showQuestion(); }
     
     function finishQuiz() {
       switchSection('section-result'); document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; document.getElementById('result-home-btn').style.display = "none";
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: `${currentModeName}_${currentUnitName}`, isReviewMode: currentIsReviewMode, results: quizResults }) })
+      const isRandom = document.getElementById('setting-order').value === 'random';
+
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: `${currentModeName}_${currentUnitName}`, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults }) })
       .then(r => r.json()).then(d => {
         if(d.status === "success") {
-          document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + (currentIsReviewMode ? `<p style="color:#FF9800;font-weight:bold;">🔥 ニガテ特訓ボーナス発動！</p>` : "") + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
+          let bonusMsg = "";
+          if (currentIsReviewMode) bonusMsg += `<p style="color:#FF9800;font-weight:bold;margin:5px 0;">🔥 ニガテ特訓ボーナス適用</p>`;
+          if (d.bonusApplied) bonusMsg += `<p style="color:#e50914;font-weight:bold;margin:5px 0;">🎲 ランダム出題ボーナス（10%UP）</p>`;
+
+          document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + bonusMsg + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
           user.points = d.newTotal; user.historyJson = d.historyJson; user.dailyPointsJson = d.dailyPointsJson; localStorage.setItem('app_kid_user', JSON.stringify(user));
           document.getElementById('result-home-btn').style.display = "block";
         }
