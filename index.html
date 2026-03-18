@@ -7,7 +7,6 @@
   <style>
     body { font-family: 'Hiragino Maru Gothic ProN', sans-serif; background-color: #141414; color: white; text-align: center; margin: 0; padding: 20px; }
     h1, h2, h3 { color: #fff; }
-    
     .section { display: none; }
     .active { display: block; }
 
@@ -16,7 +15,6 @@
     .user-card { background: #333; padding: 20px; border-radius: 15px; width: 120px; cursor: pointer; transition: 0.2s; }
     .user-card:active { transform: scale(0.95); background: #555; }
     .user-icon { width: 80px; height: 80px; background: #e50914; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; }
-
     .pin-display { font-size: 40px; letter-spacing: 15px; margin: 20px 0; height: 50px; }
     .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 15px; justify-content: center; margin-top: 20px; }
     .num-btn { background: #333; color: white; border: none; font-size: 28px; width: 80px; height: 80px; border-radius: 50%; cursor: pointer; }
@@ -25,18 +23,23 @@
     .cancel-btn { margin-top: 30px; background: none; color: #aaa; border: none; font-size: 18px; cursor: pointer; }
     #message { margin-top: 20px; color: #ff4d4d; font-weight: bold; }
 
-    /* 設定画面 */
+    /* 設定・クイズ画面 */
     .setting-group { margin: 25px 0; background: #222; padding: 15px; border-radius: 10px; }
     .large-select { padding: 15px; font-size: 20px; border-radius: 8px; width: 80%; max-width: 350px; background: #fff; color: #000; border: none; }
-
-    /* ★クイズ画面のスタイル */
     #quiz-q-text { font-size: 36px; margin: 30px 0; font-weight: bold; }
-    .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+    .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .choice-btn:active { background: #555; transform: scale(0.98); }
     .large-input { padding: 15px; font-size: 24px; width: 80%; max-width: 350px; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; }
     .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; }
     #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
     .next-btn { padding: 15px 50px; font-size: 24px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; display: none; margin: 0 auto; }
+
+    /* ★景品交換画面のスタイル */
+    .reward-card { background: #222; border: 2px solid #e50914; border-radius: 10px; padding: 15px; margin: 15px auto; max-width: 400px; text-align: left; }
+    .reward-title { font-size: 22px; font-weight: bold; color: gold; margin: 0 0 10px 0; }
+    .reward-desc { font-size: 14px; color: #ccc; margin-bottom: 15px; }
+    .exchange-btn { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 18px; cursor: pointer; width: 100%; font-weight: bold; }
+    .exchange-btn:disabled { background: #555; color: #888; cursor: not-allowed; border: none; }
   </style>
 </head>
 <body>
@@ -48,7 +51,7 @@
 
   <div id="section-pin" class="section">
     <h2 id="selected-user-name">名前</h2>
-    <p>あんしょうばんごう（4ケタ）をいれてね</p>
+    <p>あんしょうばんごう（4ケタ）</p>
     <div class="pin-display" id="pin-dots">_ _ _ _</div>
     <div class="numpad">
       <button class="num-btn" onclick="addPin(1)">1</button>
@@ -71,395 +74,226 @@
   <div id="section-home" class="section">
     <h1>ホームメニュー</h1>
     <h2 id="welcome-message"></h2>
-    <p>げんざいのポイント: <span id="user-points" style="color: gold; font-size: 24px;">0</span> Pt</p>
-    <div style="margin: 30px 0;">
-      <button style="padding: 15px 30px; font-size: 24px; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer;" onclick="loadMaterials()">▶ 学習をはじめる</button>
+    <p>げんざいのポイント: <span id="user-points" style="color: gold; font-size: 32px; font-weight: bold;">0</span> Pt</p>
+    
+    <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center;">
+      <button style="padding: 20px 40px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px;" onclick="loadMaterials()">▶ 学習をはじめる</button>
+      
+      <button style="padding: 15px 30px; font-size: 20px; font-weight: bold; background: #FF9800; color: white; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px;" onclick="loadRewards()">🎁 けいひんを もらう</button>
     </div>
-    <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ログアウト</button>
+    
+    <button onclick="logout()" style="padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">ログアウト</button>
+  </div>
+
+  <div id="section-rewards" class="section">
+    <h1>🎁 けいひん こうかんじょ</h1>
+    <p>あなたのポイント: <span id="reward-user-points" style="color: gold; font-size: 24px; font-weight: bold;">0</span> Pt</p>
+    
+    <div id="rewards-container">
+      <p>けいひんを さがしています...</p>
+    </div>
+    
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="margin-top: 30px; padding: 10px 30px; font-size: 18px; background: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">ホームにもどる</button>
   </div>
 
   <div id="section-materials" class="section">
     <h1>なにを勉強する？</h1>
     <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div>
-    <br>
-    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 10px 20px;">もどる</button>
+    <br><button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 10px 20px;">もどる</button>
   </div>
 
   <div id="section-settings" class="section">
-    <h1 id="settings-title">設定をえらんでね</h1>
+    <h1 id="settings-title">設定</h1>
     <div class="setting-group">
       <h3>1. もんだいの形式</h3>
-      <select id="setting-format" class="large-select">
-        <option value="ja_to_en">日本語 ➔ 英語にする</option>
-        <option value="en_to_ja">英語 ➔ 日本語にする</option>
-      </select>
+      <select id="setting-format" class="large-select"><option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option></select>
     </div>
     <div class="setting-group">
       <h3>2. こたえ方</h3>
-      <select id="setting-answer-type" class="large-select">
-        <option value="4choice">４択（えらぶ）</option>
-        <option value="typing">タイピング（入力する）</option>
-      </select>
+      <select id="setting-answer-type" class="large-select"><option value="4choice">４択（えらぶ）</option><option value="typing">タイピング（入力する）</option></select>
     </div>
     <div class="setting-group">
       <h3>3. 出し方</h3>
-      <select id="setting-order" class="large-select">
-        <option value="normal">順番どおり（1番から）</option>
-        <option value="random">ランダム（ばらばら）</option>
-      </select>
+      <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
     </div>
-    <div style="margin-top: 30px;">
-      <button onclick="fetchQuestionsAndStart()" style="padding: 15px 50px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
-    </div>
-    <button onclick="switchSection('section-materials')" style="margin-top: 20px; padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px;">もどる</button>
+    <button onclick="fetchQuestionsAndStart()" style="padding: 15px 50px; font-size: 26px; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
+    <br><button onclick="switchSection('section-materials')" style="margin-top: 20px; padding: 10px 20px;">もどる</button>
   </div>
 
   <div id="section-quiz" class="section">
-    <h3 id="quiz-progress" style="color: #aaa;">第 1 問 / 全 10 問</h3>
+    <h3 id="quiz-progress" style="color: #aaa;">第 1 問</h3>
     <div id="quiz-q-text">もんだい文</div>
-    
-    <div id="quiz-answer-area">
-      </div>
-
+    <div id="quiz-answer-area"></div>
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="next-btn" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
 
   <div id="section-result" class="section">
     <h1>けっかはっぴょう！</h1>
-    <div id="result-content" style="background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
-      <p>データを サーバーに おくっています...</p>
-    </div>
-    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 15px 30px; font-size: 20px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; display: none;" id="result-home-btn">ホームにもどる</button>
+    <div id="result-content" style="background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;"></div>
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" style="padding: 15px 30px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; display: none;">ホームにもどる</button>
   </div>
 
   <script>
     // ★GASのURLを忘れずに変更してください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwuDEEU5XX4QMOEReUOAhZG-ou3-JWdYH8eZjMWDTDKGeDYPYfWBcPv3DUVJ4BKoXtTSw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwC3GDUpcsMey-wCcFVedx1SCscoAclaywZ1MW3KFDVgDCk8r7ymqwEaB3NUXC4BoAzBg/exec";
     
-    let selectedUserId = null;
-    let currentPin = "";
-    
-    let currentModeId = "";
-    let currentModeName = "";
-    let currentUnitName = "";
-    let currentQuestions = []; 
-    
-    // ★クイズ進行用の変数
-    let filteredQuestions = [];
-    let currentQuestionIndex = 0;
-    let quizResults = [];
-    let questionStartTime = 0;
+    let selectedUserId = null; let currentPin = "";
+    let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
+    let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; let quizResults = []; let questionStartTime = 0;
 
-    window.onload = () => {
-      const savedUser = localStorage.getItem('app_kid_user');
-      if (savedUser) showHome(JSON.parse(savedUser));
-      else fetchUsers();
-    };
+    window.onload = () => { const saved = localStorage.getItem('app_kid_user'); if (saved) showHome(JSON.parse(saved)); else fetchUsers(); };
+    function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
-    function switchSection(sectionId) {
-      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-      document.getElementById(sectionId).classList.add('active');
-    }
-
-    function fetchUsers() {
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) })
-      .then(res => res.json())
-      .then(data => data.status === "success" ? renderUsers(data.users) : alert(data.message));
-    }
-
+    // --- ログイン関連 ---
+    function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r => r.json()).then(d => { if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) {
-      const container = document.getElementById('user-container');
+      const c = document.getElementById('user-container'); c.innerHTML = "";
+      users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); });
+    }
+    function showUserSelection() { switchSection('section-users'); currentPin = ""; updatePinDisplay(); }
+    function showPinScreen(id, name) { selectedUserId = id; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; switchSection('section-pin'); }
+    function addPin(num) { if(currentPin.length<4){ currentPin+=num; updatePinDisplay(); if(currentPin.length===4) verifyPin(); } }
+    function deletePin() { currentPin = currentPin.slice(0,-1); updatePinDisplay(); }
+    function clearPin() { currentPin = ""; updatePinDisplay(); }
+    function updatePinDisplay() { let d=""; for(let i=0;i<4;i++) d+=(i<currentPin.length)?"● ":"_ "; document.getElementById('pin-dots').innerText=d.trim(); }
+    function verifyPin() {
+      document.getElementById('message').innerText = "かくにん中...";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin }) })
+      .then(r => r.json()).then(d => { if(d.status==="success"){ localStorage.setItem('app_kid_user', JSON.stringify(d.user)); showHome(d.user); } else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); } });
+    }
+    function showHome(user) { switchSection('section-home'); document.getElementById('welcome-message').innerText = `ようこそ、${user.name} さん！`; document.getElementById('user-points').innerText = user.points; }
+    function logout() { localStorage.removeItem('app_kid_user'); showUserSelection(); }
+
+    // --- ★景品交換システム（ここが新しい機能です！） ---
+    function loadRewards() {
+      switchSection('section-rewards');
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      document.getElementById('reward-user-points').innerText = user.points;
+      document.getElementById('rewards-container').innerHTML = "<p>けいひんを さがしています...</p>";
+
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) })
+      .then(r => r.json())
+      .then(data => {
+        if(data.status === "success") renderRewards(data.rewards, user.points);
+        else alert("エラー: " + data.message);
+      });
+    }
+
+    function renderRewards(rewards, currentPoints) {
+      const container = document.getElementById('rewards-container');
       container.innerHTML = "";
-      users.forEach(user => {
+
+      rewards.forEach(reward => {
+        const canExchange = currentPoints >= reward.points; // ポイントが足りているか判定
         const div = document.createElement('div');
-        div.className = 'user-card';
-        div.onclick = () => showPinScreen(user.id, user.name);
-        div.innerHTML = `<div class="user-icon">${user.name.charAt(0).toUpperCase()}</div><div style="font-size: 18px; font-weight: bold;">${user.name}</div>`;
+        div.className = "reward-card";
+        div.innerHTML = `
+          <h3 class="reward-title">${reward.name}</h3>
+          <p class="reward-desc">${reward.desc}</p>
+          <button class="exchange-btn" ${canExchange ? "" : "disabled"} 
+                  onclick="exchangeReward('${reward.id}', '${reward.name}', ${reward.points})">
+            ${reward.points} Pt で こうかんする
+          </button>
+        `;
         container.appendChild(div);
       });
     }
 
-    function showUserSelection() {
-      switchSection('section-users');
-      currentPin = ""; updatePinDisplay(); document.getElementById('message').innerText = "";
-    }
+    function exchangeReward(rewardId, rewardName, points) {
+      if(!confirm(`「${rewardName}」を こうかんしますか？\n（${points} Pt つかいます）`)) return;
 
-    function showPinScreen(userId, userName) {
-      selectedUserId = userId; currentPin = ""; updatePinDisplay();
-      document.getElementById('selected-user-name').innerText = userName;
-      document.getElementById('message').innerText = "";
-      switchSection('section-pin');
-    }
-
-    function addPin(num) {
-      if (currentPin.length < 4) {
-        currentPin += num; updatePinDisplay();
-        if (currentPin.length === 4) verifyPin();
-      }
-    }
-
-    function deletePin() { currentPin = currentPin.slice(0, -1); updatePinDisplay(); document.getElementById('message').innerText = ""; }
-    function clearPin() { currentPin = ""; updatePinDisplay(); document.getElementById('message').innerText = ""; }
-    
-    function updatePinDisplay() {
-      let display = "";
-      for (let i = 0; i < 4; i++) display += (i < currentPin.length) ? "● " : "_ ";
-      document.getElementById('pin-dots').innerText = display.trim();
-    }
-
-    function verifyPin() {
-      document.getElementById('message').innerText = "かくにん中...";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "verify_kid_pin", userId: selectedUserId, pin: currentPin }) })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          localStorage.setItem('app_kid_user', JSON.stringify(data.user));
-          showHome(data.user);
-        } else {
-          document.getElementById('message').innerText = data.message;
-          currentPin = ""; updatePinDisplay();
-        }
-      });
-    }
-
-    function showHome(user) {
-      switchSection('section-home');
-      document.getElementById('welcome-message').innerText = `ようこそ、${user.name} さん！`;
-      document.getElementById('user-points').innerText = user.points;
-    }
-
-    function logout() { localStorage.removeItem('app_kid_user'); showUserSelection(); }
-
-    function loadMaterials() {
-      switchSection('section-materials');
-      document.getElementById('materials-container').innerHTML = "<p>きょうざいを さがしています...</p>";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
-      .then(res => res.json())
-      .then(data => data.status === "success" ? renderMaterials(data.materials) : alert("エラー: " + data.message));
-    }
-
-    function renderMaterials(materials) {
-      const container = document.getElementById('materials-container');
-      container.innerHTML = "";
-      materials.forEach(mode => {
-        const modeTitle = document.createElement('h2');
-        modeTitle.innerText = `📁 ${mode.modeName}`;
-        modeTitle.style.borderBottom = "2px solid #555"; modeTitle.style.paddingBottom = "5px";
-        container.appendChild(modeTitle);
-
-        mode.units.forEach(unit => {
-          const btn = document.createElement('button');
-          btn.innerText = `📄 ${unit}`;
-          btn.style.padding = "15px"; btn.style.fontSize = "18px"; btn.style.borderRadius = "8px";
-          btn.style.border = "none"; btn.style.background = "#333"; btn.style.color = "white"; btn.style.cursor = "pointer";
-          
-          btn.onclick = () => showSettingsScreen(mode.modeId, mode.modeName, unit);
-          container.appendChild(btn);
-        });
-      });
-    }
-
-    function showSettingsScreen(modeId, modeName, unitName) {
-      currentModeId = modeId; currentModeName = modeName; currentUnitName = unitName;
-      switchSection('section-settings');
-      document.getElementById('settings-title').innerText = `【${modeName}】${unitName}`;
-    }
-
-    // --- ★1. 問題を読み込んでクイズの準備をする ---
-    function fetchQuestionsAndStart() {
-      document.getElementById('settings-title').innerText = "よみこみ中...";
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
       
       fetch(GAS_API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName })
+        body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rewardId })
       })
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
-        if (data.status === "success") {
-          currentQuestions = data.questions;
-          prepareQuiz();
+        if(data.status === "success") {
+          alert("🎉 " + data.message + "\n（管理者の人に伝えてね！）");
+          // ローカルのポイントを更新
+          user.points = data.newPoints;
+          localStorage.setItem('app_kid_user', JSON.stringify(user));
+          // ホーム画面に戻る
+          showHome(user);
         } else {
           alert("エラー: " + data.message);
-          document.getElementById('settings-title').innerText = "設定をえらんでね";
         }
       });
     }
 
-    // --- ★2. クイズの初期化（順番などを決める） ---
+    // --- クイズ関連 ---
+    function loadMaterials() {
+      switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderMaterials(d.materials); });
+    }
+    function renderMaterials(m) {
+      const c = document.getElementById('materials-container'); c.innerHTML = "";
+      m.forEach(mode => {
+        const title = document.createElement('h2'); title.innerText = `📁 ${mode.modeName}`; c.appendChild(title);
+        mode.units.forEach(unit => {
+          const btn = document.createElement('button'); btn.innerText = `📄 ${unit}`; btn.style.padding="15px"; btn.style.fontSize="18px"; btn.style.background="#333"; btn.style.color="white"; btn.style.border="none"; btn.style.borderRadius="8px"; btn.style.cursor="pointer";
+          btn.onclick = () => showSettingsScreen(mode.modeId, mode.modeName, unit); c.appendChild(btn);
+        });
+      });
+    }
+    function showSettingsScreen(mId, mName, uName) { currentModeId = mId; currentModeName = mName; currentUnitName = uName; switchSection('section-settings'); document.getElementById('settings-title').innerText = `【${mName}】${uName}`; }
+    function fetchQuestionsAndStart() {
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ currentQuestions = d.questions; prepareQuiz(); } });
+    }
     function prepareQuiz() {
       const order = document.getElementById('setting-order').value;
-      
-      // 問題のコピーを作る
       filteredQuestions = [...currentQuestions];
-      
-      // ランダム設定ならシャッフル
-      if (order === 'random') {
-        filteredQuestions.sort(() => Math.random() - 0.5);
-      }
-
-      currentQuestionIndex = 0;
-      quizResults = []; // 結果履歴をリセット
-      switchSection('section-quiz');
-      showQuestion();
+      if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
+      currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
     }
-
-    // --- ★3. 1問ごとに画面を作る ---
     function showQuestion() {
-      // 全問終わったら結果画面へ
-      if (currentQuestionIndex >= filteredQuestions.length) {
-        finishQuiz();
-        return;
-      }
-
-      const q = filteredQuestions[currentQuestionIndex];
-      const format = document.getElementById('setting-format').value;
-      const answerType = document.getElementById('setting-answer-type').value;
-
+      if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
+      const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; const answerType = document.getElementById('setting-answer-type').value;
       document.getElementById('quiz-progress').innerText = `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
-      
-      // 単語と表現で列名が違うことへの対応
-      let enText = q["英単語"] || q["英文"];
-      let jaText = q["日本語"];
-      let qText = "", correctA = "";
-
-      // 日→英 か 英→日 かの判定
-      if (format === "ja_to_en") {
-        qText = jaText; correctA = enText;
-      } else {
-        qText = enText; correctA = jaText;
-      }
-
-      document.getElementById('quiz-q-text').innerText = qText;
-      document.getElementById('quiz-feedback').innerHTML = "";
-      document.getElementById('quiz-next-btn').style.display = "none";
-      
-      const answerArea = document.getElementById('quiz-answer-area');
-      answerArea.innerHTML = "";
-
-      // 解答時間の計測スタート
+      let enText = q["英単語"] || q["英文"]; let jaText = q["日本語"]; let qText = "", correctA = "";
+      if (format === "ja_to_en") { qText = jaText; correctA = enText; } else { qText = enText; correctA = jaText; }
+      document.getElementById('quiz-q-text').innerText = qText; document.getElementById('quiz-feedback').innerHTML = ""; document.getElementById('quiz-next-btn').style.display = "none";
+      const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = "";
       questionStartTime = Date.now();
 
       if (answerType === "4choice") {
-        // 4択ボタンを作る
         let choices = [correctA];
-        
-        // 正解以外の選択肢を他の問題から持ってくる
-        let others = currentQuestions.filter(item => (item["英単語"] || item["英文"]) !== enText);
-        others.sort(() => Math.random() - 0.5); // シャッフル
-        
-        for (let i = 0; i < 3 && i < others.length; i++) {
-          choices.push(format === "ja_to_en" ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]);
-        }
-        
-        choices.sort(() => Math.random() - 0.5); // 選択肢の順番をバラバラにする
-        
-        choices.forEach(c => {
-          const btn = document.createElement('button');
-          btn.innerText = c;
-          btn.className = "choice-btn";
-          btn.onclick = () => checkAnswer(c, correctA, q);
-          answerArea.appendChild(btn);
-        });
-
+        let others = currentQuestions.filter(item => (item["英単語"] || item["英文"]) !== enText).sort(() => Math.random() - 0.5);
+        for (let i = 0; i < 3 && i < others.length; i++) choices.push(format === "ja_to_en" ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]);
+        choices.sort(() => Math.random() - 0.5);
+        choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
       } else {
-        // タイピング入力欄を作る
-        answerArea.innerHTML = `
-          <input type="text" id="type-answer" class="large-input" placeholder="こたえをいれてね" autocomplete="off">
-          <br>
-          <button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>
-        `;
+        answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" autocomplete="off"><br><button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>`;
       }
     }
-
     function checkTypingAnswer() {
-      const userA = document.getElementById('type-answer').value;
-      const q = filteredQuestions[currentQuestionIndex];
-      const format = document.getElementById('setting-format').value;
-      let correctA = format === "ja_to_en" ? (q["英単語"] || q["英文"]) : q["日本語"];
-      
-      checkAnswer(userA, correctA, q);
+      const userA = document.getElementById('type-answer').value; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value;
+      checkAnswer(userA, format === "ja_to_en" ? (q["英単語"] || q["英文"]) : q["日本語"], q);
     }
-
-    // --- ★4. 答え合わせと記録 ---
     function checkAnswer(userA, correctA, q) {
-      // ボタンを二度押しできないようにする
       document.querySelectorAll('.choice-btn, .submit-btn').forEach(b => b.disabled = true);
-      
-      // かかった時間を計算（秒）
-      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
-      
-      // 正解判定（大文字小文字の違いや、前後の空白は無視する）
       const isCorrect = userA.trim().toLowerCase() === correctA.trim().toLowerCase();
-      
-      // 結果を保存（GASに送る用）
-      quizResults.push({
-        questionId: q["通し番号"],
-        isCorrect: isCorrect,
-        timeSec: timeTaken,
-        basePoint: 10, // 基本は1問10ポイント
-        deduction: 0   // 今回はヒント機能がないので減点0
-      });
-
+      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: 10, deduction: 0 });
       const feedback = document.getElementById('quiz-feedback');
-      if (isCorrect) {
-        feedback.innerHTML = "<span style='color: #4CAF50; font-size: 30px; font-weight: bold;'>⭕️ せいかい！</span>";
-      } else {
-        feedback.innerHTML = `<span style='color: #F44336; font-size: 30px; font-weight: bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color: #fff;">${correctA}</b>`;
-      }
-      
+      if (isCorrect) feedback.innerHTML = "<span style='color: #4CAF50; font-size: 30px; font-weight: bold;'>⭕️ せいかい！</span>";
+      else feedback.innerHTML = `<span style='color: #F44336; font-size: 30px; font-weight: bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color: #fff;">${correctA}</b>`;
       document.getElementById('quiz-next-btn').style.display = "block";
     }
-
-    function nextQuestion() {
-      currentQuestionIndex++;
-      showQuestion();
-    }
-
-    // --- ★5. クイズ終了！GASへデータを送ってポイントGET！ ---
+    function nextQuestion() { currentQuestionIndex++; showQuestion(); }
+    
     function finishQuiz() {
-      switchSection('section-result');
-      document.getElementById('result-content').innerHTML = "<p>データを サーバーに おくっています...</p>";
-      document.getElementById('result-home-btn').style.display = "none";
-      
-      const userData = JSON.parse(localStorage.getItem('app_kid_user'));
-      
-      // GASの save_learning_session API を叩く！
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: "save_learning_session",
-          userId: userData.id,
-          unitId: `${currentModeName}_${currentUnitName}`,
-          isReviewMode: false,
-          results: quizResults
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          // 画面に獲得ポイントを表示
-          document.getElementById('result-content').innerHTML = `
-            <h2 style="color: #4CAF50;">✨ おつかれさま！ ✨</h2>
-            <p style="font-size: 20px;">かくとくポイント:</p>
-            <p style="color: gold; font-size: 40px; font-weight: bold; margin: 10px 0;">+${data.earnedPoints} Pt</p>
-            <hr style="border: 1px solid #444; margin: 20px 0;">
-            <p>合計ポイント: ${data.newTotal} Pt</p>
-          `;
-          
-          // iPad内に保存されているユーザー情報を最新のポイントに上書き
-          userData.points = data.newTotal;
-          localStorage.setItem('app_kid_user', JSON.stringify(userData));
-          
-          document.getElementById('result-home-btn').style.display = "block";
-        } else {
-          document.getElementById('result-content').innerHTML = "<p style='color:red;'>エラー: " + data.message + "</p>";
+      switchSection('section-result'); document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; document.getElementById('result-home-btn').style.display = "none";
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: `${currentModeName}_${currentUnitName}`, isReviewMode: false, results: quizResults }) })
+      .then(r => r.json()).then(d => {
+        if(d.status === "success") {
+          document.getElementById('result-content').innerHTML = `<h2 style="color: #4CAF50;">✨ おつかれさま！ ✨</h2><p>かくとくポイント: <span style="color: gold; font-size: 30px;">+${d.earnedPoints}</span></p><hr><p>合計ポイント: ${d.newTotal}</p>`;
+          user.points = d.newTotal; localStorage.setItem('app_kid_user', JSON.stringify(user));
           document.getElementById('result-home-btn').style.display = "block";
         }
-      })
-      .catch(error => {
-        document.getElementById('result-content').innerHTML = "<p style='color:red;'>つうしんエラーです。</p>";
-        document.getElementById('result-home-btn').style.display = "block";
       });
     }
   </script>
