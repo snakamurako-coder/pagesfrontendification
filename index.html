@@ -25,9 +25,18 @@
     .cancel-btn { margin-top: 30px; background: none; color: #aaa; border: none; font-size: 18px; cursor: pointer; }
     #message { margin-top: 20px; color: #ff4d4d; font-weight: bold; }
 
-    /* 設定画面のスタイル（iPad向けに大きく） */
+    /* 設定画面 */
     .setting-group { margin: 25px 0; background: #222; padding: 15px; border-radius: 10px; }
     .large-select { padding: 15px; font-size: 20px; border-radius: 8px; width: 80%; max-width: 350px; background: #fff; color: #000; border: none; }
+
+    /* ★クイズ画面のスタイル */
+    #quiz-q-text { font-size: 36px; margin: 30px 0; font-weight: bold; }
+    .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+    .choice-btn:active { background: #555; transform: scale(0.98); }
+    .large-input { padding: 15px; font-size: 24px; width: 80%; max-width: 350px; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; }
+    .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
+    .next-btn { padding: 15px 50px; font-size: 24px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; display: none; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -78,7 +87,6 @@
 
   <div id="section-settings" class="section">
     <h1 id="settings-title">設定をえらんでね</h1>
-    
     <div class="setting-group">
       <h3>1. もんだいの形式</h3>
       <select id="setting-format" class="large-select">
@@ -86,7 +94,6 @@
         <option value="en_to_ja">英語 ➔ 日本語にする</option>
       </select>
     </div>
-
     <div class="setting-group">
       <h3>2. こたえ方</h3>
       <select id="setting-answer-type" class="large-select">
@@ -94,25 +101,36 @@
         <option value="typing">タイピング（入力する）</option>
       </select>
     </div>
-
     <div class="setting-group">
       <h3>3. 出し方</h3>
       <select id="setting-order" class="large-select">
         <option value="normal">順番どおり（1番から）</option>
         <option value="random">ランダム（ばらばら）</option>
-        <option value="review">ニガテ特訓（ボーナスPtあり！）</option>
       </select>
     </div>
-
     <div style="margin-top: 30px;">
-      <button onclick="startStudy()" style="padding: 15px 50px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
+      <button onclick="fetchQuestionsAndStart()" style="padding: 15px 50px; font-size: 26px; font-weight: bold; background: #e50914; color: white; border-radius: 10px; border: none; cursor: pointer;">🚀 スタート！</button>
     </div>
-    <button onclick="document.getElementById('section-settings').classList.remove('active'); document.getElementById('section-materials').classList.add('active');" style="margin-top: 20px; padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px;">もどる</button>
+    <button onclick="switchSection('section-materials')" style="margin-top: 20px; padding: 10px 20px; background: #555; color: white; border: none; border-radius: 5px;">もどる</button>
   </div>
 
   <div id="section-quiz" class="section">
-    <h1 id="quiz-loading">もんだいを よみこみ中...</h1>
-    <p>しばらく おまちください</p>
+    <h3 id="quiz-progress" style="color: #aaa;">第 1 問 / 全 10 問</h3>
+    <div id="quiz-q-text">もんだい文</div>
+    
+    <div id="quiz-answer-area">
+      </div>
+
+    <div id="quiz-feedback"></div>
+    <button id="quiz-next-btn" class="next-btn" onclick="nextQuestion()">つぎへ ▶</button>
+  </div>
+
+  <div id="section-result" class="section">
+    <h1>けっかはっぴょう！</h1>
+    <div id="result-content" style="background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
+      <p>データを サーバーに おくっています...</p>
+    </div>
+    <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" style="padding: 15px 30px; font-size: 20px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; display: none;" id="result-home-btn">ホームにもどる</button>
   </div>
 
   <script>
@@ -122,11 +140,16 @@
     let selectedUserId = null;
     let currentPin = "";
     
-    // 現在選択中の教材データ
     let currentModeId = "";
     let currentModeName = "";
     let currentUnitName = "";
-    let currentQuestions = []; // GASから取ってきた問題が入るハコ
+    let currentQuestions = []; 
+    
+    // ★クイズ進行用の変数
+    let filteredQuestions = [];
+    let currentQuestionIndex = 0;
+    let quizResults = [];
+    let questionStartTime = 0;
 
     window.onload = () => {
       const savedUser = localStorage.getItem('app_kid_user');
@@ -231,57 +254,212 @@
           btn.style.padding = "15px"; btn.style.fontSize = "18px"; btn.style.borderRadius = "8px";
           btn.style.border = "none"; btn.style.background = "#333"; btn.style.color = "white"; btn.style.cursor = "pointer";
           
-          // ★ボタンを押した時の動作を「設定画面を開く」に変更
           btn.onclick = () => showSettingsScreen(mode.modeId, mode.modeName, unit);
           container.appendChild(btn);
         });
       });
     }
 
-    // --- ★設定画面の表示 ---
     function showSettingsScreen(modeId, modeName, unitName) {
-      currentModeId = modeId;
-      currentModeName = modeName;
-      currentUnitName = unitName;
-      
+      currentModeId = modeId; currentModeName = modeName; currentUnitName = unitName;
       switchSection('section-settings');
       document.getElementById('settings-title').innerText = `【${modeName}】${unitName}`;
     }
 
-    // --- ★学習スタート（問題をスプレッドシートから読み込む） ---
-    function startStudy() {
-      switchSection('section-quiz');
-      document.getElementById('quiz-loading').innerText = "もんだいを よみこみ中...";
-
-      // 子供が選んだ設定を取得（次回のクイズ画面作成で使います！）
-      const format = document.getElementById('setting-format').value;
-      const answerType = document.getElementById('setting-answer-type').value;
-      const order = document.getElementById('setting-order').value;
-
-      // GASに問題データを要求
+    // --- ★1. 問題を読み込んでクイズの準備をする ---
+    function fetchQuestionsAndStart() {
+      document.getElementById('settings-title').innerText = "よみこみ中...";
+      
       fetch(GAS_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ 
-          action: "get_questions", 
-          modeId: currentModeId, 
-          unitName: currentUnitName 
+        body: JSON.stringify({ action: "get_questions", modeId: currentModeId, unitName: currentUnitName })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          currentQuestions = data.questions;
+          prepareQuiz();
+        } else {
+          alert("エラー: " + data.message);
+          document.getElementById('settings-title').innerText = "設定をえらんでね";
+        }
+      });
+    }
+
+    // --- ★2. クイズの初期化（順番などを決める） ---
+    function prepareQuiz() {
+      const order = document.getElementById('setting-order').value;
+      
+      // 問題のコピーを作る
+      filteredQuestions = [...currentQuestions];
+      
+      // ランダム設定ならシャッフル
+      if (order === 'random') {
+        filteredQuestions.sort(() => Math.random() - 0.5);
+      }
+
+      currentQuestionIndex = 0;
+      quizResults = []; // 結果履歴をリセット
+      switchSection('section-quiz');
+      showQuestion();
+    }
+
+    // --- ★3. 1問ごとに画面を作る ---
+    function showQuestion() {
+      // 全問終わったら結果画面へ
+      if (currentQuestionIndex >= filteredQuestions.length) {
+        finishQuiz();
+        return;
+      }
+
+      const q = filteredQuestions[currentQuestionIndex];
+      const format = document.getElementById('setting-format').value;
+      const answerType = document.getElementById('setting-answer-type').value;
+
+      document.getElementById('quiz-progress').innerText = `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
+      
+      // 単語と表現で列名が違うことへの対応
+      let enText = q["英単語"] || q["英文"];
+      let jaText = q["日本語"];
+      let qText = "", correctA = "";
+
+      // 日→英 か 英→日 かの判定
+      if (format === "ja_to_en") {
+        qText = jaText; correctA = enText;
+      } else {
+        qText = enText; correctA = jaText;
+      }
+
+      document.getElementById('quiz-q-text').innerText = qText;
+      document.getElementById('quiz-feedback').innerHTML = "";
+      document.getElementById('quiz-next-btn').style.display = "none";
+      
+      const answerArea = document.getElementById('quiz-answer-area');
+      answerArea.innerHTML = "";
+
+      // 解答時間の計測スタート
+      questionStartTime = Date.now();
+
+      if (answerType === "4choice") {
+        // 4択ボタンを作る
+        let choices = [correctA];
+        
+        // 正解以外の選択肢を他の問題から持ってくる
+        let others = currentQuestions.filter(item => (item["英単語"] || item["英文"]) !== enText);
+        others.sort(() => Math.random() - 0.5); // シャッフル
+        
+        for (let i = 0; i < 3 && i < others.length; i++) {
+          choices.push(format === "ja_to_en" ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]);
+        }
+        
+        choices.sort(() => Math.random() - 0.5); // 選択肢の順番をバラバラにする
+        
+        choices.forEach(c => {
+          const btn = document.createElement('button');
+          btn.innerText = c;
+          btn.className = "choice-btn";
+          btn.onclick = () => checkAnswer(c, correctA, q);
+          answerArea.appendChild(btn);
+        });
+
+      } else {
+        // タイピング入力欄を作る
+        answerArea.innerHTML = `
+          <input type="text" id="type-answer" class="large-input" placeholder="こたえをいれてね" autocomplete="off">
+          <br>
+          <button onclick="checkTypingAnswer()" class="submit-btn">こたえる</button>
+        `;
+      }
+    }
+
+    function checkTypingAnswer() {
+      const userA = document.getElementById('type-answer').value;
+      const q = filteredQuestions[currentQuestionIndex];
+      const format = document.getElementById('setting-format').value;
+      let correctA = format === "ja_to_en" ? (q["英単語"] || q["英文"]) : q["日本語"];
+      
+      checkAnswer(userA, correctA, q);
+    }
+
+    // --- ★4. 答え合わせと記録 ---
+    function checkAnswer(userA, correctA, q) {
+      // ボタンを二度押しできないようにする
+      document.querySelectorAll('.choice-btn, .submit-btn').forEach(b => b.disabled = true);
+      
+      // かかった時間を計算（秒）
+      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+      
+      // 正解判定（大文字小文字の違いや、前後の空白は無視する）
+      const isCorrect = userA.trim().toLowerCase() === correctA.trim().toLowerCase();
+      
+      // 結果を保存（GASに送る用）
+      quizResults.push({
+        questionId: q["通し番号"],
+        isCorrect: isCorrect,
+        timeSec: timeTaken,
+        basePoint: 10, // 基本は1問10ポイント
+        deduction: 0   // 今回はヒント機能がないので減点0
+      });
+
+      const feedback = document.getElementById('quiz-feedback');
+      if (isCorrect) {
+        feedback.innerHTML = "<span style='color: #4CAF50; font-size: 30px; font-weight: bold;'>⭕️ せいかい！</span>";
+      } else {
+        feedback.innerHTML = `<span style='color: #F44336; font-size: 30px; font-weight: bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color: #fff;">${correctA}</b>`;
+      }
+      
+      document.getElementById('quiz-next-btn').style.display = "block";
+    }
+
+    function nextQuestion() {
+      currentQuestionIndex++;
+      showQuestion();
+    }
+
+    // --- ★5. クイズ終了！GASへデータを送ってポイントGET！ ---
+    function finishQuiz() {
+      switchSection('section-result');
+      document.getElementById('result-content').innerHTML = "<p>データを サーバーに おくっています...</p>";
+      document.getElementById('result-home-btn').style.display = "none";
+      
+      const userData = JSON.parse(localStorage.getItem('app_kid_user'));
+      
+      // GASの save_learning_session API を叩く！
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: "save_learning_session",
+          userId: userData.id,
+          unitId: `${currentModeName}_${currentUnitName}`,
+          isReviewMode: false,
+          results: quizResults
         })
       })
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          currentQuestions = data.questions; // 問題データを配列に保存！
+          // 画面に獲得ポイントを表示
+          document.getElementById('result-content').innerHTML = `
+            <h2 style="color: #4CAF50;">✨ おつかれさま！ ✨</h2>
+            <p style="font-size: 20px;">かくとくポイント:</p>
+            <p style="color: gold; font-size: 40px; font-weight: bold; margin: 10px 0;">+${data.earnedPoints} Pt</p>
+            <hr style="border: 1px solid #444; margin: 20px 0;">
+            <p>合計ポイント: ${data.newTotal} Pt</p>
+          `;
           
-          // 問題が無事に読み込めたことを確認
-          document.getElementById('quiz-loading').innerText = `大成功！\nもんだいを ${currentQuestions.length} 問よみこみました！\n\n（つぎは、いよいよクイズ画面をつくります！）`;
-          console.log("読み込んだ問題データ:", currentQuestions);
+          // iPad内に保存されているユーザー情報を最新のポイントに上書き
+          userData.points = data.newTotal;
+          localStorage.setItem('app_kid_user', JSON.stringify(userData));
+          
+          document.getElementById('result-home-btn').style.display = "block";
         } else {
-          document.getElementById('quiz-loading').innerText = "エラー: " + data.message;
+          document.getElementById('result-content').innerHTML = "<p style='color:red;'>エラー: " + data.message + "</p>";
+          document.getElementById('result-home-btn').style.display = "block";
         }
       })
       .catch(error => {
-        document.getElementById('quiz-loading').innerText = "つうしんエラーです";
+        document.getElementById('result-content').innerHTML = "<p style='color:red;'>つうしんエラーです。</p>";
+        document.getElementById('result-home-btn').style.display = "block";
       });
     }
   </script>
