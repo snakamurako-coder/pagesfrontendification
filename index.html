@@ -1,64 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>学習アプリ ログイン</title>
+  <title>学習アプリ (テンプレート)</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    /* 簡易的なUI切り替え用のスタイル */
+    #app_content { display: none; }
+    .loading { color: gray; font-style: italic; }
+  </style>
 </head>
 <body>
 
-  <div id="g_id_onload"
-       data-client_id="505252303455-84r495bnnsgiefcrv24ro2qtohlgbk2h.apps.googleusercontent.com"
-       data-context="signin"
-       data-ux_mode="popup"
-       data-callback="handleCredentialResponse"
-       data-auto_prompt="false">
+  <h1>学習アプリ名 (適宜変更)</h1>
+
+  <div id="login_section">
+    <p>アプリを利用するにはGoogleアカウントでログインしてください。</p>
+    <div id="g_id_onload"
+         data-client_id="505252303455-84r495bnnsgiefcrv24ro2qtohlgbk2h.apps.googleusercontent.com"
+         data-context="signin"
+         data-ux_mode="popup"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
   </div>
-  
-  <div class="g_id_signin" data-type="standard"></div>
+
   <div id="message" style="margin-top: 20px; font-weight: bold;"></div>
-  
-  <button onclick="testAppFunction()" style="margin-top: 20px;">アプリからユーザー情報を呼び出すテスト</button>
+
+  <div id="app_content">
+    <hr>
+    <h3>学習コンテンツエリア</h3>
+    <p>ここにWeb Speech APIなどの学習機能を実装します。</p>
+    
+    <button onclick="testSaveRecord()">📝 今の学習結果を保存する（テスト）</button>
+    <button onclick="testDownloadCSV()">📊 自分の過去の記録をCSVでダウンロード</button>
+    <br><br>
+    <button onclick="logout()">🚪 ログアウト</button>
+  </div>
 
   <script>
-    // --------------------------------------------------------
-    // 【重要】アプリ内のどこからでもユーザー情報を呼び出せる関数
-    // --------------------------------------------------------
+    // =========================================================
+    // 【設定項目】新しいアプリを作る時は、ここだけ変更する！
+    // =========================================================
+    
+    // ① 汎用化されたGASウェブアプリのURL
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyqLinjsDrAWX8SZo5zHYMf1gwLKC4jKqL_ru-6xVrb2NssHw6T8MfsTL1V7XO53I05/exec";
+    
+    // ② このアプリの保存先シート名（GASが自動で作成・追記します）
+    const APP_SHEET_NAME = "Speech_App_Results_01"; 
+
+    // =========================================================
+    // 基本システム：ユーザー情報・画面制御・ログアウト
+    // =========================================================
+    
+    // ページ読み込み時にログイン状態をチェック
+    window.onload = () => {
+      const user = getUserInfo();
+      if (user) showAppContent(user);
+    };
+
     function getUserInfo() {
       const storedData = localStorage.getItem('app_user_data');
-      if (storedData) {
-        return JSON.parse(storedData); // JSON文字列をオブジェクトに戻して返す
-      }
-      return null; // ログインしていない場合はnull
+      return storedData ? JSON.parse(storedData) : null;
     }
 
-    // --------------------------------------------------------
-    // 認証処理
-    // --------------------------------------------------------
+    function showAppContent(user) {
+      document.getElementById('login_section').style.display = 'none';
+      document.getElementById('app_content').style.display = 'block';
+      document.getElementById('message').innerText = `ログイン中: ${user.account}`;
+    }
+
+    function logout() {
+      localStorage.removeItem('app_user_data');
+      location.reload(); // 画面をリロードしてログイン画面に戻す
+    }
+
+    // =========================================================
+    // API通信 ①：ログイン処理（GASの `action: "login"` を呼び出す）
+    // =========================================================
     function handleCredentialResponse(response) {
       const idToken = response.credential;
-      // あなたのGASウェブアプリのURLに変更してください
-      const gasApiUrl = "https://script.google.com/macros/s/AKfycbyqLinjsDrAWX8SZo5zHYMf1gwLKC4jKqL_ru-6xVrb2NssHw6T8MfsTL1V7XO53I05/exec";
-
       document.getElementById('message').innerText = "認証情報を確認しています...";
 
-      fetch(gasApiUrl, {
+      fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ idToken: idToken })
+        // ★修正点：actionラベルを追加
+        body: JSON.stringify({ action: "login", idToken: idToken }) 
       })
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          const user = data.user;
-          
-          // ★ここでブラウザ(localStorage)にユーザーの全データを保存する
-          localStorage.setItem('app_user_data', JSON.stringify(user));
-
-          // 画面表示
-          document.getElementById('message').innerText = 
-            `ようこそ、${user.username} さん！ (ID: ${user.id}, 権限: ${user.role})`;
-            
+          localStorage.setItem('app_user_data', JSON.stringify(data.user));
+          showAppContent(data.user);
         } else {
           document.getElementById('message').innerText = `エラー: ${data.message}`;
         }
@@ -69,19 +104,121 @@
       });
     }
 
-    // --------------------------------------------------------
-    // アプリ側から呼び出すテスト関数（使い方）
-    // --------------------------------------------------------
-    function testAppFunction() {
-      const currentUser = getUserInfo(); // 保存されたデータを呼び出し
+    // =========================================================
+    // API通信 ②：データ保存処理（リトライ機能付き）
+    // =========================================================
+    
+    // 学習アプリ側から呼ぶためのメイン関数
+    async function testSaveRecord() {
+      const user = getUserInfo();
+      if (!user) return alert("ログインが必要です");
+
+      // アプリごとに好きなデータをオブジェクトで定義する（GASが勝手に解釈します）
+      const recordData = {
+        account: user.account, // 誰の記録か特定するために必須
+        date: new Date().toLocaleString(),
+        score: Math.floor(Math.random() * 100), // テスト用ランダムスコア
+        study_time: "10:30",
+        memo: "発音練習"
+      };
+
+      document.getElementById('message').innerText = "保存中...";
       
-      if (currentUser) {
-        // スプレッドシートの見出し名（キー）で自由にデータを取り出せます
-        console.log("取り出したユーザー情報:", currentUser);
-        alert(`現在のログインユーザーのIDは ${currentUser.id} です。\n（その他の任意項目もConsoleで確認できます）`);
+      const payload = {
+        action: "save",
+        sheetName: APP_SHEET_NAME,
+        record: recordData
+      };
+
+      // 30の壁対策：失敗しても最大3回まで自動で再送信する
+      const success = await fetchWithRetry(GAS_API_URL, payload, 3);
+      if (success) {
+        document.getElementById('message').innerText = "✅ 保存完了しました！";
       } else {
-        alert("まだログインしていません。");
+        document.getElementById('message').innerText = "❌ サーバーが混み合っています。後で再試行してください。";
       }
+    }
+
+    // 賢いfetch通信（Exponential Backoff ＝ エラー時に少し待って再送する関数）
+    async function fetchWithRetry(url, payload, retries) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (data.status === "success") return true;
+        } catch (error) {
+          console.warn(`送信失敗 (${i+1}/${retries})`, error);
+        }
+        // 失敗したら、1秒待ってからもう一度ループを回す
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
+      }
+      return false; // 指定回数やってもダメだった場合
+    }
+
+    // =========================================================
+    // API通信 ③：CSVダウンロード処理
+    // =========================================================
+    function testDownloadCSV() {
+      const user = getUserInfo();
+      if (!user) return;
+
+      document.getElementById('message').innerText = "データ取得中...";
+
+      const payload = {
+        action: "get_csv_data",
+        sheetName: APP_SHEET_NAME,
+        userEmail: user.account // 自分のアカウントのデータだけを要求
+      };
+
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success" && data.data.length > 0) {
+          generateAndDownloadCSV(data.data);
+          document.getElementById('message').innerText = "✅ CSVのダウンロードを開始しました。";
+        } else {
+          document.getElementById('message').innerText = "記録が見つかりませんでした。";
+        }
+      })
+      .catch(error => console.error("CSV取得エラー:", error));
+    }
+
+    // JSON配列をCSVファイルに変換してダウンロードさせる関数
+    function generateAndDownloadCSV(dataArray) {
+      // 見出し（ヘッダー）を抽出
+      const headers = Object.keys(dataArray[0]);
+      
+      // データ行をCSV形式の文字列に変換
+      const csvRows = [];
+      csvRows.push(headers.join(',')); // 1行目
+      
+      dataArray.forEach(row => {
+        const values = headers.map(header => `"${row[header] || ''}"`); // カンマ等の誤作動を防ぐためダブルクォーテーションで囲む
+        csvRows.push(values.join(','));
+      });
+      
+      const csvString = csvRows.join('\n');
+      
+      // 文字化け対策（BOMを付与してExcelで開けるようにする）
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
+      
+      // ダウンロード用の見えないリンクを作ってクリックさせる
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${APP_SHEET_NAME}_${new Date().getTime()}.csv`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
