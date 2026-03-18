@@ -108,7 +108,7 @@
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
     function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
-    // ユーザー・PIN認証・ホーム・インベントリ関連は変更なし（省略）
+    // ユーザー・PIN認証・ホーム・インベントリ関連
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
@@ -288,6 +288,10 @@
       const feedback = document.getElementById('quiz-feedback');
       if (isCorrect) feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
       else feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>❌ ざんねん...</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
+      
+      // ↓↓↓ 問題の箇所を修正しました ↓↓↓
+      document.getElementById('quiz-next-btn').disabled = false;
+      
       document.getElementById('quiz-next-btn').style.display = "block";
     }
 
