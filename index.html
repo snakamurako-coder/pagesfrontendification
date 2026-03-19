@@ -39,7 +39,7 @@
     .item-title { font-size: 20px; font-weight: bold; color: #fff; margin: 0 0 5px 0; }
     .footer { position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; font-size: 12px; color: #666; }
 
-    /* 独自キーボード用のCSS（サイズ自動調整・伸縮対応） */
+    /* 独自キーボード用のCSS */
     .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
     .key-row { display: flex; justify-content: center; gap: 4px; }
     .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
@@ -139,7 +139,6 @@
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
     function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
-    // ユーザー・PIN認証・ホーム・インベントリ関連
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
@@ -175,7 +174,6 @@
     }
     function showHistory() { switchSection('section-history'); const user = JSON.parse(localStorage.getItem('app_kid_user')); const hist = user.historyJson || {}; const c = document.getElementById('history-container'); c.innerHTML = ""; let hasData = false; for(let unitKey in hist) { hasData = true; const div = document.createElement('div'); div.className = "item-card"; div.innerHTML = `<h3 class="item-title" style="color:#2196F3;">📁 ${unitKey}</h3>`; let weakCount = 0; let totalQ = 0; for(let qId in hist[unitKey]) { totalQ++; if(checkIsNigate(hist[unitKey][qId])) weakCount++; } div.innerHTML += `<p>取り組んだ問題数：${totalQ} 問</p><p>🔥 ニガテな問題：<span style="color:#e50914;font-weight:bold;">${weakCount}</span> 問</p>`; c.appendChild(div); } if(!hasData) c.innerHTML = "<p>まだ学習のきろくがありません。</p>"; }
 
-    // --- クイズ準備 ---
     function loadMaterials() { switchSection('section-materials'); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success"){ const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { currentModeId=m.modeId; currentModeName=m.modeName; currentUnitName=u; openSettingsScreen(); }; c.appendChild(b); }); }); } }); }
     
     function openSettingsScreen() {
@@ -193,20 +191,51 @@
       aSelect.innerHTML = "";
       if (format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en") {
         if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
-        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
+        aSelect.innerHTML += `<option value="typing" selected>タイ চিন্তンク（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
       } else if (format === "en_to_ja" || format === "en_audio_to_ja") {
         aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`;
       }
     }
 
-    // --- 【アップデート】独自キーボードの実装（記号列追加・5段構成） ---
-    let isShift = false;
+    // --- 【アップデート】ソフトウェアキーボードのシフト状態管理（3段階切替） ---
+    let shiftMode = 0; // 0: オフ, 1: 1回のみ, 2: CapsLock状態
+    let isShiftHoldMode = false; // 2秒以上長押しの継続中フラグ
+    let shiftPressStartTime = 0;
+    let shiftTimer1s = null;
+    let shiftTimer2s = null;
+
+    // キーボードの表示を状態に合わせて更新する関数（全体再描画を防ぐため）
+    function updateKeyboardDisplay() {
+      const isUpper = shiftMode > 0 || isShiftHoldMode;
+      const shiftBtn = document.getElementById('shift-btn');
+      
+      if (shiftBtn) {
+        if (shiftMode === 2) {
+          shiftBtn.innerText = '⇪';
+          shiftBtn.style.background = '#FF9800'; // CapsLockはオレンジ
+        } else if (shiftMode === 1 || isShiftHoldMode) {
+          shiftBtn.innerText = '⇧';
+          shiftBtn.style.background = '#e50914'; // 1回押し・長押し中は赤
+        } else {
+          shiftBtn.innerText = '⇧';
+          shiftBtn.style.background = '#444'; // 通常はグレー
+        }
+      }
+
+      // 文字キーの大文字/小文字を更新
+      document.querySelectorAll('.key-char').forEach(btn => {
+        const baseChar = btn.getAttribute('data-char');
+        if (/[a-z]/.test(baseChar)) {
+          btn.innerText = isUpper ? baseChar.toUpperCase() : baseChar;
+        }
+      });
+    }
+
     function renderCustomKeyboard() {
       const container = document.getElementById('keyboard-container');
       if(!container) return;
       container.innerHTML = "";
       
-      // 一番上の列に記号を追加
       const rows = [
         ['!', '"', '$', '%', '&', "'", '(', ')', '-', '¥'],
         ['q','w','e','r','t','y','u','i','o','p'],
@@ -221,31 +250,101 @@
         const rowDiv = document.createElement('div');
         rowDiv.className = 'key-row';
         
-        // 4段目（zの行）の左端にShiftキー
+        // 左端のShiftキー
         if(rIdx === 3) {
           const shiftBtn = document.createElement('button');
           shiftBtn.className = 'key key-wide';
-          shiftBtn.innerText = '⇧';
-          shiftBtn.style.background = isShift ? '#e50914' : '#444';
-          shiftBtn.onclick = () => { isShift = !isShift; renderCustomKeyboard(); };
+          shiftBtn.id = 'shift-btn';
+          shiftBtn.style.touchAction = 'none'; // ブラウザのスワイプ動作などを防止
+          
+          // ポインターイベントによる長押し判定
+          shiftBtn.onpointerdown = (e) => {
+            e.preventDefault(); 
+            if(e.button !== 0 && e.pointerType === 'mouse') return; // 左クリックのみ
+            if (shiftPressStartTime > 0) return;
+            
+            shiftPressStartTime = Date.now();
+            
+            // 1秒経過（CapsLock待機）の視覚フィードバック
+            shiftTimer1s = setTimeout(() => {
+              if (shiftBtn && !isShiftHoldMode) {
+                shiftBtn.style.background = '#FF9800'; 
+                shiftBtn.innerText = '⇪';
+              }
+            }, 1000);
+            
+            // 2秒経過（ホールドモードへ）
+            shiftTimer2s = setTimeout(() => {
+              isShiftHoldMode = true;
+              shiftMode = 0; // モード管理はホールド優先に切り替え
+              updateKeyboardDisplay();
+            }, 2000);
+          };
+          
+          const handlePointerUp = (e) => {
+            e.preventDefault();
+            if (shiftPressStartTime === 0) return;
+            
+            clearTimeout(shiftTimer1s);
+            clearTimeout(shiftTimer2s);
+            
+            const duration = Date.now() - shiftPressStartTime;
+            shiftPressStartTime = 0;
+            
+            if (isShiftHoldMode) {
+              // 2秒以上ホールドして離した場合は即解除
+              isShiftHoldMode = false;
+              shiftMode = 0;
+            } else if (duration >= 1000) {
+              // 1秒以上〜2秒未満で離した場合はCapsLock切り替え
+              shiftMode = (shiftMode === 2) ? 0 : 2;
+            } else if (duration > 0 && duration < 1000) {
+              // 1秒未満で離した場合は1文字だけ大文字モード
+              shiftMode = (shiftMode === 1 || shiftMode === 2) ? 0 : 1;
+            }
+            updateKeyboardDisplay();
+          };
+          
+          shiftBtn.onpointerup = handlePointerUp;
+          shiftBtn.onpointerleave = handlePointerUp;
+          shiftBtn.onpointercancel = handlePointerUp;
+          shiftBtn.oncontextmenu = (e) => { e.preventDefault(); return false; }; // スマホでの長押しメニュー防止
+          
           rowDiv.appendChild(shiftBtn);
         }
         
         // 文字キーの生成
         row.forEach(char => {
           const keyBtn = document.createElement('button');
-          keyBtn.className = 'key';
+          keyBtn.innerText = char;
           
-          let displayChar = char;
-          // Shift時の挙動（アルファベットのみ大文字へ）
-          if (/[a-z]/.test(char)) displayChar = isShift ? char.toUpperCase() : char;
+          if (/[a-z]/.test(char)) {
+            keyBtn.className = 'key key-char';
+            keyBtn.setAttribute('data-char', char);
+          } else {
+            keyBtn.className = 'key';
+          }
           
-          keyBtn.innerText = displayChar;
-          keyBtn.onclick = () => { document.getElementById('type-answer').value += displayChar; };
+          keyBtn.onclick = () => {
+            const isUpper = shiftMode > 0 || isShiftHoldMode;
+            let inputChar = char;
+            
+            if (/[a-z]/.test(char) && isUpper) {
+              inputChar = char.toUpperCase();
+            }
+            
+            document.getElementById('type-answer').value += inputChar;
+            
+            // 「1回押しモード(shiftMode=1)」の状態で文字を打ったらシフト解除
+            if (shiftMode === 1) {
+              shiftMode = 0;
+              updateKeyboardDisplay();
+            }
+          };
           rowDiv.appendChild(keyBtn);
         });
         
-        // 4段目（zの行）の右端にBackspaceキー
+        // 右端のBackspaceキー
         if(rIdx === 3) {
           const bsBtn = document.createElement('button');
           bsBtn.className = 'key key-wide';
@@ -280,6 +379,9 @@
       bottomRow.appendChild(enterBtn);
       board.appendChild(bottomRow);
       container.appendChild(board);
+      
+      // 初回表示時にシフトキーの見た目を更新しておく
+      updateKeyboardDisplay();
     }
 
     function startVoiceInput() {
@@ -367,7 +469,7 @@
         choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
       } 
       else if (answerType === "typing") { 
-        isShift = false;
+        shiftMode = 0; isShiftHoldMode = false;
         answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div>`; 
         renderCustomKeyboard();
       }
@@ -456,13 +558,12 @@
       });
     }
 
-    // --- 物理キーボードの入力検知（記号許容を追加） ---
+    // 物理キーボードの入力検知（物理的なShiftキーはブラウザが自動で大文字にしてくれるので、e.keyをそのまま使います）
     document.addEventListener('keydown', (e) => {
       const answerInput = document.getElementById('type-answer');
       const quizSection = document.getElementById('section-quiz');
       if (!answerInput || !quizSection.classList.contains('active')) return;
 
-      // 予測変換を止める（半角の印字可能文字全体を許容）
       if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key))) {
         e.preventDefault(); 
       }
@@ -477,11 +578,7 @@
       else if (e.key === ' ') {
         answerInput.value += ' ';
       } 
-      else if (e.key === 'Shift') {
-        isShift = !isShift;
-        renderCustomKeyboard();
-      } 
-      // 半角の印字可能文字と ¥ 記号を許可
+      // 物理キーボードの場合は、すでにe.keyに大文字・小文字が判定された状態で入ってくるため、そのまま追加
       else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) {
         answerInput.value += e.key;
       }
