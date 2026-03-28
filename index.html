@@ -58,10 +58,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;"><h2 id="welcome-message" style="margin: 0;"></h2><button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button></div>
     <div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;"><p style="margin:0; font-size:18px;">げんざいのポイント</p><div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div></div>
     
-    <div id="home-route-area" style="display:none;">
+    <div id="home-route-area" style="display:none; text-align: center;">
         <h3 style="color: #9C27B0; margin-bottom: 5px;">🔥 今日の特訓ルート</h3>
         <div id="route-container" class="route-container"><p>よみこみ中...</p></div>
-        <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px;">次の内容に取り組む ▶</button>
+        <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: block; margin: 10px auto;">次の内容に取り組む ▶</button>
     </div>
     
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
@@ -88,15 +88,21 @@
   <div id="section-settings" class="section"><h2 id="settings-title">設定</h2>
     <div class="setting-group" style="border: 2px solid #FF9800; text-align:center;">
       <h3 style="color: #FF9800; text-align:center;">🔥 学習モード</h3>
-      <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
+      <select id="setting-play-mode" class="large-select" onchange="updateMaxPointsDisplay()"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
     </div>
     <div class="setting-group"><h3>1. もんだいの形式</h3><select id="setting-format" class="large-select" onchange="updateAnswerTypeUI()"></select></div>
-    <div class="setting-group"><h3>2. こたえ方</h3><select id="setting-answer-type" class="large-select"></select></div>
-    <div class="setting-group"><h3>3. 出し方</h3>
-      <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
+    <div class="setting-group"><h3>2. こたえ方</h3><select id="setting-answer-type" class="large-select" onchange="toggleBlankSetting()"></select></div>
+    <div class="setting-group"><h3>3. 出し方 <span class="bonus-badge" id="random-bonus-badge" style="display:none;">ボーナス +10%</span></h3>
+      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none'; updateMaxPointsDisplay();">
+        <option value="normal">順番どおり</option><option value="random">ランダム</option>
+      </select>
+    </div>
+    <div id="setting-group-blanks" class="setting-group" style="display:none; border: 2px solid #2196F3;">
+      <h3 style="color:#2196F3;">4. 隠す文字数（難易度）</h3><select id="setting-blank-count" class="large-select" onchange="updateMaxPointsDisplay()"></select>
     </div>
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
-    <button class="cancel-btn" style="margin-top:10px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">やめる</button>
+    <div id="max-points-display" style="background: rgba(255, 215, 0, 0.1); border: 2px dashed gold; color: gold; font-size: 20px; font-weight: bold; margin: 15px auto; padding: 15px; max-width: 350px; border-radius: 10px; line-height: 1.5;"></div>
+    <button class="cancel-btn" style="margin-top:10px;" onclick="switchSection('section-materials')">もどる</button>
   </div>
   
   <div id="section-quiz" class="section">
@@ -106,7 +112,14 @@
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
     <div id="quiz-q-text">もんだい文</div>
+    <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
     <div id="quiz-answer-area"></div>
+    <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
+      <button id="hint-btn-1" onclick="useHint(1)" class="hint-btn">💡 イニシャルを見る</button>
+      <button id="hint-btn-2" onclick="useHint(2)" class="hint-btn">💡 イニシャルと文字数を見る</button>
+      <button id="hint-btn-3" onclick="useHint(3)" class="hint-btn">🔊 答えを読み上げる</button>
+      <div id="hint-display-text" style="color: #FFEB3B; font-size: 24px; font-weight: bold; background: #333; padding: 10px; border-radius: 8px; width: 90%; margin-top:10px; display:none; letter-spacing: 5px;"></div>
+    </div>
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
@@ -116,6 +129,7 @@
     <div id="result-content" class="item-card" style="text-align:center;"></div>
     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
       <button onclick="prepareQuiz()" id="result-retry-btn" class="submit-btn btn-orange" style="display:none; width: 90%; max-width: 350px; margin:0;">🔄 もう一度やる</button>
+      <button onclick="openSettingsScreen()" id="result-settings-btn" class="submit-btn btn-blue" style="display:none; width: 90%; max-width: 350px; margin:0;">⚙️ 同じ設定で学習する</button>
       <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" class="submit-btn btn-gray" style="display:none; width: 90%; max-width: 350px; margin:0;">🏠 ホームにもどる</button>
     </div>
   </div>
@@ -123,14 +137,16 @@
   <div class="footer">Kojiro Nakamura all rights reserved</div>
 
   <script>
-    // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxHxasp5b3K6P-kjCnakTZFjZBJdKUaAV_dcA2mBU9vhAvHPn8N8hBsAFDSMutP4PmbXw/exec";
+    // ▼ GASのURLを貼り付けてください ▼
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgw2ctBV65aLjPzIirA6ftPzzANpXjOaHp6t6z-n9XR_Pp6fCreZ8-LVK_L7IcbWof/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
     let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
     let quizResults = []; let questionStartTime = 0; let currentIsReviewMode = false;
     let userInventoryData = []; let showAllInventory = false;
+    let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; 
+    let fillBlanksData = []; let activeFillBlankIndex = 0; let currentMultiplierFetchId = 0; 
     
     // ★ 特訓ルート用の変数
     let dailyRouteData = []; 
@@ -138,13 +154,24 @@
     let currentTrainingStepIndex = null;
     let isTrainingMode = false;
 
-    window.onload = () => { 
-        const saved = localStorage.getItem('app_kid_user'); 
-        if (saved) showHome(JSON.parse(saved)); 
-        else fetchUsers(); 
-    };
+    const normalizeText = (text) => text.toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
+    // 音声周りの初期化
+    let recognition = null; if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; recognition = new SpeechRecognition(); recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = false; }
+    let preferredVoice = null; function loadVoices() { const voices = window.speechSynthesis.getVoices(); if (voices.length === 0) return; const englishVoices = voices.filter(v => v.lang.startsWith('en')); if (englishVoices.length > 0) { const premiumKeywords = ['google us english', 'enhanced', 'premium', 'samantha', 'alex']; for (const keyword of premiumKeywords) { const match = englishVoices.find(v => v.name.toLowerCase().includes(keyword)); if (match) { preferredVoice = match; break; } } if (!preferredVoice) preferredVoice = englishVoices[0]; } }
+    if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+    function speakText(text, rate = 0.9, lang = 'en-US') { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.lang = lang; uttr.rate = rate; if (lang.startsWith('en') && preferredVoice) uttr.voice = preferredVoice; window.speechSynthesis.speak(uttr); } }
+
+    function getSettingValue(key, defaultVal) { return appSettings[key] !== undefined ? Number(appSettings[key]) : defaultVal; }
+
+    function getDetailedUnitId() { 
+      if(isTrainingMode) return "Training_" + currentUnitName;
+      const format = document.getElementById('setting-format').value; const ansType = document.getElementById('setting-answer-type').value; let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; if (ansType.startsWith("fill_")) { const blankCount = document.getElementById('setting-blank-count').value; unitId += `_${blankCount}blanks`; } return unitId; 
+    }
+
+    window.onload = () => { fetchAppSettings(); const saved = localStorage.getItem('app_kid_user'); if (saved) { showHome(JSON.parse(saved)); } else fetchUsers(); };
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
+    function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
@@ -164,6 +191,7 @@
       switchSection('section-home'); 
       document.getElementById('header-user-info').innerText = `ID: ${user.id} / ${user.name}`; document.getElementById('global-header').style.display = 'block';
       document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; 
+      isTrainingMode = false;
       
       // 特訓ルートを取得して表示
       fetchTrainingRoute(user.id);
@@ -234,46 +262,90 @@
             }
         });
 
-        // 「次の内容に取り組む」ボタンの制御
         const nextBtn = document.getElementById('next-route-btn');
         if (!nextAvailableFound) {
-            nextBtn.style.display = 'none'; // 全てクリア済み
+            nextBtn.style.display = 'none'; 
         } else {
             nextBtn.style.display = 'block';
         }
     }
 
-    // 「次の内容に取り組む」ボタンを押したとき
     function startNextRoute() {
-        // 未クリアで一番上にあるものを探す
         const nextRoute = dailyRouteData.find(r => !currentProgressData[r.stepIndex]);
         if (nextRoute) {
             startRouteStep(nextRoute);
         }
     }
 
-    // 指定されたルートステップを開始する準備
+    // ====== 特訓ルートの問題を取得してクイズを開始 ======
     function startRouteStep(route) {
-        document.getElementById('route-container').innerHTML = "<p>問題データを準備中...</p>";
-        
-        // （※簡易版：本来はここで単元の問題をGASから取得しますが、
-        // 　今回はモックデータで「クイズ画面」への遷移をシミュレートします。
-        // 　実際の運用時は `get_questions` を呼び出して設定を反映させます。）
+        document.getElementById('route-container').innerHTML = "<p>問題データを準備中... ⏳</p>";
         
         isTrainingMode = true;
         currentTrainingStepIndex = route.stepIndex;
         currentUnitName = route.unitName;
+        currentModeName = "特訓ルート"; // 記録用
+
+        fetch(GAS_API_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: "get_questions", modeId: "", unitName: route.unitName }) 
+        })
+        .then(r => r.json())
+        .then(d => {
+            if(d.status === "success") {
+                currentQuestions = d.questions;
+                
+                document.getElementById('setting-format').value = route.qFormat;
+                document.getElementById('setting-answer-type').value = route.aFormat;
+                document.getElementById('setting-order').value = route.order;
+                
+                const blankSelect = document.getElementById('setting-blank-count');
+                if (route.aFormat.startsWith('fill_') && blankSelect) {
+                    blankSelect.value = "1";
+                }
+
+                updateAnswerTypeUI(); 
+                
+                if (typeof prepareQuiz === "function") {
+                    prepareQuiz(); 
+                } else {
+                    alert("クイズの開始処理が見つかりません。");
+                }
+                
+                renderTrainingRoute();
+            } else {
+                alert("問題の取得に失敗しました。単元名が間違っているかもしれません。");
+                renderTrainingRoute();
+            }
+        }).catch(e => {
+            alert("通信エラーが発生しました。");
+            renderTrainingRoute();
+        });
+    }
+
+    // ====== クイズクリア時に特訓ルートの進捗を保存する ======
+    function completeTrainingRouteStep() {
+        if (!isTrainingMode || !currentTrainingStepIndex) return;
         
-        // 本来は問題を取得して prepareQuiz() へ進む
-        alert(`【${route.unitName}】を開始します！\n(※ここに問題読み込みとクイズ画面への遷移処理が入ります)`);
+        const user = JSON.parse(localStorage.getItem('app_kid_user'));
         
-        // ※デモ用：無理やりクリアしたことにして再描画
-        // currentProgressData[route.stepIndex] = true;
-        // renderTrainingRoute();
+        fetch(GAS_API_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                action: "update_route_progress", 
+                userId: user.id, 
+                stepIndex: currentTrainingStepIndex 
+            }) 
+        }).then(r=>r.json()).then(d=>{
+            if(d.status === "success") {
+                currentProgressData[currentTrainingStepIndex] = true;
+                renderTrainingRoute();
+            }
+        }).catch(e => console.error("進捗の保存に失敗しました", e));
     }
 
 
-    // ====== 景品・もちものバグ修正（クリックイベントの復元） ======
+    // ====== 景品・もちもの ======
     function loadRewards(btn) { 
         const origText = toggleBtnLoading(btn, true); 
         document.getElementById('rewards-container').innerHTML = "<p>よみこみ中...</p>"; 
@@ -391,9 +463,65 @@
       });
     }
 
-    // （いつもの学習のロード関連）
+    // ====== いつもの学習のロード関連 ======
     function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
-    function loadQuestionsForSettings(btn, mId, mName, uName) { const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; switchSection('section-settings'); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadQuestionsForSettings(btn, mId, mName, uName) { const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; openSettingsScreen(); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+
+    function openSettingsScreen() {
+      switchSection('section-settings'); 
+      document.getElementById('settings-title').innerText = isTrainingMode ? `🔥 ${currentUnitName}` : `【${currentModeName}】${currentUnitName}`;
+      const fSelect = document.getElementById('setting-format');
+      fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`;
+      if (!isTrainingMode && !currentModeName.includes("単語")) { fSelect.innerHTML += `<option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`; }
+      updateAnswerTypeUI();
+    }
+
+    function updateAnswerTypeUI() {
+      const format = document.getElementById('setting-format').value; const aSelect = document.getElementById('setting-answer-type'); aSelect.innerHTML = "";
+      if (format === "ja_to_en") { aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option><option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option><option value="fill_4choice">🔠 穴埋め（４択）</option><option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`; } 
+      else if (format.includes("qtext") || format.includes("qaudio")) { if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`; aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`; } 
+      else { aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`; }
+      toggleBlankSetting();
+    }
+
+    function toggleBlankSetting() { const aSelect = document.getElementById('setting-answer-type').value; const blankGroup = document.getElementById('setting-group-blanks'); const blankSelect = document.getElementById('setting-blank-count'); if (aSelect.startsWith('fill_')) { let maxLen = 0; currentQuestions.forEach(q => { let word = (q["英単語"] || q["英文"] || "").trim(); if(word.length > maxLen) maxLen = word.length; }); let maxBlanks = maxLen > 1 ? maxLen - 1 : 1; blankSelect.innerHTML = ""; for(let i = 1; i <= maxBlanks; i++) { blankSelect.innerHTML += `<option value="${i}">${i} 文字 かくす</option>`; } blankGroup.style.display = "block"; } else { blankGroup.style.display = "none"; } updateMaxPointsDisplay(); }
+
+    function calculateBasePoint(ansType, isWordForm, format) {
+      if (ansType.startsWith("fill_")) { return getSettingValue("基本ポイント_穴埋め", 5) + (parseInt(document.getElementById('setting-blank-count').value) || 1); } 
+      else if (ansType === "4choice") { return getSettingValue("基本ポイント_4択", 3); } 
+      else if (ansType === "typing") { return getSettingValue("基本ポイント_タイピング", 20); }
+      else if (ansType === "voice") { return getSettingValue("基本ポイント_音声", 20); }
+      return 2;
+    }
+
+    function updateMaxPointsDisplay() {
+      if (!currentQuestions || currentQuestions.length === 0) return;
+      let isReview = document.getElementById('setting-play-mode').value === 'review'; let order = document.getElementById('setting-order').value; let ansType = document.getElementById('setting-answer-type').value; let format = document.getElementById('setting-format').value; 
+      
+      let tempQuestions = [...currentQuestions];
+      if (ansType.startsWith("fill_")) { let numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1; tempQuestions = tempQuestions.filter(q => { let w = (q["英単語"] || q["英文"] || "").trim(); return w.length > numBlanks; }); }
+      
+      // 途切れていた箇所の復元
+      let qCount = tempQuestions.length; let basePoint = calculateBasePoint(ansType, true, format);
+      let maxPoints = qCount * basePoint;
+      if (isReview && qCount > 0) maxPoints = Math.floor(maxPoints * 1.4); 
+      if (order === 'random' && qCount > 0) maxPoints = Math.floor(maxPoints * 1.1); 
+      
+      const displayElem = document.getElementById('max-points-display');
+      if(displayElem) displayElem.innerHTML = "この学習の最大獲得ポイント: " + maxPoints + " Pt";
+    }
+
+    // =========================================================================
+    // ！！！ここから下は、以前のファイルの続き（クイズ実行の処理など）をそのまま残してください！！！
+    //
+    // function prepareQuiz() { ... }
+    // function showQuestion() { ... }
+    // function checkAnswer(ans) { ... }
+    // function showResult() { 
+    //     ... 既存の処理 ...
+    //     completeTrainingRouteStep();  // ←★リザルト画面表示時にこれを呼び出すように追加してください
+    // }
+    // =========================================================================
 
   </script>
 </body>
