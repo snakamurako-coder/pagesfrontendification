@@ -44,7 +44,7 @@
 
     #global-header { display: none; position: absolute; top: 10px; left: 15px; font-size: 14px; color: #aaa; z-index: 100; font-weight: bold; }
 
-    /* キーボード用のCSS */
+    /* キーボード・穴埋め用のCSS */
     .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
     .key-row { display: flex; justify-content: center; gap: 4px; }
     .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
@@ -53,8 +53,6 @@
     .key-action { background: #2196F3; flex: 2; box-shadow: 0 4px #0d47a1; }
     .key-action:active { box-shadow: 0 0 #0d47a1; }
     .key-action:disabled { background: #555; box-shadow: 0 4px #333; color:#888; cursor:not-allowed;}
-
-    /* ★ 穴埋め用のCSS */
     .word-blank-container { font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; word-break: break-all; }
     .blank-box { display: inline-block; min-width: 35px; min-height: 45px; border-bottom: 4px solid #888; text-align: center; margin: 0 4px; color: #FF9800; cursor: pointer; vertical-align: bottom; }
     .blank-box.active { border-bottom: 4px solid #e50914; background: rgba(229, 9, 20, 0.2); border-radius: 4px 4px 0 0; }
@@ -80,7 +78,7 @@
   <div id="section-settings" class="section"><h2 id="settings-title">設定</h2>
     <div class="setting-group" style="border: 2px solid #FF9800; text-align:center;">
       <h3 style="color: #FF9800; text-align:center;">🔥 学習モード</h3>
-      <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
+      <select id="setting-play-mode" class="large-select" onchange="updateMaxPointsDisplay()"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
     </div>
     <div class="setting-group">
       <h3>1. もんだいの形式</h3>
@@ -92,18 +90,21 @@
     </div>
     <div class="setting-group">
       <h3>3. 出し方 <span class="bonus-badge" id="random-bonus-badge" style="display:none;">ボーナス +10%</span></h3>
-      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none';">
+      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none'; updateMaxPointsDisplay();">
         <option value="normal">順番どおり</option><option value="random">ランダム</option>
       </select>
     </div>
 
     <div id="setting-group-blanks" class="setting-group" style="display:none; border: 2px solid #2196F3;">
       <h3 style="color:#2196F3;">4. 隠す文字数（難易度）</h3>
-      <select id="setting-blank-count" class="large-select"></select>
+      <select id="setting-blank-count" class="large-select" onchange="updateMaxPointsDisplay()"></select>
     </div>
 
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
-    <button class="cancel-btn" style="margin-top:20px;" onclick="switchSection('section-materials')">もどる</button>
+    
+    <div id="max-points-display" style="background: rgba(255, 215, 0, 0.1); border: 2px dashed gold; color: gold; font-size: 20px; font-weight: bold; margin: 15px auto; padding: 15px; max-width: 350px; border-radius: 10px; line-height: 1.5;"></div>
+
+    <button class="cancel-btn" style="margin-top:10px;" onclick="switchSection('section-materials')">もどる</button>
   </div>
   
   <div id="section-quiz" class="section">
@@ -112,20 +113,15 @@
       <h3 id="quiz-progress" style="color: #aaa; margin:0; font-size:16px;">第 1 問</h3>
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
-    
     <div id="quiz-q-text">もんだい文</div>
-    
     <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
-
     <div id="quiz-answer-area"></div>
-    
     <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
       <button id="hint-btn-1" onclick="useHint(1, 5)" class="hint-btn">💡 イニシャルを見る（-5 Pt）</button>
       <button id="hint-btn-2" onclick="useHint(2, 7)" class="hint-btn">💡 イニシャルと文字数を見る（-7 Pt）</button>
       <button id="hint-btn-3" onclick="useHint(3, 10)" class="hint-btn">🔊 答えを読み上げる（-10 Pt）</button>
       <div id="hint-display-text" style="color: #FFEB3B; font-size: 24px; font-weight: bold; background: #333; padding: 10px; border-radius: 8px; width: 90%; margin-top:10px; display:none; letter-spacing: 5px;"></div>
     </div>
-    
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
@@ -144,7 +140,7 @@
 
   <script>
     // ▼ ここにGASのURLを貼り付けてください ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyXqyKEaqgDOV588VcM-VMjYFpVY6EyJ8zY43iFaRu0JFc0GaT8J4axfrzACmymB63qQw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/ここにあなたのURLを入れる/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -153,8 +149,10 @@
     let userInventoryData = []; let showAllInventory = false;
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; 
     
-    let fillBlanksData = []; 
-    let activeFillBlankIndex = 0;
+    let fillBlanksData = []; let activeFillBlankIndex = 0;
+    
+    // ★ 連続通信を制御するためのID
+    let currentMultiplierFetchId = 0; 
 
     const normalizeText = (text) => text.toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
@@ -165,48 +163,12 @@
       recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = false;
     }
     let preferredVoice = null;
-    function loadVoices() {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) return;
-      const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-      if (englishVoices.length > 0) {
-        const premiumKeywords = ['google us english', 'enhanced', 'premium', 'samantha', 'alex'];
-        for (const keyword of premiumKeywords) { const match = englishVoices.find(v => v.name.toLowerCase().includes(keyword)); if (match) { preferredVoice = match; break; } }
-        if (!preferredVoice) preferredVoice = englishVoices[0];
-      }
-    }
+    function loadVoices() { const voices = window.speechSynthesis.getVoices(); if (voices.length === 0) return; const englishVoices = voices.filter(v => v.lang.startsWith('en')); if (englishVoices.length > 0) { const premiumKeywords = ['google us english', 'enhanced', 'premium', 'samantha', 'alex']; for (const keyword of premiumKeywords) { const match = englishVoices.find(v => v.name.toLowerCase().includes(keyword)); if (match) { preferredVoice = match; break; } } if (!preferredVoice) preferredVoice = englishVoices[0]; } }
     if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+    function speakText(text, rate = 0.9, lang = 'en-US') { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.lang = lang; uttr.rate = rate; if (lang.startsWith('en') && preferredVoice) uttr.voice = preferredVoice; window.speechSynthesis.speak(uttr); } }
     
-    // ★ 変更点① TTSの日本語対応（lang引数を追加）
-    function speakText(text, rate = 0.9, lang = 'en-US') {
-      if ('speechSynthesis' in window) { 
-        window.speechSynthesis.cancel(); 
-        const uttr = new SpeechSynthesisUtterance(text); 
-        uttr.lang = lang; 
-        uttr.rate = rate; 
-        if (lang.startsWith('en') && preferredVoice) uttr.voice = preferredVoice; 
-        window.speechSynthesis.speak(uttr); 
-      }
-    }
-    
-    function getDetailedUnitId() { 
-      const format = document.getElementById('setting-format').value; 
-      const ansType = document.getElementById('setting-answer-type').value; 
-      let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; 
-      if (ansType.startsWith("fill_")) {
-        const blankCount = document.getElementById('setting-blank-count').value;
-        unitId += `_${blankCount}blanks`;
-      }
-      return unitId; 
-    }
-
-    function formatHistoryName(key) { 
-      const m = { "_ja_to_en": " [日➔英", "_en_to_ja": " [英➔日", "_qtext_to_en": " [疑問文➔英", "_qaudio_to_en": " [音声➔英", "_en_audio_to_ja": " [音声➔日", "_4choice": " / ４択]", "_typing": " / タイピング]", "_voice": " / マイク]", "_fill_4choice": " / 穴埋め４択]", "_fill_typing": " / 穴埋めタイピング]" }; 
-      let res = key; 
-      for(let k in m) res = res.replace(k, m[k]); 
-      res = res.replace(/\]_(\d+)blanks/, " / $1文字隠し]");
-      return res.replace(/_/g, " "); 
-    }
+    function getDetailedUnitId() { const format = document.getElementById('setting-format').value; const ansType = document.getElementById('setting-answer-type').value; let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; if (ansType.startsWith("fill_")) { const blankCount = document.getElementById('setting-blank-count').value; unitId += `_${blankCount}blanks`; } return unitId; }
+    function formatHistoryName(key) { const m = { "_ja_to_en": " [日➔英", "_en_to_ja": " [英➔日", "_qtext_to_en": " [疑問文➔英", "_qaudio_to_en": " [音声➔英", "_en_audio_to_ja": " [音声➔日", "_4choice": " / ４択]", "_typing": " / タイピング]", "_voice": " / マイク]", "_fill_4choice": " / 穴埋め４択]", "_fill_typing": " / 穴埋めタイピング]" }; let res = key; for(let k in m) res = res.replace(k, m[k]); res = res.replace(/\]_(\d+)blanks/, " / $1文字隠し]"); return res.replace(/_/g, " "); }
     
     window.onload = () => { const saved = localStorage.getItem('app_kid_user'); if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); } else fetchUsers(); };
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
@@ -265,8 +227,7 @@
       .then(r=>r.json()).then(d=>{ 
         toggleBtnLoading(btn, false, origText);
         if(d.status==="success"){ 
-          currentQuestions = d.questions;
-          currentModeId = mId; currentModeName = mName; currentUnitName = uName; 
+          currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; 
           openSettingsScreen(); 
         } 
       }).catch(e => toggleBtnLoading(btn, false, origText));
@@ -288,13 +249,8 @@
       const isWord = currentModeName.includes("単語");
 
       if (format === "ja_to_en") {
-        aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
-        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option>`;
-        aSelect.innerHTML += `<option value="voice">🎙️ 音声入力（マイク）</option>`;
-        if (isWord) {
-          aSelect.innerHTML += `<option value="fill_4choice">🔠 穴埋め（４択）</option>`;
-          aSelect.innerHTML += `<option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`;
-        }
+        aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option><option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
+        if (isWord) { aSelect.innerHTML += `<option value="fill_4choice">🔠 穴埋め（４択）</option><option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`; }
       } else if (format === "qtext_to_en" || format === "qaudio_to_en") {
         if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
         aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
@@ -311,21 +267,113 @@
       
       if (aSelect.startsWith('fill_')) {
         let maxLen = 0;
-        currentQuestions.forEach(q => {
-          let word = (q["英単語"] || "").trim();
-          if(word.length > maxLen) maxLen = word.length;
-        });
-        
+        currentQuestions.forEach(q => { let word = (q["英単語"] || "").trim(); if(word.length > maxLen) maxLen = word.length; });
         let maxBlanks = maxLen > 1 ? maxLen - 1 : 1; 
-        
         blankSelect.innerHTML = "";
-        for(let i = 1; i <= maxBlanks; i++) {
-          blankSelect.innerHTML += `<option value="${i}">${i} 文字 かくす</option>`;
-        }
+        for(let i = 1; i <= maxBlanks; i++) { blankSelect.innerHTML += `<option value="${i}">${i} 文字 かくす</option>`; }
         blankGroup.style.display = "block";
       } else {
         blankGroup.style.display = "none";
       }
+      updateMaxPointsDisplay();
+    }
+
+    // ★ 改修：裏でGASと通信しつつ、表示を切り替える本格的なロジック
+    function updateMaxPointsDisplay() {
+      if (!currentQuestions || currentQuestions.length === 0) return;
+      
+      let isReview = document.getElementById('setting-play-mode').value === 'review';
+      let order = document.getElementById('setting-order').value; 
+      let ansType = document.getElementById('setting-answer-type').value;
+      let format = document.getElementById('setting-format').value; 
+      let isWord = currentModeName.includes("単語");
+      
+      let tempQuestions = [...currentQuestions];
+      
+      if (ansType.startsWith("fill_")) {
+        let numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+        tempQuestions = tempQuestions.filter(q => { let w = (q["英単語"] || q["英文"] || "").trim(); return w.length > numBlanks; });
+      }
+
+      if (isReview) {
+        let user = JSON.parse(localStorage.getItem('app_kid_user')); 
+        let unitKey = getDetailedUnitId(); 
+        let history = (user && user.historyJson) ? (user.historyJson[unitKey] || {}) : {};
+        tempQuestions = tempQuestions.filter(q => checkIsNigate(history[q["通し番号"]]));
+      }
+
+      let qCount = tempQuestions.length;
+      let basePoint = 0;
+      
+      if (ansType.startsWith("fill_")) {
+        let numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+        basePoint = 5 + numBlanks;
+      } else if (isWord) {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = 20;
+      } else {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
+      }
+      
+      let maxPoints = qCount * basePoint;
+      if (isReview && qCount > 0) maxPoints = Math.floor(maxPoints * 1.4); 
+      if (order === 'random' && qCount > 0) maxPoints = Math.floor(maxPoints * 1.1); 
+
+      let display = document.getElementById('max-points-display');
+      if (qCount === 0) {
+        if (isReview) display.innerHTML = `<span style="color:#F44336;">ニガテな問題がありません！</span>`;
+        else display.innerHTML = `<span style="color:#F44336;">出題できる問題がありません</span>`;
+        return;
+      }
+
+      // ① まずは画面に「計算中」のステータスとして基本の数値を表示（この間でもスタートボタンは押せます）
+      display.innerHTML = `全 ${qCount} 問<br>ぜんもん正解で 最大【 <span style="font-size:24px; color:#aaa;">計算中...</span> Pt 】ゲット！<br><span style="font-size:12px; color:#aaa;">※基本 ${maxPoints} Pt（回復状況を確認中）</span>`;
+
+      // ② 裏でGASに非同期通信を投げる
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      const unitId = getDetailedUnitId();
+      
+      // 連続で設定を変えた場合に、古い通信が最新の表示を上書きしないようIDで管理
+      const fetchId = ++currentMultiplierFetchId; 
+
+      fetch(GAS_API_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          action: "get_points_multiplier", 
+          userId: user.id, 
+          unitId: unitId 
+        }) 
+      })
+      .then(r => r.json())
+      .then(d => {
+        // もし別の設定が選ばれていてIDが変わっていたら、この結果は捨てる
+        if (fetchId !== currentMultiplierFetchId) return;
+
+        if (d.status === "success") {
+          // multiplier（倍率）を掛け算して最終的なポイントを出す
+          let multiplier = d.multiplier !== undefined ? parseFloat(d.multiplier) : 1.0;
+          let finalPoints = Math.floor(maxPoints * multiplier);
+          
+          let rateText = "";
+          if (multiplier < 1.0) {
+            rateText = `<br><span style="font-size:14px; color:#F44336;">⚠️ 連続プレイ減少中（倍率: ${Math.round(multiplier * 100)}%）</span>`;
+          } else if (multiplier > 1.0) {
+            rateText = `<br><span style="font-size:14px; color:#4CAF50;">✨ 久しぶりボーナス（倍率: ${Math.round(multiplier * 100)}%）</span>`;
+          } else {
+            rateText = `<br><span style="font-size:14px; color:#4CAF50;">✨ ポイント100% 回復済！</span>`;
+          }
+
+          display.innerHTML = `全 ${qCount} 問<br>ぜんもん正解で 最大【 <span style="font-size:28px;">${finalPoints}</span> Pt 】ゲット！${rateText}`;
+        } else {
+          // エラー時などは基本ポイントを表示
+          display.innerHTML = `全 ${qCount} 問<br>ぜんもん正解で 最大【 <span style="font-size:28px;">${maxPoints}</span> Pt 】ゲット！<br><span style="font-size:12px; color:#aaa;">(基本ポイント)</span>`;
+        }
+      })
+      .catch(e => {
+        if (fetchId !== currentMultiplierFetchId) return;
+        display.innerHTML = `全 ${qCount} 問<br>ぜんもん正解で 最大【 <span style="font-size:28px;">${maxPoints}</span> Pt 】ゲット！<br><span style="font-size:12px; color:#aaa;">(基本ポイント)</span>`;
+      });
     }
 
     let shiftMode = 0; let isShiftHoldMode = false; let shiftPressStartTime = 0; let shiftTimer1s = null; let shiftTimer2s = null;
@@ -351,10 +399,8 @@
           keyBtn.onclick = () => {
             const isUpper = shiftMode > 0 || isShiftHoldMode; let inputChar = char;
             if (/[a-z]/.test(char) && isUpper) inputChar = char.toUpperCase();
-            
             if (isFillMode) handleFillInput(inputChar);
             else document.getElementById('type-answer').value += inputChar;
-            
             if (shiftMode === 1) { shiftMode = 0; updateKeyboardDisplay(); }
           };
           rowDiv.appendChild(keyBtn);
@@ -408,7 +454,6 @@
       recognition.start();
     }
 
-    // ★ 変更点⑤：開始前に最大ポイントを計算して提示する
     function prepareQuiz() {
       currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
       const order = document.getElementById('setting-order').value; 
@@ -433,32 +478,17 @@
         const unitKey = getDetailedUnitId(); 
         const history = user.historyJson[unitKey] || {};
         filteredQuestions = filteredQuestions.filter(q => checkIsNigate(history[q["通し番号"]]));
-        if (filteredQuestions.length === 0) { alert("ニガテな問題はありません！通常モードでスタートします。"); currentIsReviewMode = false; document.getElementById('setting-play-mode').value = 'normal'; filteredQuestions = [...currentQuestions]; }
+        if (filteredQuestions.length === 0) { 
+          alert("ニガテな問題はありません！通常モードでスタートします。"); 
+          currentIsReviewMode = false; 
+          document.getElementById('setting-play-mode').value = 'normal'; 
+          filteredQuestions = [...currentQuestions]; 
+          updateMaxPointsDisplay(); 
+        }
       }
+      
       if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
-      
       currentQuestionIndex = 0; quizResults = []; 
-
-      // 獲得予定ポイントの計算と表示
-      const format = document.getElementById('setting-format').value; 
-      const isWord = currentModeName.includes("単語");
-      let basePoint = 0;
-      if (ansType.startsWith("fill_")) {
-        const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
-        basePoint = 5 + numBlanks;
-      } else if (isWord) {
-        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
-        else if (ansType === "typing" || ansType === "voice") basePoint = 20;
-      } else {
-        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
-        else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
-      }
-      
-      let maxPoints = filteredQuestions.length * basePoint;
-      if (currentIsReviewMode) maxPoints = Math.floor(maxPoints * 1.4); 
-      if (order === 'random') maxPoints = Math.floor(maxPoints * 1.1); 
-
-      alert(`全 ${filteredQuestions.length} 問です。\n全問正解すると、最大【 ${maxPoints} Pt 】ゲットできます！\nがんばろう！🚀`);
 
       switchSection('section-quiz'); 
       showQuestion();
@@ -537,28 +567,20 @@
       const wordBlankArea = document.getElementById('quiz-word-blank-area');
       const answerArea = document.getElementById('quiz-answer-area');
       
-      wordBlankArea.style.display = "block";
-      fillBlanksData = [];
-      activeFillBlankIndex = 0;
+      wordBlankArea.style.display = "block"; fillBlanksData = []; activeFillBlankIndex = 0;
 
       let availableIndices = [];
-      for(let i=1; i<word.length; i++) {
-        if(/[a-zA-Z]/.test(word[i])) availableIndices.push(i);
-      }
+      for(let i=1; i<word.length; i++) { if(/[a-zA-Z]/.test(word[i])) availableIndices.push(i); }
       availableIndices.sort(() => Math.random() - 0.5);
       let hiddenIndices = availableIndices.slice(0, numBlanks).sort((a,b)=>a-b);
 
-      let displayHtml = "";
-      let blankCount = 0;
-
+      let displayHtml = ""; let blankCount = 0;
       for (let i=0; i<word.length; i++) {
         if (hiddenIndices.includes(i)) {
           displayHtml += `<span class="blank-box ${blankCount === 0 ? 'active' : ''}" id="fill-blank-${blankCount}" onclick="selectFillBlank(${blankCount})">_</span>`;
           fillBlanksData.push({ originalIndex: i, correctChar: word[i], userInput: '', uiIndex: blankCount });
           blankCount++;
-        } else {
-          displayHtml += `<span>${word[i]}</span>`;
-        }
+        } else { displayHtml += `<span>${word[i]}</span>`; }
       }
       wordBlankArea.innerHTML = displayHtml;
 
@@ -567,194 +589,93 @@
         answerArea.innerHTML = `<div id="keyboard-container"></div>`; 
         renderCustomKeyboard(true); 
       } else if (ansType === "fill_4choice") {
-        answerArea.innerHTML = `
-          <div id="fill-4choice-container" class="fill-choices"></div>
-          <button id="fill-submit-btn" class="submit-btn btn-green" style="display:none; margin: 20px auto 0;" onclick="submitFillAnswer()">✨ これで回答する</button>
-        `;
+        answerArea.innerHTML = `<div id="fill-4choice-container" class="fill-choices"></div><button id="fill-submit-btn" class="submit-btn btn-green" style="display:none; margin: 20px auto 0;" onclick="submitFillAnswer()">✨ これで回答する</button>`;
         renderFill4ChoiceButtons();
       }
     }
 
     function selectFillBlank(index) {
       document.querySelectorAll('.blank-box').forEach(b => b.classList.remove('active'));
-      activeFillBlankIndex = index;
-      document.getElementById(`fill-blank-${index}`).classList.add('active');
-      
+      activeFillBlankIndex = index; document.getElementById(`fill-blank-${index}`).classList.add('active');
       const ansType = document.getElementById('setting-answer-type').value;
-      if (ansType === "fill_4choice") {
-        renderFill4ChoiceButtons();
-      }
+      if (ansType === "fill_4choice") renderFill4ChoiceButtons();
     }
 
     function renderFill4ChoiceButtons() {
-      const container = document.getElementById('fill-4choice-container');
-      container.innerHTML = "";
-      
+      const container = document.getElementById('fill-4choice-container'); container.innerHTML = "";
       let correctChar = fillBlanksData[activeFillBlankIndex].correctChar;
-      let letters = "abcdefghijklmnopqrstuvwxyz";
-      if (correctChar === correctChar.toUpperCase()) letters = letters.toUpperCase();
-      
+      let letters = "abcdefghijklmnopqrstuvwxyz"; if (correctChar === correctChar.toUpperCase()) letters = letters.toUpperCase();
       let choices = [correctChar];
-      while(choices.length < 4) {
-        let r = letters[Math.floor(Math.random() * letters.length)];
-        if(!choices.includes(r)) choices.push(r);
-      }
+      while(choices.length < 4) { let r = letters[Math.floor(Math.random() * letters.length)]; if(!choices.includes(r)) choices.push(r); }
       choices.sort(() => Math.random() - 0.5);
-
-      choices.forEach(c => {
-        const btn = document.createElement('button');
-        btn.className = "fill-choice-btn";
-        btn.innerText = c;
-        btn.onclick = () => { handleFillInput(c); };
-        container.appendChild(btn);
-      });
+      choices.forEach(c => { const btn = document.createElement('button'); btn.className = "fill-choice-btn"; btn.innerText = c; btn.onclick = () => { handleFillInput(c); }; container.appendChild(btn); });
     }
 
     function handleFillInput(char) {
-      fillBlanksData[activeFillBlankIndex].userInput = char;
-      document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = char;
-      
+      fillBlanksData[activeFillBlankIndex].userInput = char; document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = char;
       let nextIndex = fillBlanksData.findIndex(b => b.userInput === '');
-      if (nextIndex !== -1) {
-        selectFillBlank(nextIndex);
-      } else {
-        checkFillCompletion();
-      }
+      if (nextIndex !== -1) selectFillBlank(nextIndex); else checkFillCompletion();
     }
 
-    function handleFillBackspace() {
-      fillBlanksData[activeFillBlankIndex].userInput = '';
-      document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = "_";
-      checkFillCompletion();
-    }
+    function handleFillBackspace() { fillBlanksData[activeFillBlankIndex].userInput = ''; document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = "_"; checkFillCompletion(); }
 
     function checkFillCompletion() {
-      const allFilled = fillBlanksData.every(b => b.userInput !== '');
-      const submitBtn = document.getElementById('fill-submit-btn');
-      if (submitBtn) {
-        if (allFilled) {
-          submitBtn.disabled = false;
-          submitBtn.style.display = "block";
-          submitBtn.classList.remove('btn-gray');
-        } else {
-          submitBtn.disabled = true;
-          if (document.getElementById('setting-answer-type').value === "fill_4choice") {
-            submitBtn.style.display = "none";
-          }
-        }
-      }
+      const allFilled = fillBlanksData.every(b => b.userInput !== ''); const submitBtn = document.getElementById('fill-submit-btn');
+      if (submitBtn) { if (allFilled) { submitBtn.disabled = false; submitBtn.style.display = "block"; submitBtn.classList.remove('btn-gray'); } else { submitBtn.disabled = true; if (document.getElementById('setting-answer-type').value === "fill_4choice") submitBtn.style.display = "none"; } }
     }
 
     function submitFillAnswer() {
-      const q = filteredQuestions[currentQuestionIndex];
-      let correctA = (q["英単語"] || q["英文"]).trim();
-      
-      let constructedAnswer = "";
-      for(let i=0; i<correctA.length; i++) {
-        let blankData = fillBlanksData.find(b => b.originalIndex === i);
-        if (blankData) constructedAnswer += blankData.userInput;
-        else constructedAnswer += correctA[i];
-      }
-      
+      const q = filteredQuestions[currentQuestionIndex]; let correctA = (q["英単語"] || q["英文"]).trim(); let constructedAnswer = "";
+      for(let i=0; i<correctA.length; i++) { let blankData = fillBlanksData.find(b => b.originalIndex === i); if (blankData) constructedAnswer += blankData.userInput; else constructedAnswer += correctA[i]; }
       checkAnswer(constructedAnswer, correctA, q);
     }
 
     function useHint(type, penalty) { const q = filteredQuestions[currentQuestionIndex]; const hintTextDisplay = document.getElementById('hint-display-text'); const format = document.getElementById('setting-format').value; const isWord = currentModeName.includes("単語"); maxDeduction = Math.max(maxDeduction, penalty); if (type !== 3) document.getElementById(`hint-btn-${type}`).disabled = true; if (type === 1 || type === 2) { let hintStr = ""; if (type === 1) hintStr = q["イニシャル"] || "ヒントなし"; else if (type === 2) hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし"); hintTextDisplay.innerText = hintStr; hintTextDisplay.style.display = "block"; } else if (type === 3) { let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); speakText(correctA, 0.8); } }
-    
     function skipQuestion() { const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); checkAnswer("[スキップしました]", correctA, q); }
     
     function checkAnswer(userA, correctA, q) {
       document.querySelectorAll('#section-quiz button').forEach(b => b.disabled = true);
-      const isCorrect = normalizeText(userA) === normalizeText(correctA); 
-      const isWord = currentModeName.includes("単語");
-      const format = document.getElementById('setting-format').value; 
-      const ansType = document.getElementById('setting-answer-type').value;
+      const isCorrect = normalizeText(userA) === normalizeText(correctA); const isWord = currentModeName.includes("単語"); const format = document.getElementById('setting-format').value; const ansType = document.getElementById('setting-answer-type').value;
 
       let basePoint = 0;
-      if (ansType.startsWith("fill_")) {
-        const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
-        basePoint = 5 + numBlanks;
-      } else if (isWord) {
-        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
-        else if (ansType === "typing" || ansType === "voice") basePoint = 20;
-      } else {
-        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
-        else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
-      }
+      if (ansType.startsWith("fill_")) { const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1; basePoint = 5 + numBlanks; } 
+      else if (isWord) { if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2; else if (ansType === "typing" || ansType === "voice") basePoint = 20; } 
+      else { if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2; else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25; }
 
       quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
-      const feedback = document.getElementById('quiz-feedback');
+      const feedback = document.getElementById('quiz-feedback'); document.getElementById('quiz-word-blank-area').style.display = "none";
       
-      document.getElementById('quiz-word-blank-area').style.display = "none";
-      
-      // ★ 変更点②：穴埋めのUI改善
       if (ansType.startsWith("fill_")) {
         let resultHtml = `<div style="font-size: 40px; font-weight: bold; margin-bottom: 10px; letter-spacing: 3px; background: #222; padding: 15px; border-radius: 10px; border: 2px solid #555;">`;
         for(let i=0; i<correctA.length; i++) {
           let blankData = fillBlanksData.find(b => b.originalIndex === i);
-          if (blankData) {
-            let color = blankData.userInput === correctA[i] ? '#4CAF50' : '#F44336';
-            resultHtml += `<span style="color:${color}; border-bottom: 4px solid ${color}; margin: 0 3px; padding-bottom: 2px;">${correctA[i]}</span>`;
-          } else {
-            resultHtml += `<span style="color: #fff;">${correctA[i]}</span>`;
-          }
+          if (blankData) { let color = blankData.userInput === correctA[i] ? '#4CAF50' : '#F44336'; resultHtml += `<span style="color:${color}; border-bottom: 4px solid ${color}; margin: 0 3px; padding-bottom: 2px;">${correctA[i]}</span>`; } 
+          else { resultHtml += `<span style="color: #fff;">${correctA[i]}</span>`; }
         }
         resultHtml += `</div>`;
-        
-        if (isCorrect) {
-          feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span><br>${resultHtml}`;
-        } else {
-          let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
-          feedback.innerHTML = `
-            <span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>
-            <span style="font-size:16px; color:#aaa;">せいかいは：</span><br>${resultHtml}
-            <div style="font-size: 20px; color: #888; margin-top: 5px;">あなたの入力: <span style="text-decoration: line-through;">${userA}</span></div>
-          `;
-        }
-      } 
-      else {
-        if (isCorrect) {
-          feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
-        } else {
-          let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
-          feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
-        }
+        if (isCorrect) { feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span><br>${resultHtml}`; } 
+        else { let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん..."; feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br><span style="font-size:16px; color:#aaa;">せいかいは：</span><br>${resultHtml}<div style="font-size: 20px; color: #888; margin-top: 5px;">あなたの入力: <span style="text-decoration: line-through;">${userA}</span></div>`; }
+      } else {
+        if (isCorrect) { feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : ""); } 
+        else { let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん..."; feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`; }
       }
       
-      // ★ 変更点①：音声読み上げ（日本語/英語の切り替え）
-      if (format === "en_to_ja" || format === "en_audio_to_ja") {
-        speakText(correctA, 1.0, 'ja-JP'); 
-      } else {
-        speakText(correctA, 0.9, 'en-US'); 
-      }
+      if (format === "en_to_ja" || format === "en_audio_to_ja") { speakText(correctA, 1.0, 'ja-JP'); } else { speakText(correctA, 0.9, 'en-US'); }
       
       const nextBtn = document.getElementById('quiz-next-btn'); nextBtn.disabled = false; nextBtn.style.display = "block";
       document.querySelectorAll('#section-quiz .cancel-btn').forEach(btn => btn.disabled = false);
-      
-      // 穴埋めの場合は見比べる時間を少し長め（4秒）に
-      const delay = ansType.startsWith("fill_") ? 4000 : 3000;
-      autoNextTimer = setTimeout(() => { nextQuestion(); }, delay);
+      const delay = ansType.startsWith("fill_") ? 4000 : 3000; autoNextTimer = setTimeout(() => { nextQuestion(); }, delay);
     }
 
     function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); currentQuestionIndex++; showQuestion(); }
-    
-    // ★ 変更点⑥：途中リタイアの確認
-    function quitQuiz() { 
-      if(confirm("途中でやめると、ここまでのポイントは記録されません。\n本当にやめますか？")) {
-        clearTimeout(autoNextTimer); 
-        window.speechSynthesis.cancel(); 
-        openSettingsScreen(); 
-      }
-    }
+    function quitQuiz() { if(confirm("途中でやめると、ここまでのポイントは記録されません。\n本当にやめますか？")) { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); openSettingsScreen(); } }
     
     function finishQuiz() {
       switchSection('section-result'); 
       document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; 
       document.getElementById('result-retry-btn').style.display = "none"; document.getElementById('result-settings-btn').style.display = "none"; document.getElementById('result-home-btn').style.display = "none";
 
-      const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      const isRandom = document.getElementById('setting-order').value === 'random';
-      const detailedUnitId = getDetailedUnitId(); 
+      const user = JSON.parse(localStorage.getItem('app_kid_user')); const isRandom = document.getElementById('setting-order').value === 'random'; const detailedUnitId = getDetailedUnitId(); 
 
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_learning_session", userId: user.id, unitId: detailedUnitId, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults }) })
       .then(r => r.json()).then(d => {
@@ -772,24 +693,17 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      const answerInput = document.getElementById('type-answer');
-      const quizSection = document.getElementById('section-quiz');
-      if (!quizSection.classList.contains('active')) return;
-
+      const answerInput = document.getElementById('type-answer'); const quizSection = document.getElementById('section-quiz'); if (!quizSection.classList.contains('active')) return;
       const ansType = document.getElementById('setting-answer-type').value;
-
       if (ansType === "typing" && answerInput) {
         if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key))) { e.preventDefault(); }
         if (e.key === 'Enter') { const enterBtn = Array.from(document.querySelectorAll('.key-action')).find(btn => btn.innerText === "けってい"); if (enterBtn && !enterBtn.disabled) enterBtn.click(); } 
-        else if (e.key === 'Backspace') { answerInput.value = answerInput.value.slice(0, -1); } 
-        else if (e.key === ' ') { answerInput.value += ' '; } 
-        else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) { answerInput.value += e.key; }
+        else if (e.key === 'Backspace') { answerInput.value = answerInput.value.slice(0, -1); } else if (e.key === ' ') { answerInput.value += ' '; } else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) { answerInput.value += e.key; }
       }
       else if (ansType === "fill_typing") {
         if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key))) { e.preventDefault(); }
         if (e.key === 'Enter') { const enterBtn = document.getElementById('fill-submit-btn'); if (enterBtn && !enterBtn.disabled) enterBtn.click(); }
-        else if (e.key === 'Backspace') { handleFillBackspace(); }
-        else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) { handleFillInput(e.key); }
+        else if (e.key === 'Backspace') { handleFillBackspace(); } else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) { handleFillInput(e.key); }
       }
     });
   </script>
