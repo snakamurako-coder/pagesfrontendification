@@ -21,21 +21,17 @@
     .setting-group { margin: 20px auto; background: #222; padding: 15px; border-radius: 10px; max-width: 350px; text-align: left;}
     .setting-group h3 { margin-top: 0; font-size: 18px; }
     .large-select { padding: 12px; font-size: 18px; border-radius: 8px; width: 100%; background: #fff; color: #000; border: none; }
-    .bonus-badge { display: inline-block; background: #e50914; color: white; padding: 2px 8px; border-radius: 5px; font-size: 12px; margin-left: 10px; vertical-align: middle;}
     #quiz-q-text { font-size: 36px; margin: 20px 0; font-weight: bold; }
     .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .large-input { padding: 15px; font-size: 24px; width: 90%; max-width: 400px; border-radius: 8px; text-align: center; margin-bottom: 10px; background: #fff; color: #000; border: 2px solid #888; box-sizing: border-box; }
     .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top:10px; transition: 0.2s; }
     #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
-    .hint-btn-group { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px; }
-    .hint-btn { background: #FF9800; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; width: 90%; max-width: 350px;}
-    .hint-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
     .item-card { background: #222; border: 2px solid #555; border-radius: 10px; padding: 15px; margin: 15px auto; max-width: 400px; text-align: left; }
     .item-title { font-size: 20px; font-weight: bold; color: #fff; margin: 0 0 5px 0; }
     .footer { position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; font-size: 12px; color: #666; }
     #global-header { display: none; position: absolute; top: 10px; left: 15px; font-size: 14px; color: #aaa; z-index: 100; font-weight: bold; }
     
-    /* ★ 特訓ルート用のスタイル追加 */
+    /* 特訓ルート用スタイル */
     .route-container { background: #222; padding: 15px; border-radius: 10px; max-width: 350px; margin: 15px auto; text-align: left; border: 2px solid #9C27B0;}
     .route-item { padding: 10px; border-bottom: 1px solid #444; display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
     .route-item:last-child { border-bottom: none; }
@@ -43,7 +39,6 @@
     .route-item.cleared { color: #4CAF50; }
     .checkbox { width: 24px; height: 24px; border: 2px solid #fff; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;}
     .cleared .checkbox { background: #4CAF50; border-color: #4CAF50; }
-    
   </style>
 </head>
 <body>
@@ -58,10 +53,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;"><h2 id="welcome-message" style="margin: 0;"></h2><button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button></div>
     <div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;"><p style="margin:0; font-size:18px;">げんざいのポイント</p><div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div></div>
     
-    <div id="home-route-area" style="display:none; text-align: center;">
+    <div id="home-route-area" style="display:none;">
         <h3 style="color: #9C27B0; margin-bottom: 5px;">🔥 今日の特訓ルート</h3>
         <div id="route-container" class="route-container"><p>よみこみ中...</p></div>
-        <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: block; margin: 10px auto;">次の内容に取り組む ▶</button>
+        <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px;">次の内容に取り組む ▶</button>
     </div>
     
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
@@ -88,21 +83,15 @@
   <div id="section-settings" class="section"><h2 id="settings-title">設定</h2>
     <div class="setting-group" style="border: 2px solid #FF9800; text-align:center;">
       <h3 style="color: #FF9800; text-align:center;">🔥 学習モード</h3>
-      <select id="setting-play-mode" class="large-select" onchange="updateMaxPointsDisplay()"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
+      <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓</option></select>
     </div>
-    <div class="setting-group"><h3>1. もんだいの形式</h3><select id="setting-format" class="large-select" onchange="updateAnswerTypeUI()"></select></div>
-    <div class="setting-group"><h3>2. こたえ方</h3><select id="setting-answer-type" class="large-select" onchange="toggleBlankSetting()"></select></div>
-    <div class="setting-group"><h3>3. 出し方 <span class="bonus-badge" id="random-bonus-badge" style="display:none;">ボーナス +10%</span></h3>
-      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none'; updateMaxPointsDisplay();">
-        <option value="normal">順番どおり</option><option value="random">ランダム</option>
-      </select>
-    </div>
-    <div id="setting-group-blanks" class="setting-group" style="display:none; border: 2px solid #2196F3;">
-      <h3 style="color:#2196F3;">4. 隠す文字数（難易度）</h3><select id="setting-blank-count" class="large-select" onchange="updateMaxPointsDisplay()"></select>
+    <div class="setting-group"><h3>1. もんだいの形式</h3><select id="setting-format" class="large-select"><option value="英単語→日本語">英単語→日本語</option><option value="日本語→英単語">日本語→英単語</option><option value="日本語→英文">日本語→英文</option></select></div>
+    <div class="setting-group"><h3>2. こたえ方</h3><select id="setting-answer-type" class="large-select"><option value="4択">4択</option><option value="タイピング">タイピング</option><option value="穴埋め">穴埋め</option></select></div>
+    <div class="setting-group"><h3>3. 出し方</h3>
+      <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
     </div>
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
-    <div id="max-points-display" style="background: rgba(255, 215, 0, 0.1); border: 2px dashed gold; color: gold; font-size: 20px; font-weight: bold; margin: 15px auto; padding: 15px; max-width: 350px; border-radius: 10px; line-height: 1.5;"></div>
-    <button class="cancel-btn" style="margin-top:10px;" onclick="switchSection('section-materials')">もどる</button>
+    <button class="cancel-btn" style="margin-top:10px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">やめる</button>
   </div>
   
   <div id="section-quiz" class="section">
@@ -112,14 +101,7 @@
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
     <div id="quiz-q-text">もんだい文</div>
-    <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
     <div id="quiz-answer-area"></div>
-    <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
-      <button id="hint-btn-1" onclick="useHint(1)" class="hint-btn">💡 イニシャルを見る</button>
-      <button id="hint-btn-2" onclick="useHint(2)" class="hint-btn">💡 イニシャルと文字数を見る</button>
-      <button id="hint-btn-3" onclick="useHint(3)" class="hint-btn">🔊 答えを読み上げる</button>
-      <div id="hint-display-text" style="color: #FFEB3B; font-size: 24px; font-weight: bold; background: #333; padding: 10px; border-radius: 8px; width: 90%; margin-top:10px; display:none; letter-spacing: 5px;"></div>
-    </div>
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
@@ -129,7 +111,6 @@
     <div id="result-content" class="item-card" style="text-align:center;"></div>
     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
       <button onclick="prepareQuiz()" id="result-retry-btn" class="submit-btn btn-orange" style="display:none; width: 90%; max-width: 350px; margin:0;">🔄 もう一度やる</button>
-      <button onclick="openSettingsScreen()" id="result-settings-btn" class="submit-btn btn-blue" style="display:none; width: 90%; max-width: 350px; margin:0;">⚙️ 同じ設定で学習する</button>
       <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" class="submit-btn btn-gray" style="display:none; width: 90%; max-width: 350px; margin:0;">🏠 ホームにもどる</button>
     </div>
   </div>
@@ -138,15 +119,13 @@
 
   <script>
     // ▼ GASのURLを貼り付けてください ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgw2ctBV65aLjPzIirA6ftPzzANpXjOaHp6t6z-n9XR_Pp6fCreZ8-LVK_L7IcbWof/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzen_0cDuVdMLCuR7WgfbVzGBH10SykHtpPHLmZ8uL0xc7uRm9lAa1GFcM15MrK3SLxlQ/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
     let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
     let quizResults = []; let questionStartTime = 0; let currentIsReviewMode = false;
     let userInventoryData = []; let showAllInventory = false;
-    let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; 
-    let fillBlanksData = []; let activeFillBlankIndex = 0; let currentMultiplierFetchId = 0; 
     
     // ★ 特訓ルート用の変数
     let dailyRouteData = []; 
@@ -154,24 +133,13 @@
     let currentTrainingStepIndex = null;
     let isTrainingMode = false;
 
-    const normalizeText = (text) => text.toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
+    window.onload = () => { 
+        const saved = localStorage.getItem('app_kid_user'); 
+        if (saved) showHome(JSON.parse(saved)); 
+        else fetchUsers(); 
+    };
 
-    // 音声周りの初期化
-    let recognition = null; if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; recognition = new SpeechRecognition(); recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = false; }
-    let preferredVoice = null; function loadVoices() { const voices = window.speechSynthesis.getVoices(); if (voices.length === 0) return; const englishVoices = voices.filter(v => v.lang.startsWith('en')); if (englishVoices.length > 0) { const premiumKeywords = ['google us english', 'enhanced', 'premium', 'samantha', 'alex']; for (const keyword of premiumKeywords) { const match = englishVoices.find(v => v.name.toLowerCase().includes(keyword)); if (match) { preferredVoice = match; break; } } if (!preferredVoice) preferredVoice = englishVoices[0]; } }
-    if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
-    function speakText(text, rate = 0.9, lang = 'en-US') { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.lang = lang; uttr.rate = rate; if (lang.startsWith('en') && preferredVoice) uttr.voice = preferredVoice; window.speechSynthesis.speak(uttr); } }
-
-    function getSettingValue(key, defaultVal) { return appSettings[key] !== undefined ? Number(appSettings[key]) : defaultVal; }
-
-    function getDetailedUnitId() { 
-      if(isTrainingMode) return "Training_" + currentUnitName;
-      const format = document.getElementById('setting-format').value; const ansType = document.getElementById('setting-answer-type').value; let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; if (ansType.startsWith("fill_")) { const blankCount = document.getElementById('setting-blank-count').value; unitId += `_${blankCount}blanks`; } return unitId; 
-    }
-
-    window.onload = () => { fetchAppSettings(); const saved = localStorage.getItem('app_kid_user'); if (saved) { showHome(JSON.parse(saved)); } else fetchUsers(); };
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
-    function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
 
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
@@ -186,343 +154,197 @@
     function executePinReset() { document.getElementById('message').innerText = "へんこう中..."; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "change_pin", userId: selectedUserId, newPin: currentPin }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") { alert(d.message); showHome(JSON.parse(localStorage.getItem('app_kid_user'))); } else { document.getElementById('message').innerText = d.message; currentPin=""; updatePinDisplay(); } }); }
     function logout() { localStorage.removeItem('app_kid_user'); document.getElementById('global-header').style.display = 'none'; switchSection('section-users'); }
 
-    // ★ 特訓ルートの読み込み処理を追加
     function showHome(user) { 
       switchSection('section-home'); 
       document.getElementById('header-user-info').innerText = `ID: ${user.id} / ${user.name}`; document.getElementById('global-header').style.display = 'block';
       document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; 
-      isTrainingMode = false;
-      
-      // 特訓ルートを取得して表示
       fetchTrainingRoute(user.id);
     }
 
     function toggleBtnLoading(btn, isLoading, originalText = "") { if(!btn) return ""; if(isLoading) { const text = btn.innerHTML; btn.innerHTML = "⏳ よみこみ中..."; btn.classList.add("btn-loading"); return text; } else { btn.innerHTML = originalText; btn.classList.remove("btn-loading"); } }
 
-    // ====== ★ 特訓ルートの取得と表示 ======
+    // ====== ★ 特訓ルート ======
     function fetchTrainingRoute(userId) {
         document.getElementById('home-route-area').style.display = 'block';
         document.getElementById('route-container').innerHTML = "<p>ルートを確認中...</p>";
-        
         fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId }) })
         .then(r=>r.json()).then(d=>{
             if(d.status === "success") {
-                dailyRouteData = d.route;
-                currentProgressData = d.progress;
+                dailyRouteData = d.route; currentProgressData = d.progress;
                 renderTrainingRoute();
-            } else {
-                document.getElementById('route-container').innerHTML = "<p>ルートの取得に失敗しました。</p>";
-            }
-        }).catch(e => {
-            document.getElementById('route-container').innerHTML = "<p>通信エラーが発生しました。</p>";
-        });
+            } else document.getElementById('route-container').innerHTML = "<p>取得失敗。</p>";
+        }).catch(e => document.getElementById('route-container').innerHTML = "<p>通信エラー</p>");
     }
 
     function renderTrainingRoute() {
         const container = document.getElementById('route-container');
         container.innerHTML = "";
-        
         if (dailyRouteData.length === 0) {
             container.innerHTML = "<p style='text-align:center;'>今日のミッションはないみたい！<br>いつもの学習をがんばろう。</p>";
-            document.getElementById('next-route-btn').style.display = 'none';
-            return;
+            document.getElementById('next-route-btn').style.display = 'none'; return;
         }
 
-        let isLocked = false;
-        let nextAvailableFound = false;
+        let isLocked = false; let nextAvailableFound = false;
 
-        dailyRouteData.forEach((route, index) => {
+        dailyRouteData.forEach((route) => {
             const isCleared = currentProgressData[route.stepIndex] === true;
-            
             const div = document.createElement('div');
             div.className = `route-item ${isCleared ? 'cleared' : ''} ${isLocked ? 'locked' : ''}`;
-            
             const checkboxHtml = `<div class="checkbox">${isCleared ? '✔' : ''}</div>`;
-            const infoHtml = `<div style="flex-grow:1; margin-left:10px;">
-                                <div style="font-weight:bold;">${route.unitName}</div>
-                                <div style="font-size:12px; color:#aaa;">${route.qFormat} / ${route.aFormat}</div>
-                              </div>`;
-            
+            const infoHtml = `<div style="flex-grow:1; margin-left:10px;"><div style="font-weight:bold;">${route.unitName}</div><div style="font-size:12px; color:#aaa;">${route.qFormat} / ${route.aFormat}</div></div>`;
             div.innerHTML = checkboxHtml + infoHtml;
 
-            // クリックで直接挑戦（復習 or アンロック済みなら可能）
             if (isCleared || (!isCleared && !isLocked)) {
                 div.style.cursor = "pointer";
                 div.onclick = () => startRouteStep(route);
             }
-
             container.appendChild(div);
 
-            // 未クリアを見つけたら、それ以降はロックする
             if (!isCleared) {
                 isLocked = true;
-                if (!nextAvailableFound) {
-                    nextAvailableFound = true;
-                }
+                if (!nextAvailableFound) nextAvailableFound = true;
             }
         });
 
-        const nextBtn = document.getElementById('next-route-btn');
-        if (!nextAvailableFound) {
-            nextBtn.style.display = 'none'; 
-        } else {
-            nextBtn.style.display = 'block';
-        }
+        document.getElementById('next-route-btn').style.display = nextAvailableFound ? 'block' : 'none';
     }
 
     function startNextRoute() {
         const nextRoute = dailyRouteData.find(r => !currentProgressData[r.stepIndex]);
-        if (nextRoute) {
-            startRouteStep(nextRoute);
-        }
+        if (nextRoute) startRouteStep(nextRoute);
     }
 
-    // ====== 特訓ルートの問題を取得してクイズを開始 ======
     function startRouteStep(route) {
-        document.getElementById('route-container').innerHTML = "<p>問題データを準備中... ⏳</p>";
+        document.getElementById('route-container').innerHTML = "<p>準備中...</p>";
+        isTrainingMode = true; currentTrainingStepIndex = route.stepIndex; currentUnitName = route.unitName;
         
-        isTrainingMode = true;
-        currentTrainingStepIndex = route.stepIndex;
-        currentUnitName = route.unitName;
-        currentModeName = "特訓ルート"; // 記録用
-
-        fetch(GAS_API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: "get_questions", modeId: "", unitName: route.unitName }) 
-        })
-        .then(r => r.json())
-        .then(d => {
+        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: "", unitName: route.unitName }) })
+        .then(r => r.json()).then(d => {
             if(d.status === "success") {
                 currentQuestions = d.questions;
-                
                 document.getElementById('setting-format').value = route.qFormat;
                 document.getElementById('setting-answer-type').value = route.aFormat;
-                document.getElementById('setting-order').value = route.order;
-                
-                const blankSelect = document.getElementById('setting-blank-count');
-                if (route.aFormat.startsWith('fill_') && blankSelect) {
-                    blankSelect.value = "1";
-                }
-
-                updateAnswerTypeUI(); 
-                
-                if (typeof prepareQuiz === "function") {
-                    prepareQuiz(); 
-                } else {
-                    alert("クイズの開始処理が見つかりません。");
-                }
-                
-                renderTrainingRoute();
+                document.getElementById('setting-order').value = (route.mode === "ランダム") ? "random" : "normal";
+                prepareQuiz();
             } else {
-                alert("問題の取得に失敗しました。単元名が間違っているかもしれません。");
-                renderTrainingRoute();
+                alert("問題の取得に失敗：" + d.message); fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
             }
-        }).catch(e => {
-            alert("通信エラーが発生しました。");
-            renderTrainingRoute();
-        });
+        }).catch(e => { alert("通信エラー"); fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id); });
     }
-
-    // ====== クイズクリア時に特訓ルートの進捗を保存する ======
-    function completeTrainingRouteStep() {
-        if (!isTrainingMode || !currentTrainingStepIndex) return;
-        
-        const user = JSON.parse(localStorage.getItem('app_kid_user'));
-        
-        fetch(GAS_API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ 
-                action: "update_route_progress", 
-                userId: user.id, 
-                stepIndex: currentTrainingStepIndex 
-            }) 
-        }).then(r=>r.json()).then(d=>{
-            if(d.status === "success") {
-                currentProgressData[currentTrainingStepIndex] = true;
-                renderTrainingRoute();
-            }
-        }).catch(e => console.error("進捗の保存に失敗しました", e));
-    }
-
 
     // ====== 景品・もちもの ======
-    function loadRewards(btn) { 
-        const origText = toggleBtnLoading(btn, true); 
-        document.getElementById('rewards-container').innerHTML = "<p>よみこみ中...</p>"; 
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) })
-        .then(r=>r.json()).then(d=>{ 
-            toggleBtnLoading(btn, false, origText); 
-            if(d.status==="success"){ 
-                switchSection('section-rewards'); 
-                const c = document.getElementById('rewards-container'); 
-                c.innerHTML = ""; 
-                d.rewards.forEach(r => { 
-                    const div = document.createElement('div'); div.className = "item-card"; 
-                    div.innerHTML = `<div class="item-title">🎁 ${r.name}</div><div style="color: gold; font-weight: bold; margin-bottom: 10px;">必要ポイント: ${r.points} Pt</div><div style="font-size: 14px; color: #aaa; margin-bottom: 15px;">${r.desc}</div><button class="submit-btn btn-orange" style="width: 100%; padding: 10px; font-size: 18px;" onclick="exchangeReward('${r.id}', '${r.name}', ${r.points}, this)">交換する</button>`; 
-                    c.appendChild(div); 
-                }); 
-            } 
-        }).catch(e => toggleBtnLoading(btn, false, origText)); 
-    }
-
-    function exchangeReward(rewardId, rewardName, points, btn) { 
-        const user = JSON.parse(localStorage.getItem('app_kid_user')); 
-        if(user.points < points) { alert("ポイントが足りないよ！もっと勉強してポイントをためよう！"); return; } 
-        if(!confirm(`「${rewardName}」と交換しますか？\n（${points} Ptへります）`)) return; 
-        const origText = toggleBtnLoading(btn, true); 
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rewardId }) })
-        .then(r=>r.json()).then(d=>{ 
-            toggleBtnLoading(btn, false, origText); 
-            if(d.status==="success") { 
-                alert(d.message); 
-                user.points = d.newPoints; localStorage.setItem('app_kid_user', JSON.stringify(user)); 
-                showHome(user); 
-            } else { alert(d.message); } 
-        }).catch(e => { alert("通信エラーが発生しました。"); toggleBtnLoading(btn, false, origText); }); 
-    }
-
-    function loadInventory(btn) { 
-        const origText = toggleBtnLoading(btn, true); 
-        document.getElementById('inventory-container').innerHTML = "<p>よみこみ中...</p>"; 
-        const user = JSON.parse(localStorage.getItem('app_kid_user')); 
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_inventory", userId: user.id }) })
-        .then(r=>r.json()).then(d=>{ 
-            toggleBtnLoading(btn, false, origText); 
-            if(d.status==="success") { 
-                userInventoryData = d.inventory; 
-                showAllInventory = false; 
-                switchSection('section-inventory'); 
-                renderInventory(); 
-            } 
-        }).catch(e => toggleBtnLoading(btn, false, origText)); 
-    }
-
-    function renderInventory() { 
-        const c = document.getElementById('inventory-container'); 
-        c.innerHTML = ""; 
-        const btn = document.getElementById('toggle-inventory-btn'); 
-        btn.innerText = showAllInventory ? "未消化だけ表示する" : "すべて表示する"; 
-        let filtered = userInventoryData; 
-        if(!showAllInventory) filtered = filtered.filter(i => i.status !== "使用済み"); 
-        if(filtered.length === 0) { c.innerHTML = "<p>表示できるアイテムがありません。</p>"; return; } 
-        filtered.forEach(item => { 
-            const div = document.createElement('div'); div.className = "item-card"; 
-            const isUsed = item.status === "使用済み"; 
-            const btnHtml = isUsed ? `<button class="submit-btn btn-gray" style="width: 100%; padding: 10px; font-size: 18px;" disabled>使用済み</button>` : `<button class="submit-btn btn-green" style="width: 100%; padding: 10px; font-size: 18px;" onclick="consumeReward(${item.rowIdx}, this)">使う！</button>`; 
-            div.innerHTML = `<div class="item-title">🎒 ${item.rewardName}</div><div style="font-size: 12px; color: #aaa; margin-bottom: 10px;">交換日: ${new Date(item.date).toLocaleString()}</div>${btnHtml}`; 
-            c.appendChild(div); 
-        }); 
-    }
-
+    function loadRewards(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('rewards-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_rewards" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-rewards'); const c = document.getElementById('rewards-container'); c.innerHTML = ""; d.rewards.forEach(r => { const div = document.createElement('div'); div.className = "item-card"; div.innerHTML = `<div class="item-title">🎁 ${r.name}</div><div style="color: gold; font-weight: bold; margin-bottom: 10px;">必要ポイント: ${r.points} Pt</div><div style="font-size: 14px; color: #aaa; margin-bottom: 15px;">${r.desc}</div><button class="submit-btn btn-orange" style="width: 100%; padding: 10px; font-size: 18px;" onclick="exchangeReward('${r.id}', '${r.name}', ${r.points}, this)">交換する</button>`; c.appendChild(div); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function exchangeReward(rewardId, rewardName, points, btn) { const user = JSON.parse(localStorage.getItem('app_kid_user')); if(user.points < points) { alert("ポイント不足！"); return; } if(!confirm(`「${rewardName}」と交換しますか？`)) return; const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "exchange_reward", userId: user.id, rewardId: rewardId }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success") { alert(d.message); user.points = d.newPoints; localStorage.setItem('app_kid_user', JSON.stringify(user)); showHome(user); } else alert(d.message); }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadInventory(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('inventory-container').innerHTML = "<p>よみこみ中...</p>"; const user = JSON.parse(localStorage.getItem('app_kid_user')); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_inventory", userId: user.id }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success") { userInventoryData = d.inventory; showAllInventory = false; switchSection('section-inventory'); renderInventory(); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function renderInventory() { const c = document.getElementById('inventory-container'); c.innerHTML = ""; document.getElementById('toggle-inventory-btn').innerText = showAllInventory ? "未消化だけ表示" : "すべて表示"; let filtered = userInventoryData; if(!showAllInventory) filtered = filtered.filter(i => i.status !== "使用済み"); if(filtered.length === 0) { c.innerHTML = "<p>表示できるアイテムがありません。</p>"; return; } filtered.forEach(item => { const div = document.createElement('div'); div.className = "item-card"; const isUsed = item.status === "使用済み"; const btnHtml = isUsed ? `<button class="submit-btn btn-gray" style="width: 100%; padding: 10px; font-size: 18px;" disabled>使用済み</button>` : `<button class="submit-btn btn-green" style="width: 100%; padding: 10px; font-size: 18px;" onclick="consumeReward(${item.rowIdx}, this)">使う！</button>`; div.innerHTML = `<div class="item-title">🎒 ${item.rewardName}</div><div style="font-size: 12px; color: #aaa; margin-bottom: 10px;">交換日: ${new Date(item.date).toLocaleString()}</div>${btnHtml}`; c.appendChild(div); }); }
     function toggleInventoryView() { showAllInventory = !showAllInventory; renderInventory(); }
+    function consumeReward(rowIdx, btn) { if(!confirm("本当に使いますか？")) return; const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "consume_reward", rowIdx: rowIdx }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") { alert(d.message); userInventoryData.find(i => i.rowIdx === rowIdx).status = "使用済み"; renderInventory(); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
 
-    function consumeReward(rowIdx, btn) { 
-        if(!confirm("本当にこの景品を使いますか？\n※おうちの人に確認してもらってから押してね！")) return; 
-        const origText = toggleBtnLoading(btn, true); 
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "consume_reward", rowIdx: rowIdx }) })
-        .then(r=>r.json()).then(d=>{ 
-            if(d.status==="success") { 
-                alert(d.message); 
-                userInventoryData.find(i => i.rowIdx === rowIdx).status = "使用済み"; 
-                renderInventory(); 
-            } 
-        }).catch(e => toggleBtnLoading(btn, false, origText)); 
+    // ====== 外部学習 ======
+    function loadExternalLearning(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('external-container').innerHTML = "<p>さがしています...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_external_learning" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status === "success") { switchSection('section-external'); const c = document.getElementById('external-container'); c.innerHTML = ""; if(d.list.length === 0) c.innerHTML = "<p>登録メニューなし</p>"; d.list.forEach(item => { const b = document.createElement('button'); b.className = "menu-btn btn-blue"; b.innerHTML = `${item.name} <br><span style="font-size:14px; color:gold;">(+${item.points} Pt)</span>`; b.onclick = () => claimExternalPoints(item.name, item.points); c.appendChild(b); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function claimExternalPoints(menuName, points) { if(!confirm(`「${menuName}」をやったんだね！`)) return; const user = JSON.parse(localStorage.getItem('app_kid_user')); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "report_external_learning", userId: user.id, menuName: menuName, points: points }) }).then(r=>r.json()).then(d=>{ if(d.status === "success") { alert(d.message); user.points = d.newTotal; localStorage.setItem('app_kid_user', JSON.stringify(user)); showHome(user); } }); }
+
+    // ====== いつもの学習ロード ======
+    function loadMaterials(btn) { isTrainingMode = false; const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadQuestionsForSettings(btn, mId, mName, uName) { const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; switchSection('section-settings'); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+
+    // ====== クイズコア処理 ======
+    function prepareQuiz() {
+      filteredQuestions = [...currentQuestions];
+      const isRandom = document.getElementById('setting-order').value === "random";
+      if(isRandom) filteredQuestions.sort(() => Math.random() - 0.5);
+      
+      currentQuestionIndex = 0; quizResults = [];
+      switchSection('section-quiz');
+      nextQuestion();
     }
 
-    // ====== 第2弾：外部学習の機能 ======
-    function loadExternalLearning(btn) {
-      const origText = toggleBtnLoading(btn, true);
-      document.getElementById('external-container').innerHTML = "<p>さがしています...</p>";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_external_learning" }) })
-      .then(r=>r.json()).then(d=>{
-        toggleBtnLoading(btn, false, origText);
-        if(d.status === "success") {
-          switchSection('section-external');
-          const c = document.getElementById('external-container'); c.innerHTML = "";
-          if(d.list.length === 0) c.innerHTML = "<p>登録されているメニューがありません。</p>";
-          d.list.forEach(item => {
-            const b = document.createElement('button'); b.className = "menu-btn btn-blue";
-            b.innerHTML = `${item.name} <br><span style="font-size:14px; color:gold;">(+${item.points} Pt)</span>`;
-            b.onclick = () => claimExternalPoints(item.name, item.points);
-            c.appendChild(b);
-          });
-        }
-      }).catch(e => toggleBtnLoading(btn, false, origText));
+    function nextQuestion() {
+      if(currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
+      const q = filteredQuestions[currentQuestionIndex];
+      const format = document.getElementById('setting-format').value;
+      const ansType = document.getElementById('setting-answer-type').value;
+      
+      document.getElementById('quiz-progress').innerText = `第 ${currentQuestionIndex + 1} / ${filteredQuestions.length} 問`;
+      
+      // 出題文の設定
+      let qText = ""; let correctText = "";
+      if(format === "英単語→日本語") { qText = q["英単語"]; correctText = q["日本語"]; }
+      else if(format === "日本語→英単語") { qText = q["日本語"]; correctText = q["英単語"]; }
+      else if(format === "日本語→英文") { qText = q["日本語"]; correctText = q["英文"]; }
+      document.getElementById('quiz-q-text').innerText = qText;
+
+      const area = document.getElementById('quiz-answer-area');
+      area.innerHTML = ""; document.getElementById('quiz-feedback').innerHTML = "";
+      document.getElementById('quiz-next-btn').style.display = "none";
+      
+      if(ansType === "4択") {
+        let choices = [correctText];
+        let others = currentQuestions.filter(x => x["通し番号"] !== q["通し番号"]).map(x => format === "英単語→日本語" ? x["日本語"] : (format === "日本語→英単語" ? x["英単語"] : x["英文"]));
+        others.sort(() => Math.random() - 0.5);
+        choices = choices.concat(others.slice(0, 3)).sort(() => Math.random() - 0.5);
+        choices.forEach(c => {
+          const btn = document.createElement('button'); btn.className = "choice-btn"; btn.innerText = c;
+          btn.onclick = () => checkAnswer(c === correctText, correctText, q["通し番号"]);
+          area.appendChild(btn);
+        });
+      } else {
+        const input = document.createElement('input'); input.className = "large-input"; input.type = "text"; input.id = "quiz-input";
+        const btn = document.createElement('button'); btn.className = "submit-btn"; btn.innerText = "こたえる";
+        btn.onclick = () => checkAnswer(document.getElementById('quiz-input').value.trim().toLowerCase() === correctText.toLowerCase(), correctText, q["通し番号"]);
+        area.appendChild(input); area.appendChild(document.createElement('br')); area.appendChild(btn);
+        setTimeout(() => input.focus(), 100);
+      }
+      questionStartTime = Date.now();
     }
 
-    function claimExternalPoints(menuName, points) {
-      if(!confirm(`「${menuName}」をやったんだね！\nおうちの人にかくにんしてもらった？`)) return;
+    function checkAnswer(isCorrect, correctText, qId) {
+      const timeSec = (Date.now() - questionStartTime) / 1000;
+      quizResults.push({ questionId: qId, isCorrect: isCorrect, timeSec: timeSec, basePoint: 2, maxDeduction: 0 });
+      
+      const fb = document.getElementById('quiz-feedback');
+      if(isCorrect) {
+        fb.innerHTML = "<span style='color:#4CAF50; font-weight:bold;'>⭕ せいかい！</span>";
+      } else {
+        fb.innerHTML = `<span style='color:#e50914; font-weight:bold;'>❌ ざんねん！</span><br><span style='font-size:18px;'>こたえ: ${correctText}</span>`;
+      }
+      document.getElementById('quiz-answer-area').style.display = "none";
+      document.getElementById('quiz-next-btn').style.display = "block";
+    }
+
+    function skipQuestion() { checkAnswer(false, "(スキップ)", filteredQuestions[currentQuestionIndex]["通し番号"]); }
+    function quitQuiz() { if(confirm("やめてホームにもどる？")) showHome(JSON.parse(localStorage.getItem('app_kid_user'))); }
+
+    function finishQuiz() {
+      switchSection('section-result');
+      document.getElementById('result-content').innerHTML = "<p>けっかをほぞん中...</p>";
+      
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "report_external_learning", userId: user.id, menuName: menuName, points: points }) })
-      .then(r=>r.json()).then(d=>{
+      
+      // ★ 特訓ルート進捗（trainingStepIndex）を渡して保存
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: "save_learning_session",
+          userId: user.id,
+          unitId: currentUnitName,
+          isReviewMode: document.getElementById('setting-play-mode').value === "review",
+          isRandom: document.getElementById('setting-order').value === "random",
+          results: quizResults,
+          trainingStepIndex: isTrainingMode ? currentTrainingStepIndex : null
+        })
+      }).then(r=>r.json()).then(d=>{
         if(d.status === "success") {
-          alert(d.message);
+          document.getElementById('result-content').innerHTML = `
+            <h2>${quizResults.filter(r=>r.isCorrect).length} / ${quizResults.length} 問 せいかい！</h2>
+            <div style="font-size:24px; margin:20px 0; color:gold;">ゲットしたポイント: <span style="font-size:40px; font-weight:bold;">${d.earnedPoints}</span> Pt</div>
+          `;
           user.points = d.newTotal; localStorage.setItem('app_kid_user', JSON.stringify(user));
-          showHome(user);
+          document.getElementById('result-retry-btn').style.display = isTrainingMode ? "none" : "block";
+          document.getElementById('result-home-btn').style.display = "block";
         }
       });
     }
-
-    // ====== いつもの学習のロード関連 ======
-    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
-    function loadQuestionsForSettings(btn, mId, mName, uName) { const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; openSettingsScreen(); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
-
-    function openSettingsScreen() {
-      switchSection('section-settings'); 
-      document.getElementById('settings-title').innerText = isTrainingMode ? `🔥 ${currentUnitName}` : `【${currentModeName}】${currentUnitName}`;
-      const fSelect = document.getElementById('setting-format');
-      fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`;
-      if (!isTrainingMode && !currentModeName.includes("単語")) { fSelect.innerHTML += `<option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`; }
-      updateAnswerTypeUI();
-    }
-
-    function updateAnswerTypeUI() {
-      const format = document.getElementById('setting-format').value; const aSelect = document.getElementById('setting-answer-type'); aSelect.innerHTML = "";
-      if (format === "ja_to_en") { aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option><option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option><option value="fill_4choice">🔠 穴埋め（４択）</option><option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`; } 
-      else if (format.includes("qtext") || format.includes("qaudio")) { if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`; aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`; } 
-      else { aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`; }
-      toggleBlankSetting();
-    }
-
-    function toggleBlankSetting() { const aSelect = document.getElementById('setting-answer-type').value; const blankGroup = document.getElementById('setting-group-blanks'); const blankSelect = document.getElementById('setting-blank-count'); if (aSelect.startsWith('fill_')) { let maxLen = 0; currentQuestions.forEach(q => { let word = (q["英単語"] || q["英文"] || "").trim(); if(word.length > maxLen) maxLen = word.length; }); let maxBlanks = maxLen > 1 ? maxLen - 1 : 1; blankSelect.innerHTML = ""; for(let i = 1; i <= maxBlanks; i++) { blankSelect.innerHTML += `<option value="${i}">${i} 文字 かくす</option>`; } blankGroup.style.display = "block"; } else { blankGroup.style.display = "none"; } updateMaxPointsDisplay(); }
-
-    function calculateBasePoint(ansType, isWordForm, format) {
-      if (ansType.startsWith("fill_")) { return getSettingValue("基本ポイント_穴埋め", 5) + (parseInt(document.getElementById('setting-blank-count').value) || 1); } 
-      else if (ansType === "4choice") { return getSettingValue("基本ポイント_4択", 3); } 
-      else if (ansType === "typing") { return getSettingValue("基本ポイント_タイピング", 20); }
-      else if (ansType === "voice") { return getSettingValue("基本ポイント_音声", 20); }
-      return 2;
-    }
-
-    function updateMaxPointsDisplay() {
-      if (!currentQuestions || currentQuestions.length === 0) return;
-      let isReview = document.getElementById('setting-play-mode').value === 'review'; let order = document.getElementById('setting-order').value; let ansType = document.getElementById('setting-answer-type').value; let format = document.getElementById('setting-format').value; 
-      
-      let tempQuestions = [...currentQuestions];
-      if (ansType.startsWith("fill_")) { let numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1; tempQuestions = tempQuestions.filter(q => { let w = (q["英単語"] || q["英文"] || "").trim(); return w.length > numBlanks; }); }
-      
-      // 途切れていた箇所の復元
-      let qCount = tempQuestions.length; let basePoint = calculateBasePoint(ansType, true, format);
-      let maxPoints = qCount * basePoint;
-      if (isReview && qCount > 0) maxPoints = Math.floor(maxPoints * 1.4); 
-      if (order === 'random' && qCount > 0) maxPoints = Math.floor(maxPoints * 1.1); 
-      
-      const displayElem = document.getElementById('max-points-display');
-      if(displayElem) displayElem.innerHTML = "この学習の最大獲得ポイント: " + maxPoints + " Pt";
-    }
-
-    // =========================================================================
-    // ！！！ここから下は、以前のファイルの続き（クイズ実行の処理など）をそのまま残してください！！！
-    //
-    // function prepareQuiz() { ... }
-    // function showQuestion() { ... }
-    // function checkAnswer(ans) { ... }
-    // function showResult() { 
-    //     ... 既存の処理 ...
-    //     completeTrainingRouteStep();  // ←★リザルト画面表示時にこれを呼び出すように追加してください
-    // }
-    // =========================================================================
-
   </script>
 </body>
 </html>
