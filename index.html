@@ -153,7 +153,6 @@
     let userInventoryData = []; let showAllInventory = false;
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; 
     
-    // ★ 穴埋め用ステート
     let fillBlanksData = []; 
     let activeFillBlankIndex = 0;
 
@@ -177,17 +176,23 @@
       }
     }
     if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
-    function speakText(text, rate = 0.9) {
-      if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.lang = 'en-US'; uttr.rate = rate; if (preferredVoice) uttr.voice = preferredVoice; window.speechSynthesis.speak(uttr); }
+    
+    // ★ 変更点① TTSの日本語対応（lang引数を追加）
+    function speakText(text, rate = 0.9, lang = 'en-US') {
+      if ('speechSynthesis' in window) { 
+        window.speechSynthesis.cancel(); 
+        const uttr = new SpeechSynthesisUtterance(text); 
+        uttr.lang = lang; 
+        uttr.rate = rate; 
+        if (lang.startsWith('en') && preferredVoice) uttr.voice = preferredVoice; 
+        window.speechSynthesis.speak(uttr); 
+      }
     }
     
-    // ★ 変更箇所①：何文字隠したかをIDに含める
     function getDetailedUnitId() { 
       const format = document.getElementById('setting-format').value; 
       const ansType = document.getElementById('setting-answer-type').value; 
       let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; 
-      
-      // 穴埋めモードの時は、隠す文字数もIDにくっつける（例: _1blanks）
       if (ansType.startsWith("fill_")) {
         const blankCount = document.getElementById('setting-blank-count').value;
         unitId += `_${blankCount}blanks`;
@@ -195,16 +200,11 @@
       return unitId; 
     }
 
-    // ★ 変更箇所②：履歴画面できれいに表示する
     function formatHistoryName(key) { 
       const m = { "_ja_to_en": " [日➔英", "_en_to_ja": " [英➔日", "_qtext_to_en": " [疑問文➔英", "_qaudio_to_en": " [音声➔英", "_en_audio_to_ja": " [音声➔日", "_4choice": " / ４択]", "_typing": " / タイピング]", "_voice": " / マイク]", "_fill_4choice": " / 穴埋め４択]", "_fill_typing": " / 穴埋めタイピング]" }; 
       let res = key; 
       for(let k in m) res = res.replace(k, m[k]); 
-      
-      // 追加した「文字隠し数」のIDを、綺麗な日本語に変換する
-      // 例: "～ / 穴埋め４択]_2blanks" ➔ "～ / 穴埋め４択 / 2文字隠し]"
       res = res.replace(/\]_(\d+)blanks/, " / $1文字隠し]");
-      
       return res.replace(/_/g, " "); 
     }
     
@@ -408,6 +408,7 @@
       recognition.start();
     }
 
+    // ★ 変更点⑤：開始前に最大ポイントを計算して提示する
     function prepareQuiz() {
       currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
       const order = document.getElementById('setting-order').value; 
@@ -435,7 +436,32 @@
         if (filteredQuestions.length === 0) { alert("ニガテな問題はありません！通常モードでスタートします。"); currentIsReviewMode = false; document.getElementById('setting-play-mode').value = 'normal'; filteredQuestions = [...currentQuestions]; }
       }
       if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
-      currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
+      
+      currentQuestionIndex = 0; quizResults = []; 
+
+      // 獲得予定ポイントの計算と表示
+      const format = document.getElementById('setting-format').value; 
+      const isWord = currentModeName.includes("単語");
+      let basePoint = 0;
+      if (ansType.startsWith("fill_")) {
+        const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+        basePoint = 5 + numBlanks;
+      } else if (isWord) {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = 20;
+      } else {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
+      }
+      
+      let maxPoints = filteredQuestions.length * basePoint;
+      if (currentIsReviewMode) maxPoints = Math.floor(maxPoints * 1.4); 
+      if (order === 'random') maxPoints = Math.floor(maxPoints * 1.1); 
+
+      alert(`全 ${filteredQuestions.length} 問です。\n全問正解すると、最大【 ${maxPoints} Pt 】ゲットできます！\nがんばろう！🚀`);
+
+      switchSection('section-quiz'); 
+      showQuestion();
     }
 
     function showQuestion() {
@@ -624,7 +650,6 @@
       let correctA = (q["英単語"] || q["英文"]).trim();
       
       let constructedAnswer = "";
-      let fillIdx = 0;
       for(let i=0; i<correctA.length; i++) {
         let blankData = fillBlanksData.find(b => b.originalIndex === i);
         if (blankData) constructedAnswer += blankData.userInput;
@@ -635,6 +660,7 @@
     }
 
     function useHint(type, penalty) { const q = filteredQuestions[currentQuestionIndex]; const hintTextDisplay = document.getElementById('hint-display-text'); const format = document.getElementById('setting-format').value; const isWord = currentModeName.includes("単語"); maxDeduction = Math.max(maxDeduction, penalty); if (type !== 3) document.getElementById(`hint-btn-${type}`).disabled = true; if (type === 1 || type === 2) { let hintStr = ""; if (type === 1) hintStr = q["イニシャル"] || "ヒントなし"; else if (type === 2) hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし"); hintTextDisplay.innerText = hintStr; hintTextDisplay.style.display = "block"; } else if (type === 3) { let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); speakText(correctA, 0.8); } }
+    
     function skipQuestion() { const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); checkAnswer("[スキップしました]", correctA, q); }
     
     function checkAnswer(userA, correctA, q) {
@@ -661,21 +687,65 @@
       
       document.getElementById('quiz-word-blank-area').style.display = "none";
       
-      if (isCorrect) {
-        feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
-      } else {
-        let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
-        feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
+      // ★ 変更点②：穴埋めのUI改善
+      if (ansType.startsWith("fill_")) {
+        let resultHtml = `<div style="font-size: 40px; font-weight: bold; margin-bottom: 10px; letter-spacing: 3px; background: #222; padding: 15px; border-radius: 10px; border: 2px solid #555;">`;
+        for(let i=0; i<correctA.length; i++) {
+          let blankData = fillBlanksData.find(b => b.originalIndex === i);
+          if (blankData) {
+            let color = blankData.userInput === correctA[i] ? '#4CAF50' : '#F44336';
+            resultHtml += `<span style="color:${color}; border-bottom: 4px solid ${color}; margin: 0 3px; padding-bottom: 2px;">${correctA[i]}</span>`;
+          } else {
+            resultHtml += `<span style="color: #fff;">${correctA[i]}</span>`;
+          }
+        }
+        resultHtml += `</div>`;
+        
+        if (isCorrect) {
+          feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span><br>${resultHtml}`;
+        } else {
+          let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
+          feedback.innerHTML = `
+            <span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>
+            <span style="font-size:16px; color:#aaa;">せいかいは：</span><br>${resultHtml}
+            <div style="font-size: 20px; color: #888; margin-top: 5px;">あなたの入力: <span style="text-decoration: line-through;">${userA}</span></div>
+          `;
+        }
+      } 
+      else {
+        if (isCorrect) {
+          feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
+        } else {
+          let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
+          feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
+        }
       }
       
-      speakText(correctA); 
+      // ★ 変更点①：音声読み上げ（日本語/英語の切り替え）
+      if (format === "en_to_ja" || format === "en_audio_to_ja") {
+        speakText(correctA, 1.0, 'ja-JP'); 
+      } else {
+        speakText(correctA, 0.9, 'en-US'); 
+      }
+      
       const nextBtn = document.getElementById('quiz-next-btn'); nextBtn.disabled = false; nextBtn.style.display = "block";
       document.querySelectorAll('#section-quiz .cancel-btn').forEach(btn => btn.disabled = false);
-      autoNextTimer = setTimeout(() => { nextQuestion(); }, 3000);
+      
+      // 穴埋めの場合は見比べる時間を少し長め（4秒）に
+      const delay = ansType.startsWith("fill_") ? 4000 : 3000;
+      autoNextTimer = setTimeout(() => { nextQuestion(); }, delay);
     }
 
     function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); currentQuestionIndex++; showQuestion(); }
-    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); openSettingsScreen(); }
+    
+    // ★ 変更点⑥：途中リタイアの確認
+    function quitQuiz() { 
+      if(confirm("途中でやめると、ここまでのポイントは記録されません。\n本当にやめますか？")) {
+        clearTimeout(autoNextTimer); 
+        window.speechSynthesis.cancel(); 
+        openSettingsScreen(); 
+      }
+    }
     
     function finishQuiz() {
       switchSection('section-result'); 
