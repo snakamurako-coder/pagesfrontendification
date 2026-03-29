@@ -195,6 +195,7 @@
     // ★ 穴埋め用ステート
     let fillBlanksData = []; 
     let activeFillBlankIndex = 0;
+    let voiceFailCount = 0;
 
     const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
@@ -205,6 +206,7 @@
       if (format === "qtext_to_en") return String(q["英文"] || "").trim();
       if (format === "en_audio_to_ja") return String(q["日本語"] || "").trim();
       if (format === "qaudio_to_en") return String(q["英文"] || "").trim();
+      if (format === "en_audio_to_en") return String(q["英単語"] || q["英文"] || "").trim();
       return "";
     }
 
@@ -736,8 +738,8 @@
       switchSection('section-settings'); 
       document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
       const fSelect = document.getElementById('setting-format');
-      if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`; } 
-      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`; }
+      if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする（文字）</option>`; } 
+      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする（文字）</option>`; }
       updateAnswerTypeUI();
     }
 
@@ -760,6 +762,13 @@
         aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
       } else if (format === "en_to_ja" || format === "en_audio_to_ja") {
         aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`;
+      } else if (format === "en_audio_to_en") {
+        aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
+        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option>`;
+        if (isWord) {
+          aSelect.innerHTML += `<option value="fill_4choice">🔠 穴埋め（４択）</option>`;
+          aSelect.innerHTML += `<option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`;
+        }
       }
       toggleBlankSetting();
     }
@@ -859,8 +868,21 @@
         let currentTranscript = finalTranscript || interimTranscript; displayField.value = currentTranscript;
         if (currentTranscript) {
           const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
-          if(normalizeText(currentTranscript) === normalizeText(correctA)) { recognition.stop(); displayField.value = currentTranscript; checkAnswer(currentTranscript, correctA, q); } 
-          else if (finalTranscript) { displayField.value = currentTranscript; feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${currentTranscript}」</b><br>ちがうみたい！もう一度🎙️をおしてね。`; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; }
+          if(normalizeText(currentTranscript) === normalizeText(correctA)) { 
+            recognition.stop(); displayField.value = currentTranscript; checkAnswer(currentTranscript, correctA, q); 
+          } 
+          else if (finalTranscript) { 
+            voiceFailCount++;
+            if (voiceFailCount >= 5) {
+              recognition.stop();
+              displayField.value = currentTranscript;
+              checkAnswer(currentTranscript, correctA, q);
+            } else {
+              displayField.value = currentTranscript; 
+              feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${currentTranscript}」</b><br>ちがうみたい！もう一度🎙️をおしてね。<br><span style="font-size:14px; color:#F44336;">（まちがい: ${voiceFailCount}回 / 5回で不正解）</span>`; 
+              btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; 
+            }
+          }
         }
       };
       recognition.onerror = () => { feedback.innerText = "聞き取れませんでした。もう一度おしてね。"; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; };
@@ -901,6 +923,7 @@
     function showQuestion() {
       if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
       maxDeduction = 0;
+      voiceFailCount = 0;
       clearTimeout(autoNextTimer); 
       
       const q = filteredQuestions[currentQuestionIndex]; 
@@ -916,6 +939,7 @@
       else if (format === "qtext_to_en") { qText = q["疑問文"]; correctA = q["英文"].trim(); }
       else if (format === "en_audio_to_ja") { engTextForAudio = q["英単語"] || q["英文"]; correctA = q["日本語"]; }
       else if (format === "qaudio_to_en") { engTextForAudio = q["疑問文"]; correctA = q["英文"]; }
+      else if (format === "en_audio_to_en") { engTextForAudio = q["英単語"] || q["英文"]; correctA = (q["英単語"] || q["英文"]).trim(); }
 
       if (format.includes("audio")) {
         document.getElementById('quiz-q-text').innerHTML = `<button onclick="speakText('${engTextForAudio.replace(/'/g, "\\'")}')" class="submit-btn btn-blue" style="border-radius:50px;">🔊 英語をきく</button>`;
@@ -948,7 +972,7 @@
       
       if (answerType === "4choice") {
         let choices = [correctA]; 
-        let others = currentQuestions.filter(item => { if(format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en") return (item["英単語"] || item["英文"]) !== correctA; else return item["日本語"] !== correctA; }).sort(() => Math.random() - 0.5);
+        let others = currentQuestions.filter(item => { if(format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en" || format === "en_audio_to_en") return (item["英単語"] || item["英文"]) !== correctA; else return item["日本語"] !== correctA; }).sort(() => Math.random() - 0.5);
         for (let i = 0; i < 3 && i < others.length; i++) { choices.push((format === "ja_to_en" || format.includes("to_en")) ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); }
         choices.sort(() => Math.random() - 0.5);
         choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
