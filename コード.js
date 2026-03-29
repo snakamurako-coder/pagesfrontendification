@@ -75,6 +75,29 @@ function setupSystem() {
     logMessage += "✅ 「外部学習」を追加しました。\n";
   }
 
+  let extReqSheet = adminSs.getSheetByName("外部学習申請");
+  if (!extReqSheet) {
+    extReqSheet = adminSs.insertSheet("外部学習申請");
+    extReqSheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "メニュー名", "ポイント", "状態", "処理日時"]);
+    logMessage += "✅ 「外部学習申請」を追加しました。\n";
+  }
+
+  const appSettingsForExtPin = adminSs.getSheetByName("アプリ設定");
+  if (appSettingsForExtPin) {
+    const extPinRows = appSettingsForExtPin.getDataRange().getValues();
+    let hasExtAdminPin = false;
+    for (let i = 1; i < extPinRows.length; i++) {
+      if (String(extPinRows[i][0]) === "外部学習_管理者PIN") {
+        hasExtAdminPin = true;
+        break;
+      }
+    }
+    if (!hasExtAdminPin) {
+      appSettingsForExtPin.appendRow(["外部学習_管理者PIN", "1234"]);
+      logMessage += "✅ 「外部学習_管理者PIN」を追加しました（アプリ設定シートで変更してください）。\n";
+    }
+  }
+
   // ★ 新しい「特訓メニュー」の構造（学習ルート）
   let trainingSheet = adminSs.getSheetByName("特訓メニュー");
   if (!trainingSheet) {
@@ -136,7 +159,11 @@ function doPost(e) {
     else if (action === "get_app_settings") return handleGetAppSettings(requestData);
     else if (action === "get_points_multiplier") return handleGetPointsMultiplier(requestData);
     else if (action === "get_external_learning") return handleGetExternalLearning(requestData);
-    else if (action === "report_external_learning") return handleReportExternalLearning(requestData);
+    else if (action === "submit_external_learning_request") return handleSubmitExternalLearningRequest(requestData);
+    else if (action === "get_pending_external_requests") return handleGetPendingExternalRequests(requestData);
+    else if (action === "approve_external_request") return handleApproveExternalRequest(requestData);
+    else if (action === "reject_external_request") return handleRejectExternalRequest(requestData);
+    else if (action === "get_my_external_learning_requests") return handleGetMyExternalLearningRequests(requestData);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -288,7 +315,167 @@ function handleSaveLearningSession(req) {
 // ==========================================
 function handleGetAppSettings(req) { const settingsSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("アプリ設定"); if (!settingsSheet) return sendResponse({ status: "success", settings: {} }); const data = settingsSheet.getDataRange().getValues(); const settings = {}; for (let i = 1; i < data.length; i++) { if (data[i][0]) settings[data[i][0]] = data[i][1]; } return sendResponse({ status: "success", settings: settings }); }
 function handleGetExternalLearning(req) { const sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("外部学習"); const list = []; if (sheet) { const data = sheet.getDataRange().getValues(); for (let i = 1; i < data.length; i++) { if (data[i][0]) list.push({ name: data[i][0], points: Number(data[i][1]) }); } } return sendResponse({ status: "success", list: list }); }
-function handleReportExternalLearning(req) { const sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users"); const data = sheet.getDataRange().getValues(); let newTotal = 0; for (let i = 1; i < data.length; i++) { if (data[i][0] === req.userId) { newTotal = Number(data[i][3]) + Number(req.points); sheet.getRange(i + 1, 4).setValue(newTotal); break; } } return sendResponse({ status: "success", newTotal: newTotal, message: req.menuName + " のポイントをゲットしたよ！" }); }
+
+function ensureExternalLearningRequestSheet_(adminSs) {
+  let sheet = adminSs.getSheetByName("外部学習申請");
+  if (!sheet) {
+    sheet = adminSs.insertSheet("外部学習申請");
+    sheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "メニュー名", "ポイント", "状態", "処理日時"]);
+  }
+  return sheet;
+}
+
+function getExternalLearningAdminPin_(adminSs) {
+  const sheet = adminSs.getSheetByName("アプリ設定");
+  if (!sheet) return "";
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === "外部学習_管理者PIN") return String(data[i][1] || "");
+  }
+  return "";
+}
+
+function verifyExternalAdminPin_(adminSs, adminPin) {
+  const expected = getExternalLearningAdminPin_(adminSs);
+  if (!expected) return { ok: false, message: "管理者PINがアプリ設定に登録されていません。「外部学習_管理者PIN」を追加してください。" };
+  if (String(adminPin) !== String(expected)) return { ok: false, message: "管理者PINが一致しません" };
+  return { ok: true };
+}
+
+function validateExternalMenu_(adminSs, menuName, points) {
+  const sheet = adminSs.getSheetByName("外部学習");
+  if (!sheet) return false;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && String(data[i][0]) === String(menuName) && Number(data[i][1]) === Number(points)) return true;
+  }
+  return false;
+}
+
+function handleSubmitExternalLearningRequest(req) {
+  const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
+  const usersSheet = adminSs.getSheetByName("users");
+  const data = usersSheet.getDataRange().getValues();
+  let userName = "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === req.userId) {
+      userName = String(data[i][1] || "");
+      break;
+    }
+  }
+  if (!userName) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+  if (!validateExternalMenu_(adminSs, req.menuName, req.points)) return sendResponse({ status: "error", message: "メニューが不正です" });
+
+  const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const now = new Date();
+  const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  sheet.appendRow([nowStr, req.userId, userName, req.menuName, Number(req.points), "申請中", ""]);
+  const rowIdx = sheet.getLastRow();
+
+  return sendResponse({ status: "success", message: "申請を受け付けました。おうちの人に承認してもらってね。", rowIdx: rowIdx });
+}
+
+function handleGetPendingExternalRequests(req) {
+  const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
+  const v = verifyExternalAdminPin_(adminSs, req.adminPin);
+  if (!v.ok) return sendResponse({ status: "error", message: v.message });
+
+  const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const data = sheet.getDataRange().getValues();
+  const list = [];
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][5]) === "申請中") {
+      list.push({
+        rowIdx: i + 1,
+        requestedAt: String(data[i][0] || ""),
+        userId: String(data[i][1] || ""),
+        userName: String(data[i][2] || ""),
+        menuName: String(data[i][3] || ""),
+        points: Number(data[i][4]) || 0
+      });
+    }
+  }
+  return sendResponse({ status: "success", list: list });
+}
+
+function handleApproveExternalRequest(req) {
+  const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
+  const v = verifyExternalAdminPin_(adminSs, req.adminPin);
+  if (!v.ok) return sendResponse({ status: "error", message: v.message });
+
+  const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const rowIdx = Number(req.rowIdx);
+  const lastRow = sheet.getLastRow();
+  if (rowIdx < 2 || rowIdx > lastRow) return sendResponse({ status: "error", message: "申請が見つかりません" });
+
+  const row = sheet.getRange(rowIdx, 1, rowIdx, 7).getValues()[0];
+  if (String(row[5]) !== "申請中") return sendResponse({ status: "error", message: "この申請はすでに処理済みです" });
+
+  const userId = String(row[1]);
+  const points = Number(row[4]) || 0;
+  const menuName = String(row[3]);
+
+  const usersSheet = adminSs.getSheetByName("users");
+  const udata = usersSheet.getDataRange().getValues();
+  let found = false;
+  let newTotal = 0;
+  for (let i = 1; i < udata.length; i++) {
+    if (udata[i][0] === userId) {
+      found = true;
+      newTotal = Math.round(((Number(udata[i][3]) || 0) + points) * 100) / 100;
+      usersSheet.getRange(i + 1, 4).setValue(newTotal);
+      break;
+    }
+  }
+  if (!found) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+
+  const now = new Date();
+  const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  sheet.getRange(rowIdx, 6).setValue("承認済み");
+  sheet.getRange(rowIdx, 7).setValue(nowStr);
+
+  return sendResponse({ status: "success", message: "承認してポイントを付与しました。", newTotal: newTotal, userId: userId, userName: String(row[2]), menuName: menuName, points: points });
+}
+
+function handleRejectExternalRequest(req) {
+  const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
+  const v = verifyExternalAdminPin_(adminSs, req.adminPin);
+  if (!v.ok) return sendResponse({ status: "error", message: v.message });
+
+  const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const rowIdx = Number(req.rowIdx);
+  const lastRow = sheet.getLastRow();
+  if (rowIdx < 2 || rowIdx > lastRow) return sendResponse({ status: "error", message: "申請が見つかりません" });
+
+  const status = String(sheet.getRange(rowIdx, 6).getValue());
+  if (status !== "申請中") return sendResponse({ status: "error", message: "この申請はすでに処理済みです" });
+
+  const now = new Date();
+  const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  sheet.getRange(rowIdx, 6).setValue("却下");
+  sheet.getRange(rowIdx, 7).setValue(nowStr);
+
+  return sendResponse({ status: "success", message: "却下しました。" });
+}
+
+function handleGetMyExternalLearningRequests(req) {
+  const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
+  const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const data = sheet.getDataRange().getValues();
+  const list = [];
+  for (let i = data.length - 1; i >= 1 && list.length < 30; i--) {
+    if (String(data[i][1]) === String(req.userId)) {
+      list.push({
+        rowIdx: i + 1,
+        requestedAt: String(data[i][0] || ""),
+        menuName: String(data[i][3] || ""),
+        points: Number(data[i][4]) || 0,
+        status: String(data[i][5] || "")
+      });
+    }
+  }
+  return sendResponse({ status: "success", list: list });
+}
 function handleGetPointsMultiplier(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users").getDataRange().getValues(); let multiplier = 1.0; for (let i = 1; i < data.length; i++) { if (data[i][0] === req.userId) { const lastStudyTimeStr = JSON.parse(data[i][4] || "{}")[req.unitId]; if (lastStudyTimeStr) { const diffHours = (new Date() - new Date(lastStudyTimeStr)) / (1000 * 60 * 60); let basePercent = 10 + Math.floor(diffHours / 2) * 10; if (basePercent > 100) basePercent = 100; multiplier = basePercent / 100; } break; } } return sendResponse({ status: "success", multiplier: multiplier }); }
 function handleGetChildUsers(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users").getDataRange().getValues(); const users = []; for (let i = 1; i < data.length; i++) { if (data[i][0] && i > 0) users.push({ id: data[i][0], name: data[i][1] }); } return sendResponse({ status: "success", users: users }); }
 function handleVerifyKidPin(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users").getDataRange().getValues(); for (let i = 1; i < data.length; i++) { if (data[i][0] === req.userId) { if (String(data[i][2]) === String(req.pin)) { return sendResponse({ status: "success", user: { id: data[i][0], name: data[i][1], points: data[i][3], lastStudyJson: JSON.parse(data[i][4] || "{}"), historyJson: JSON.parse(data[i][5] || "{}"), dailyPointsJson: JSON.parse(data[i][6] || "{}") }, message: "ログイン成功" }); } else return sendResponse({ status: "error", message: "PINがちがいます" }); } } return sendResponse({ status: "error", message: "ユーザーが見つかりません" }); }

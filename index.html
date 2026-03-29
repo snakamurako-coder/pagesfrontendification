@@ -83,6 +83,7 @@
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
       <button class="menu-btn btn-red" onclick="loadMaterials(this)">▶ いつもの学習をえらぶ</button>
       <button class="menu-btn btn-blue" onclick="loadExternalLearning(this)">📚 アプリ以外の勉強を記録</button>
+      <button type="button" class="menu-btn btn-gray" style="margin-top:8px; font-size:15px; padding:12px 16px;" onclick="openExternalAdminApproval()">🔐 おうちの人：外部学習の承認</button>
       <hr style="border-color:#444; width: 90%; max-width:350px; margin: 15px 0;">
       <button class="menu-btn btn-orange" onclick="loadRewards(this)">🎁 けいひんを もらう</button>
       <button class="menu-btn btn-green" onclick="loadInventory(this)">🎒 もちもの（使う）</button>
@@ -96,9 +97,24 @@
   <div id="section-materials" class="section"><h1>なにを勉強する？</h1><div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">もどる</button></div>
   
   <div id="section-external" class="section">
-    <h1>📚 アプリ以外の勉強</h1><p>学校の宿題や読書をしたら報告しよう！<br>（※おうちの人にかくにんしてね）</p>
+    <h1>📚 アプリ以外の勉強</h1>
+    <p style="max-width:400px;margin:0 auto 12px;line-height:1.5;">やったことを<strong>申請</strong>しよう。<br>おうちの人が<strong>管理者PIN</strong>で承認すると、ポイントが付きます。</p>
     <div id="external-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div>
+    <div id="external-my-requests" style="max-width:400px;margin:20px auto 0;text-align:left;font-size:14px;color:#ccc;"></div>
+    <p style="margin-top:16px;font-size:13px;color:#888;">おうちの人はホームの「外部学習の承認」から処理できます。</p>
     <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">もどる</button>
+  </div>
+
+  <div id="section-external-admin" class="section">
+    <h1>🔐 外部学習の承認</h1>
+    <p style="max-width:400px;margin:0 auto 12px;line-height:1.5;color:#ccc;">管理者PIN（<code style="color:#9C27B0;">アプリ設定</code>シートの「外部学習_管理者PIN」）を入力して、申請一覧を表示します。</p>
+    <div id="external-admin-pin-panel" style="max-width:400px;margin:0 auto;">
+      <input type="password" id="external-admin-pin-input" inputmode="numeric" autocomplete="off" placeholder="管理者PIN" style="width:100%;max-width:280px;padding:14px;font-size:20px;border-radius:10px;border:2px solid #555;background:#222;color:#fff;box-sizing:border-box;">
+      <button type="button" class="submit-btn btn-purple" style="margin-top:12px;width:100%;max-width:280px;" onclick="loadExternalAdminPending()">一覧を表示</button>
+    </div>
+    <div id="external-admin-message" style="color:#ff8a80;margin:12px auto;max-width:400px;min-height:1.2em;"></div>
+    <div id="external-admin-list" style="display:none;flex-direction:column;gap:12px;max-width:420px;margin:16px auto 0;"></div>
+    <button type="button" class="cancel-btn" style="margin-top:24px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
   </div>
   
   <div id="section-settings" class="section"><h2 id="settings-title">設定</h2>
@@ -515,10 +531,11 @@
         }).catch(e => toggleBtnLoading(btn, false, origText)); 
     }
 
-    // ====== 第2弾：外部学習の機能 ======
+    // ====== 第2弾：外部学習（申請 → 管理者PIN承認） ======
     function loadExternalLearning(btn) {
       const origText = toggleBtnLoading(btn, true);
       document.getElementById('external-container').innerHTML = "<p>さがしています...</p>";
+      document.getElementById('external-my-requests').innerHTML = "";
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_external_learning" }) })
       .then(r=>r.json()).then(d=>{
         toggleBtnLoading(btn, false, origText);
@@ -529,24 +546,174 @@
           d.list.forEach(item => {
             const b = document.createElement('button'); b.className = "menu-btn btn-blue";
             b.innerHTML = `${item.name} <br><span style="font-size:14px; color:gold;">(+${item.points} Pt)</span>`;
-            b.onclick = () => claimExternalPoints(item.name, item.points);
+            b.onclick = () => submitExternalLearningRequest(item.name, item.points);
             c.appendChild(b);
           });
+          refreshMyExternalRequests();
         }
       }).catch(e => toggleBtnLoading(btn, false, origText));
     }
 
-    function claimExternalPoints(menuName, points) {
-      if(!confirm(`「${menuName}」をやったんだね！\nおうちの人にかくにんしてもらった？`)) return;
+    function refreshMyExternalRequests() {
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "report_external_learning", userId: user.id, menuName: menuName, points: points }) })
+      if (!user) return;
+      const box = document.getElementById('external-my-requests');
+      box.innerHTML = "<p style='color:#888;'>あなたの申請を読み込み中...</p>";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_my_external_learning_requests", userId: user.id }) })
+      .then(r=>r.json()).then(d=>{
+        if(d.status !== "success" || !d.list || d.list.length === 0) {
+          box.innerHTML = "<p style='color:#888;'>※まだ申請履歴はありません。</p>";
+          return;
+        }
+        const label = { "申請中": "⏳ 申請中", "承認済み": "✅ 承認済み", "却下": "❌ 却下" };
+        let html = "<strong style='color:#fff;'>あなたの申請</strong><ul style='margin:8px 0 0;padding-left:18px;'>";
+        d.list.forEach(r => {
+          const st = label[r.status] || r.status;
+          html += `<li style='margin-bottom:6px;'>${r.menuName}（+${r.points} Pt）<br><span style='font-size:12px;color:#aaa;'>${r.requestedAt} — ${st}</span></li>`;
+        });
+        html += "</ul>";
+        box.innerHTML = html;
+      }).catch(() => { box.innerHTML = ""; });
+    }
+
+    function submitExternalLearningRequest(menuName, points) {
+      if(!confirm(`「${menuName}」を申請する？\n（おうちの人が管理者PINで承認するまでポイントは付きません）`)) return;
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "submit_external_learning_request", userId: user.id, menuName: menuName, points: points }) })
       .then(r=>r.json()).then(d=>{
         if(d.status === "success") {
           alert(d.message);
-          user.points = d.newTotal; localStorage.setItem('app_kid_user', JSON.stringify(user));
-          showHome(user);
+          refreshMyExternalRequests();
+        } else {
+          alert(d.message || "申請に失敗しました");
         }
+      }).catch(() => alert("通信エラーが発生しました。"));
+    }
+
+    function openExternalAdminApproval() {
+      document.getElementById('external-admin-pin-input').value = "";
+      document.getElementById('external-admin-message').innerText = "";
+      document.getElementById('external-admin-list').style.display = "none";
+      document.getElementById('external-admin-list').innerHTML = "";
+      document.getElementById('external-admin-pin-panel').style.display = "block";
+      switchSection('section-external-admin');
+    }
+
+    function getExternalAdminPin() {
+      return (document.getElementById('external-admin-pin-input') && document.getElementById('external-admin-pin-input').value) || "";
+    }
+
+    function loadExternalAdminPending() {
+      const pin = getExternalAdminPin();
+      const msg = document.getElementById('external-admin-message');
+      const listEl = document.getElementById('external-admin-list');
+      msg.innerText = "";
+      if (!pin) {
+        msg.innerText = "PINを入力してください。";
+        return;
+      }
+      listEl.style.display = "none";
+      listEl.innerHTML = "<p>よみこみ中...</p>";
+      listEl.style.display = "flex";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_pending_external_requests", adminPin: pin }) })
+      .then(r=>r.json()).then(d=>{
+        if(d.status !== "success") {
+          listEl.style.display = "none";
+          msg.innerText = d.message || "エラー";
+          return;
+        }
+        document.getElementById('external-admin-pin-panel').style.display = "none";
+        msg.innerText = "";
+        renderExternalAdminList(d.list || [], pin);
+      }).catch(() => {
+        listEl.style.display = "none";
+        msg.innerText = "通信エラーが発生しました。";
       });
+    }
+
+    function renderExternalAdminList(list, pin) {
+      const listEl = document.getElementById('external-admin-list');
+      listEl.style.display = "flex";
+      if (list.length === 0) {
+        listEl.innerHTML = "<p style='text-align:center;color:#888;'>申請中のものはありません。</p>";
+        const retry = document.createElement('button');
+        retry.type = "button";
+        retry.className = "submit-btn btn-gray";
+        retry.innerText = "PINを入れ直す";
+        retry.onclick = () => {
+          document.getElementById('external-admin-pin-panel').style.display = "block";
+          listEl.style.display = "none";
+          listEl.innerHTML = "";
+        };
+        listEl.appendChild(retry);
+        return;
+      }
+      listEl.innerHTML = "";
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.style.cssText = "background:#2a2a2a;border-radius:12px;padding:14px;border:1px solid #444;";
+        card.innerHTML = `<div style="font-weight:bold;margin-bottom:6px;">${item.userName} <span style="font-size:12px;color:#aaa;">(${item.userId})</span></div>
+          <div style="font-size:15px;margin-bottom:4px;">${item.menuName}</div>
+          <div style="color:gold;margin-bottom:8px;">+${item.points} Pt</div>
+          <div style="font-size:12px;color:#888;margin-bottom:10px;">${item.requestedAt}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="submit-btn btn-green" style="flex:1;min-width:100px;">承認する</button>
+            <button type="button" class="cancel-btn" style="flex:1;min-width:100px;background:#663333;color:#fcc;">却下</button>
+          </div>`;
+        const btns = card.querySelectorAll('button');
+        btns[0].onclick = () => decideExternalRequest(item.rowIdx, pin, true);
+        btns[1].onclick = () => decideExternalRequest(item.rowIdx, pin, false);
+        listEl.appendChild(card);
+      });
+      const back = document.createElement('button');
+      back.type = "button";
+      back.className = "submit-btn btn-gray";
+      back.style.marginTop = "8px";
+      back.innerText = "PINを入れ直して再読み込み";
+      back.onclick = () => {
+        document.getElementById('external-admin-pin-panel').style.display = "block";
+        listEl.style.display = "none";
+        listEl.innerHTML = "";
+      };
+      listEl.appendChild(back);
+    }
+
+    function decideExternalRequest(rowIdx, pin, approve) {
+      if (!confirm(approve ? "この申請を承認してポイントを付与しますか？" : "この申請を却下しますか？")) return;
+      const action = approve ? "approve_external_request" : "reject_external_request";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: action, adminPin: pin, rowIdx: rowIdx }) })
+      .then(r=>r.json()).then(d=>{
+        if(d.status !== "success") {
+          alert(d.message || "エラー");
+          return;
+        }
+        alert(d.message);
+        const user = JSON.parse(localStorage.getItem('app_kid_user') || "{}");
+        if (approve && d.userId && user.id === d.userId && typeof d.newTotal === "number") {
+          user.points = d.newTotal;
+          localStorage.setItem('app_kid_user', JSON.stringify(user));
+          const pts = document.getElementById('user-points');
+          if (pts) pts.innerText = user.points;
+        }
+        loadExternalAdminPendingAfterPin(pin);
+      }).catch(() => alert("通信エラーが発生しました。"));
+    }
+
+    function loadExternalAdminPendingAfterPin(pin) {
+      const msg = document.getElementById('external-admin-message');
+      const listEl = document.getElementById('external-admin-list');
+      msg.innerText = "";
+      listEl.innerHTML = "<p>更新中...</p>";
+      listEl.style.display = "flex";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_pending_external_requests", adminPin: pin }) })
+      .then(r=>r.json()).then(d=>{
+        if(d.status !== "success") {
+          msg.innerText = d.message || "エラー";
+          listEl.innerHTML = "";
+          return;
+        }
+        renderExternalAdminList(d.list || [], pin);
+      }).catch(() => { msg.innerText = "通信エラー"; });
     }
 
     // （いつもの学習のロード関連）
