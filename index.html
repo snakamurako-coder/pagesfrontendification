@@ -473,7 +473,8 @@
 
         let mappedFormat = "en_to_ja";
         let mappedAnsType = "4choice";
-        let mappedOrder = route.mode === "ランダム" ? "random" : "normal";
+        let mappedOrder = route.mode ? (route.mode === "ランダム" ? "random" : "normal") : "random";
+        let mappedBlank = route.blankCount || "";
         
         if (route.qFormat === "日本語→英単語") mappedFormat = "ja_to_en";
         else if (route.qFormat === "英単語→日本語") mappedFormat = "en_to_ja";
@@ -483,6 +484,8 @@
         
         if (route.aFormat === "タイピング") mappedAnsType = "typing";
         else if (route.aFormat === "音声") mappedAnsType = "voice";
+        else if (route.aFormat === "穴埋め4択") mappedAnsType = "fill_4choice";
+        else if (route.aFormat === "穴埋めタイピング") mappedAnsType = "fill_typing";
 
         prefetchMaterials().then(() => {
             let foundModeId = null;
@@ -510,6 +513,14 @@
                     document.getElementById('setting-answer-type').innerHTML = `<option value="${mappedAnsType}">${route.aFormat}</option>`;
                     document.getElementById('setting-order').value = mappedOrder;
                     document.getElementById('setting-play-mode').value = "normal";
+                    if (mappedAnsType.startsWith("fill_") && mappedBlank) {
+                      const blankSelect = document.getElementById('setting-blank-count');
+                      if (blankSelect) {
+                        const exists = Array.from(blankSelect.options).some(o => o.value === String(mappedBlank));
+                        if (!exists) blankSelect.insertAdjacentHTML('beforeend', `<option value="${mappedBlank}">${mappedBlank} 文字 かくす</option>`);
+                        blankSelect.value = String(mappedBlank);
+                      }
+                    }
                     
                     prepareQuiz();
                 } else {
