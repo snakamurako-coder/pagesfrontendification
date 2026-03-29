@@ -66,19 +66,55 @@ function setupSystem() {
     logMessage += "✅ 「アプリ設定」を追加しました。\n";
   }
 
+  // 形式×答え方ごとの基本ポイントキー（足りないものだけ追加）
+  if (appSettingsSheet) {
+    const settingsData = appSettingsSheet.getDataRange().getValues();
+    const existingKeys = new Set(settingsData.slice(1).map(r => String(r[0] || "")));
+    const defaultPointRows = [
+      ["基本Pt_ja_to_en_4choice", 3],
+      ["基本Pt_ja_to_en_typing", 20],
+      ["基本Pt_ja_to_en_voice", 20],
+      ["基本Pt_ja_to_en_fill_4choice", 5],
+      ["基本Pt_ja_to_en_fill_typing", 5],
+      ["基本Pt_en_to_ja_4choice", 2],
+      ["基本Pt_en_to_ja_typing", 20],
+      ["基本Pt_en_to_ja_voice", 20],
+      ["基本Pt_en_audio_to_ja_4choice", 2],
+      ["基本Pt_en_audio_to_ja_typing", 20],
+      ["基本Pt_en_audio_to_ja_voice", 20],
+      ["基本Pt_en_audio_to_en_4choice", 3],
+      ["基本Pt_en_audio_to_en_typing", 20],
+      ["基本Pt_en_audio_to_en_voice", 20],
+      ["基本Pt_en_audio_to_en_fill_4choice", 5],
+      ["基本Pt_en_audio_to_en_fill_typing", 5],
+      ["基本Pt_en_to_en_typing", 20],
+      ["基本Pt_en_to_en_voice", 20],
+      ["基本Pt_qtext_to_en_4choice", 3],
+      ["基本Pt_qtext_to_en_typing", 30],
+      ["基本Pt_qtext_to_en_voice", 30],
+      ["基本Pt_qaudio_to_en_typing", 30],
+      ["基本Pt_qaudio_to_en_voice", 30]
+    ];
+    defaultPointRows.forEach(row => {
+      if (!existingKeys.has(row[0])) {
+        appSettingsSheet.appendRow(row);
+      }
+    });
+  }
+
   let extLearningSheet = adminSs.getSheetByName("外部学習");
   if (!extLearningSheet) {
     extLearningSheet = adminSs.insertSheet("外部学習");
-    extLearningSheet.appendRow(["メニュー名", "獲得ポイント"]);
-    extLearningSheet.appendRow(["学校の宿題（全教科）", 50]);
-    extLearningSheet.appendRow(["読書（30分）", 30]);
+    extLearningSheet.appendRow(["カテゴリ", "分量", "獲得ポイント"]);
+    extLearningSheet.appendRow(["ピアノ練習", "30分", 50]);
+    extLearningSheet.appendRow(["読書", "30分", 30]);
     logMessage += "✅ 「外部学習」を追加しました。\n";
   }
 
   let extReqSheet = adminSs.getSheetByName("外部学習申請");
   if (!extReqSheet) {
     extReqSheet = adminSs.insertSheet("外部学習申請");
-    extReqSheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "メニュー名", "ポイント", "状態", "処理日時"]);
+    extReqSheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "カテゴリ", "分量", "ポイント", "こどもメモ", "状態", "処理日時", "おとなメモ"]);
     logMessage += "✅ 「外部学習申請」を追加しました。\n";
   }
 
@@ -314,13 +350,13 @@ function handleSaveLearningSession(req) {
 // 既存のハンドラー（変更なし）
 // ==========================================
 function handleGetAppSettings(req) { const settingsSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("アプリ設定"); if (!settingsSheet) return sendResponse({ status: "success", settings: {} }); const data = settingsSheet.getDataRange().getValues(); const settings = {}; for (let i = 1; i < data.length; i++) { if (data[i][0]) settings[data[i][0]] = data[i][1]; } return sendResponse({ status: "success", settings: settings }); }
-function handleGetExternalLearning(req) { const sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("外部学習"); const list = []; if (sheet) { const data = sheet.getDataRange().getValues(); for (let i = 1; i < data.length; i++) { if (data[i][0]) list.push({ name: data[i][0], points: Number(data[i][1]) }); } } return sendResponse({ status: "success", list: list }); }
+function handleGetExternalLearning(req) { const sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("外部学習"); const list = []; if (sheet) { const data = sheet.getDataRange().getValues(); if (data.length > 0) { const headers = data[0].map(String); const isNew = headers[0] === "カテゴリ"; for (let i = 1; i < data.length; i++) { if (!data[i][0]) continue; if (isNew) { list.push({ category: data[i][0], volume: data[i][1], points: Number(data[i][2]) }); } else { list.push({ category: data[i][0], volume: "", points: Number(data[i][1]) }); } } } } return sendResponse({ status: "success", list: list }); }
 
 function ensureExternalLearningRequestSheet_(adminSs) {
   let sheet = adminSs.getSheetByName("外部学習申請");
   if (!sheet) {
     sheet = adminSs.insertSheet("外部学習申請");
-    sheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "メニュー名", "ポイント", "状態", "処理日時"]);
+    sheet.appendRow(["申請日時", "ユーザーID", "ユーザー名", "カテゴリ", "分量", "ポイント", "こどもメモ", "状態", "処理日時", "おとなメモ"]);
   }
   return sheet;
 }
@@ -346,10 +382,31 @@ function validateExternalMenu_(adminSs, menuName, points) {
   const sheet = adminSs.getSheetByName("外部学習");
   if (!sheet) return false;
   const data = sheet.getDataRange().getValues();
+  if (data.length === 0) return false;
+  const headers = data[0].map(String);
+  const isNew = headers[0] === "カテゴリ";
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] && String(data[i][0]) === String(menuName) && Number(data[i][1]) === Number(points)) return true;
+    if (!data[i][0]) continue;
+    if (isNew) {
+      if (String(data[i][0]) === String(menuName.category) && String(data[i][1]) === String(menuName.volume) && Number(data[i][2]) === Number(points)) return true;
+    } else {
+      if (String(data[i][0]) === String(menuName.category || menuName) && Number(data[i][1]) === Number(points)) return true;
+    }
   }
   return false;
+}
+
+function ensureExternalRequestHeaderMap_(sheet) {
+  const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  const map = {};
+  ["申請日時", "ユーザーID", "ユーザー名", "カテゴリ", "分量", "ポイント", "こどもメモ", "状態", "処理日時", "おとなメモ"].forEach(key => {
+    map[key] = header.indexOf(key) + 1; // 1-based col
+  });
+  const required = ["申請日時", "ユーザーID", "ユーザー名", "ポイント", "状態"];
+  for (const k of required) {
+    if (map[k] === 0) return { ok: false, map: null, message: "「外部学習申請」シートのヘッダーが最新ではありません。カテゴリ/分量/こどもメモ/おとなメモ列を追加してください。" };
+  }
+  return { ok: true, map };
 }
 
 function handleSubmitExternalLearningRequest(req) {
@@ -364,12 +421,26 @@ function handleSubmitExternalLearningRequest(req) {
     }
   }
   if (!userName) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
-  if (!validateExternalMenu_(adminSs, req.menuName, req.points)) return sendResponse({ status: "error", message: "メニューが不正です" });
+  if (!validateExternalMenu_(adminSs, { category: req.category, volume: req.volume }, req.points)) return sendResponse({ status: "error", message: "メニューが不正です" });
 
   const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const { ok, map, message } = ensureExternalRequestHeaderMap_(sheet);
+  if (!ok) return sendResponse({ status: "error", message });
+
   const now = new Date();
   const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-  sheet.appendRow([nowStr, req.userId, userName, req.menuName, Number(req.points), "申請中", ""]);
+  const row = [];
+  row[map["申請日時"] - 1] = nowStr;
+  row[map["ユーザーID"] - 1] = req.userId;
+  row[map["ユーザー名"] - 1] = userName;
+  if (map["カテゴリ"]) row[map["カテゴリ"] - 1] = req.category;
+  if (map["分量"]) row[map["分量"] - 1] = req.volume;
+  row[map["ポイント"] - 1] = Number(req.points);
+  if (map["こどもメモ"]) row[map["こどもメモ"] - 1] = req.childMemo || "";
+  row[map["状態"] - 1] = "申請中";
+  if (map["処理日時"]) row[map["処理日時"] - 1] = "";
+  if (map["おとなメモ"]) row[map["おとなメモ"] - 1] = "";
+  sheet.appendRow(row);
   const rowIdx = sheet.getLastRow();
 
   return sendResponse({ status: "success", message: "申請を受け付けました。おうちの人に承認してもらってね。", rowIdx: rowIdx });
@@ -381,17 +452,21 @@ function handleGetPendingExternalRequests(req) {
   if (!v.ok) return sendResponse({ status: "error", message: v.message });
 
   const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const { ok, map, message } = ensureExternalRequestHeaderMap_(sheet);
+  if (!ok) return sendResponse({ status: "error", message });
   const data = sheet.getDataRange().getValues();
   const list = [];
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][5]) === "申請中") {
+    if (String(data[i][map["状態"] - 1]) === "申請中") {
       list.push({
         rowIdx: i + 1,
-        requestedAt: String(data[i][0] || ""),
-        userId: String(data[i][1] || ""),
-        userName: String(data[i][2] || ""),
-        menuName: String(data[i][3] || ""),
-        points: Number(data[i][4]) || 0
+        requestedAt: String(data[i][map["申請日時"] - 1] || ""),
+        userId: String(data[i][map["ユーザーID"] - 1] || ""),
+        userName: String(data[i][map["ユーザー名"] - 1] || ""),
+        category: map["カテゴリ"] ? String(data[i][map["カテゴリ"] - 1] || "") : "",
+        volume: map["分量"] ? String(data[i][map["分量"] - 1] || "") : "",
+        points: Number(data[i][map["ポイント"] - 1]) || 0,
+        childMemo: map["こどもメモ"] ? String(data[i][map["こどもメモ"] - 1] || "") : ""
       });
     }
   }
@@ -408,12 +483,15 @@ function handleApproveExternalRequest(req) {
   const lastRow = sheet.getLastRow();
   if (rowIdx < 2 || rowIdx > lastRow) return sendResponse({ status: "error", message: "申請が見つかりません" });
 
-  const row = sheet.getRange(rowIdx, 1, rowIdx, 7).getValues()[0];
-  if (String(row[5]) !== "申請中") return sendResponse({ status: "error", message: "この申請はすでに処理済みです" });
+  const { ok, map, message } = ensureExternalRequestHeaderMap_(sheet);
+  if (!ok) return sendResponse({ status: "error", message });
+  const row = sheet.getRange(rowIdx, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (String(row[map["状態"] - 1]) !== "申請中") return sendResponse({ status: "error", message: "この申請はすでに処理済みです" });
 
-  const userId = String(row[1]);
-  const points = Number(row[4]) || 0;
-  const menuName = String(row[3]);
+  const userId = String(row[map["ユーザーID"] - 1]);
+  const points = Number(row[map["ポイント"] - 1]) || 0;
+  const menuName = map["カテゴリ"] ? String(row[map["カテゴリ"] - 1]) : "";
+  const userName = String(row[map["ユーザー名"] - 1] || "");
 
   const usersSheet = adminSs.getSheetByName("users");
   const udata = usersSheet.getDataRange().getValues();
@@ -431,10 +509,11 @@ function handleApproveExternalRequest(req) {
 
   const now = new Date();
   const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-  sheet.getRange(rowIdx, 6).setValue("承認済み");
-  sheet.getRange(rowIdx, 7).setValue(nowStr);
+  sheet.getRange(rowIdx, map["状態"]).setValue("承認済み");
+  if (map["処理日時"]) sheet.getRange(rowIdx, map["処理日時"]).setValue(nowStr);
+  if (map["おとなメモ"]) sheet.getRange(rowIdx, map["おとなメモ"]).setValue(req.adminMemo || "");
 
-  return sendResponse({ status: "success", message: "承認してポイントを付与しました。", newTotal: newTotal, userId: userId, userName: String(row[2]), menuName: menuName, points: points });
+  return sendResponse({ status: "success", message: "承認してポイントを付与しました。", newTotal: newTotal, userId: userId, userName: userName, category: menuName, volume: map["分量"] ? String(row[map["分量"] - 1]) : "", points: points });
 }
 
 function handleRejectExternalRequest(req) {
@@ -447,13 +526,17 @@ function handleRejectExternalRequest(req) {
   const lastRow = sheet.getLastRow();
   if (rowIdx < 2 || rowIdx > lastRow) return sendResponse({ status: "error", message: "申請が見つかりません" });
 
-  const status = String(sheet.getRange(rowIdx, 6).getValue());
+  const { ok, map, message } = ensureExternalRequestHeaderMap_(sheet);
+  if (!ok) return sendResponse({ status: "error", message });
+
+  const status = String(sheet.getRange(rowIdx, map["状態"]).getValue());
   if (status !== "申請中") return sendResponse({ status: "error", message: "この申請はすでに処理済みです" });
 
   const now = new Date();
   const nowStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-  sheet.getRange(rowIdx, 6).setValue("却下");
-  sheet.getRange(rowIdx, 7).setValue(nowStr);
+  sheet.getRange(rowIdx, map["状態"]).setValue("却下");
+  if (map["処理日時"]) sheet.getRange(rowIdx, map["処理日時"]).setValue(nowStr);
+  if (map["おとなメモ"]) sheet.getRange(rowIdx, map["おとなメモ"]).setValue(req.adminMemo || "");
 
   return sendResponse({ status: "success", message: "却下しました。" });
 }
@@ -461,16 +544,20 @@ function handleRejectExternalRequest(req) {
 function handleGetMyExternalLearningRequests(req) {
   const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID'));
   const sheet = ensureExternalLearningRequestSheet_(adminSs);
+  const { ok, map, message } = ensureExternalRequestHeaderMap_(sheet);
+  if (!ok) return sendResponse({ status: "error", message });
   const data = sheet.getDataRange().getValues();
   const list = [];
   for (let i = data.length - 1; i >= 1 && list.length < 30; i--) {
-    if (String(data[i][1]) === String(req.userId)) {
+    if (String(data[i][map["ユーザーID"] - 1]) === String(req.userId)) {
       list.push({
         rowIdx: i + 1,
-        requestedAt: String(data[i][0] || ""),
-        menuName: String(data[i][3] || ""),
-        points: Number(data[i][4]) || 0,
-        status: String(data[i][5] || "")
+        requestedAt: String(data[i][map["申請日時"] - 1] || ""),
+        category: map["カテゴリ"] ? String(data[i][map["カテゴリ"] - 1] || "") : "",
+        volume: map["分量"] ? String(data[i][map["分量"] - 1] || "") : "",
+        points: Number(data[i][map["ポイント"] - 1]) || 0,
+        status: String(data[i][map["状態"] - 1] || ""),
+        childMemo: map["こどもメモ"] ? String(data[i][map["こどもメモ"] - 1] || "") : ""
       });
     }
   }
