@@ -44,6 +44,22 @@
     .checkbox { width: 24px; height: 24px; border: 2px solid #fff; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;}
     .cleared .checkbox { background: #4CAF50; border-color: #4CAF50; }
     
+    /* キーボード用のCSS */
+    .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
+    .key-row { display: flex; justify-content: center; gap: 4px; }
+    .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
+    .key:active { transform: translateY(4px); box-shadow: 0 0 #333; background: #777; }
+    .key-wide { flex: 1.5; font-size: 16px; background: #444; }
+    .key-action { background: #2196F3; flex: 2; box-shadow: 0 4px #0d47a1; }
+    .key-action:active { box-shadow: 0 0 #0d47a1; }
+    .key-action:disabled { background: #555; box-shadow: 0 4px #333; color:#888; cursor:not-allowed;}
+
+    /* ★ 穴埋め用のCSS */
+    .word-blank-container { font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; word-break: break-all; }
+    .blank-box { display: inline-block; min-width: 35px; min-height: 45px; border-bottom: 4px solid #888; text-align: center; margin: 0 4px; color: #FF9800; cursor: pointer; vertical-align: bottom; }
+    .blank-box.active { border-bottom: 4px solid #e50914; background: rgba(229, 9, 20, 0.2); border-radius: 4px 4px 0 0; }
+    .fill-choices { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+    .fill-choice-btn { width: 60px; height: 60px; font-size: 30px; border-radius: 10px; background: #333; color: white; border: 2px solid #555; font-weight: bold; cursor: pointer; }    
   </style>
 </head>
 <body>
@@ -90,13 +106,28 @@
       <h3 style="color: #FF9800; text-align:center;">🔥 学習モード</h3>
       <select id="setting-play-mode" class="large-select"><option value="normal">通常（ぜんぶ出題）</option><option value="review">ニガテ特訓（＋40% Pt）</option></select>
     </div>
-    <div class="setting-group"><h3>1. もんだいの形式</h3><select id="setting-format" class="large-select" onchange="updateAnswerTypeUI()"></select></div>
-    <div class="setting-group"><h3>2. こたえ方</h3><select id="setting-answer-type" class="large-select"></select></div>
-    <div class="setting-group"><h3>3. 出し方</h3>
-      <select id="setting-order" class="large-select"><option value="normal">順番どおり</option><option value="random">ランダム</option></select>
+    <div class="setting-group">
+      <h3>1. もんだいの形式</h3>
+      <select id="setting-format" class="large-select" onchange="updateAnswerTypeUI()"></select>
     </div>
+    <div class="setting-group">
+      <h3>2. こたえ方</h3>
+      <select id="setting-answer-type" class="large-select" onchange="toggleBlankSetting()"></select>
+    </div>
+    <div class="setting-group">
+      <h3>3. 出し方 <span class="bonus-badge" id="random-bonus-badge" style="display:none;">ボーナス +10%</span></h3>
+      <select id="setting-order" class="large-select" onchange="document.getElementById('random-bonus-badge').style.display = this.value === 'random' ? 'inline-block' : 'none';">
+        <option value="normal">順番どおり</option><option value="random">ランダム</option>
+      </select>
+    </div>
+
+    <div id="setting-group-blanks" class="setting-group" style="display:none; border: 2px solid #2196F3;">
+      <h3 style="color:#2196F3;">4. 隠す文字数（難易度）</h3>
+      <select id="setting-blank-count" class="large-select"></select>
+    </div>
+
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
-    <button class="cancel-btn" style="margin-top:10px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">やめる</button>
+    <button class="cancel-btn" style="margin-top:20px;" onclick="switchSection('section-materials')">もどる</button>
   </div>
   
   <div id="section-quiz" class="section">
@@ -106,7 +137,18 @@
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
     <div id="quiz-q-text">もんだい文</div>
+    
+    <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
+
     <div id="quiz-answer-area"></div>
+    
+    <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
+      <button id="hint-btn-1" onclick="useHint(1, 5)" class="hint-btn">💡 イニシャルを見る（-5 Pt）</button>
+      <button id="hint-btn-2" onclick="useHint(2, 7)" class="hint-btn">💡 イニシャルと文字数を見る（-7 Pt）</button>
+      <button id="hint-btn-3" onclick="useHint(3, 10)" class="hint-btn">🔊 答えを読み上げる（-10 Pt）</button>
+      <div id="hint-display-text" style="color: #FFEB3B; font-size: 24px; font-weight: bold; background: #333; padding: 10px; border-radius: 8px; width: 90%; margin-top:10px; display:none; letter-spacing: 5px;"></div>
+    </div>
+    
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
   </div>
@@ -116,6 +158,7 @@
     <div id="result-content" class="item-card" style="text-align:center;"></div>
     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
       <button onclick="prepareQuiz()" id="result-retry-btn" class="submit-btn btn-orange" style="display:none; width: 90%; max-width: 350px; margin:0;">🔄 もう一度やる</button>
+      <button onclick="openSettingsScreen()" id="result-settings-btn" class="submit-btn btn-blue" style="display:none; width: 90%; max-width: 350px; margin:0;">⚙️ 同じ単元を学習する</button>
       <button onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))" id="result-home-btn" class="submit-btn btn-gray" style="display:none; width: 90%; max-width: 350px; margin:0;">🏠 ホームにもどる</button>
     </div>
   </div>
@@ -131,6 +174,50 @@
     let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
     let quizResults = []; let questionStartTime = 0; let currentIsReviewMode = false;
     let userInventoryData = []; let showAllInventory = false;
+    let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = [];
+    
+    // ★ 穴埋め用ステート
+    let fillBlanksData = []; 
+    let activeFillBlankIndex = 0;
+
+    const normalizeText = (text) => text.toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
+
+    let recognition = null;
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = false;
+    }
+    let preferredVoice = null;
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+      const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+      if (englishVoices.length > 0) {
+        const premiumKeywords = ['google us english', 'enhanced', 'premium', 'samantha', 'alex'];
+        for (const keyword of premiumKeywords) { const match = englishVoices.find(v => v.name.toLowerCase().includes(keyword)); if (match) { preferredVoice = match; break; } }
+        if (!preferredVoice) preferredVoice = englishVoices[0];
+      }
+    }
+    if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+    function speakText(text, rate = 0.9) {
+      if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.lang = 'en-US'; uttr.rate = rate; if (preferredVoice) uttr.voice = preferredVoice; window.speechSynthesis.speak(uttr); }
+    }
+
+    function getDetailedUnitId() { 
+      // isTrainingMode が true なら特訓ルート専用のIDにする
+      if (isTrainingMode) return `TrainingRoute_${currentTrainingStepIndex}_${currentUnitName}`;
+      const format = document.getElementById('setting-format').value; 
+      const ansType = document.getElementById('setting-answer-type').value; 
+      let unitId = `${currentModeName}_${currentUnitName}_${format}_${ansType}`; 
+      if (ansType.startsWith("fill_")) {
+        const blankCount = document.getElementById('setting-blank-count').value;
+        unitId += `_${blankCount}blanks`;
+      }
+      return unitId; 
+    }
+
+    function checkIsNigate(historyObj) { if(!historyObj || !historyObj.results || historyObj.results.length === 0) return false; const rMissLimit = Number(appSettings["苦手_直近ミス判定"]) || 1; const timeLimit = Number(appSettings["苦手_時間判定_秒"]) || 15; const rateLimit = Number(appSettings["苦手_全体正答率_未満"]) || 80; const recentResults = historyObj.results.slice(-3); if (recentResults.filter(r => r === 0).length >= rMissLimit) return true; if (((historyObj.results.filter(r => r === 1).length / historyObj.results.length) * 100) < rateLimit) return true; if (historyObj.times && historyObj.times.length > 0 && (historyObj.times.reduce((a,b)=>a+b, 0) / historyObj.times.length) >= timeLimit) return true; return false; }
     
     // ★ 特訓ルート用の変数
     let dailyRouteData = []; 
@@ -140,9 +227,17 @@
 
     window.onload = () => { 
         const saved = localStorage.getItem('app_kid_user'); 
-        if (saved) showHome(JSON.parse(saved)); 
+        if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); prefetchMaterials(); }
         else fetchUsers(); 
     };
+
+    function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
+    
+    function prefetchMaterials() {
+        if (materialsData.length > 0) return Promise.resolve();
+        return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
+        .then(r=>r.json()).then(d => { if(d.status==="success") { materialsData = d.materials; } });
+    }
 
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
 
@@ -255,21 +350,59 @@
     // 指定されたルートステップを開始する準備
     function startRouteStep(route) {
         document.getElementById('route-container').innerHTML = "<p>問題データを準備中...</p>";
-        
-        // （※簡易版：本来はここで単元の問題をGASから取得しますが、
-        // 　今回はモックデータで「クイズ画面」への遷移をシミュレートします。
-        // 　実際の運用時は `get_questions` を呼び出して設定を反映させます。）
-        
         isTrainingMode = true;
         currentTrainingStepIndex = route.stepIndex;
         currentUnitName = route.unitName;
+
+        let mappedFormat = "en_to_ja";
+        let mappedAnsType = "4choice";
+        let mappedOrder = route.mode === "ランダム" ? "random" : "normal";
         
-        // 本来は問題を取得して prepareQuiz() へ進む
-        alert(`【${route.unitName}】を開始します！\n(※ここに問題読み込みとクイズ画面への遷移処理が入ります)`);
+        if (route.qFormat === "日本語→英単語") mappedFormat = "ja_to_en";
+        else if (route.qFormat === "英単語→日本語") mappedFormat = "en_to_ja";
+        else if (route.qFormat === "音声→日本語") mappedFormat = "en_audio_to_ja";
+        else if (route.qFormat === "音声→英単語") mappedFormat = "qaudio_to_en";
         
-        // ※デモ用：無理やりクリアしたことにして再描画
-        // currentProgressData[route.stepIndex] = true;
-        // renderTrainingRoute();
+        if (route.aFormat === "タイピング") mappedAnsType = "typing";
+        else if (route.aFormat === "音声") mappedAnsType = "voice";
+
+        prefetchMaterials().then(() => {
+            let foundModeId = null;
+            let foundModeName = "";
+            for (let m of materialsData) {
+                if (m.units.includes(route.unitName)) {
+                    foundModeId = m.modeId;
+                    foundModeName = m.modeName;
+                    break;
+                }
+            }
+            if(!foundModeId) {
+                alert(`「${route.unitName}」のデータが見つかりませんでした。`);
+                fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
+                return;
+            }
+            currentModeName = foundModeName;
+
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: foundModeId, unitName: route.unitName }) })
+            .then(r=>r.json()).then(d=>{ 
+                if(d.status==="success"){ 
+                    currentQuestions = d.questions;
+                    
+                    document.getElementById('setting-format').innerHTML = `<option value="${mappedFormat}">${route.qFormat}</option>`;
+                    document.getElementById('setting-answer-type').innerHTML = `<option value="${mappedAnsType}">${route.aFormat}</option>`;
+                    document.getElementById('setting-order').value = mappedOrder;
+                    document.getElementById('setting-play-mode').value = "normal";
+                    
+                    prepareQuiz();
+                } else {
+                    alert("取得失敗: " + d.message);
+                    fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
+                }
+            }).catch(e => {
+                alert("通信エラーが発生しました。");
+                fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
+            });
+        });
     }
 
 
@@ -393,7 +526,484 @@
 
     // （いつもの学習のロード関連）
     function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
-    function loadQuestionsForSettings(btn, mId, mName, uName) { const origText = toggleBtnLoading(btn, true); fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; switchSection('section-settings'); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadQuestionsForSettings(btn, mId, mName, uName) { 
+      const origText = toggleBtnLoading(btn, true); 
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) })
+      .then(r=>r.json()).then(d=>{ 
+        toggleBtnLoading(btn, false, origText); 
+        if(d.status==="success"){ 
+          currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; 
+          // 特訓モードフラグをリセットしておく（いつもの学習から入った場合）
+          isTrainingMode = false;
+          openSettingsScreen(); 
+        } 
+      }).catch(e => toggleBtnLoading(btn, false, origText)); 
+    }
+
+    function openSettingsScreen() {
+      switchSection('section-settings'); 
+      document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
+      const fSelect = document.getElementById('setting-format');
+      if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option>`; } 
+      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option>`; }
+      updateAnswerTypeUI();
+    }
+
+    function updateAnswerTypeUI() {
+      const format = document.getElementById('setting-format').value;
+      const aSelect = document.getElementById('setting-answer-type');
+      aSelect.innerHTML = "";
+      const isWord = currentModeName.includes("単語");
+
+      if (format === "ja_to_en") {
+        aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
+        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option>`;
+        aSelect.innerHTML += `<option value="voice">🎙️ 音声入力（マイク）</option>`;
+        if (isWord) {
+          aSelect.innerHTML += `<option value="fill_4choice">🔠 穴埋め（４択）</option>`;
+          aSelect.innerHTML += `<option value="fill_typing">⌨️ 穴埋め（タイピング）</option>`;
+        }
+      } else if (format === "qtext_to_en" || format === "qaudio_to_en") {
+        if(format !== "qaudio_to_en") aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
+        aSelect.innerHTML += `<option value="typing" selected>タイピング（入力する）</option><option value="voice">🎙️ 音声入力（マイク）</option>`;
+      } else if (format === "en_to_ja" || format === "en_audio_to_ja") {
+        aSelect.innerHTML += `<option value="4choice" selected>４択（えらぶ）</option>`;
+      }
+      toggleBlankSetting();
+    }
+
+    function toggleBlankSetting() {
+      const aSelect = document.getElementById('setting-answer-type').value;
+      const blankGroup = document.getElementById('setting-group-blanks');
+      const blankSelect = document.getElementById('setting-blank-count');
+      
+      if (aSelect.startsWith('fill_')) {
+        let maxLen = 0;
+        currentQuestions.forEach(q => {
+          let word = (q["英単語"] || "").trim();
+          if(word.length > maxLen) maxLen = word.length;
+        });
+        
+        let maxBlanks = maxLen > 1 ? maxLen - 1 : 1; 
+        
+        blankSelect.innerHTML = "";
+        for(let i = 1; i <= maxBlanks; i++) {
+          blankSelect.innerHTML += `<option value="${i}">${i} 文字 かくす</option>`;
+        }
+        blankGroup.style.display = "block";
+      } else {
+        blankGroup.style.display = "none";
+      }
+    }
+
+    let shiftMode = 0; let isShiftHoldMode = false; let shiftPressStartTime = 0; let shiftTimer1s = null; let shiftTimer2s = null;
+    function updateKeyboardDisplay() { const isUpper = shiftMode > 0 || isShiftHoldMode; const shiftBtn = document.getElementById('shift-btn'); if (shiftBtn) { if (shiftMode === 2) { shiftBtn.innerText = '⇪'; shiftBtn.style.background = '#FF9800'; } else if (shiftMode === 1 || isShiftHoldMode) { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#e50914'; } else { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#444'; } } document.querySelectorAll('.key-char').forEach(btn => { const baseChar = btn.getAttribute('data-char'); if (/[a-z]/.test(baseChar)) btn.innerText = isUpper ? baseChar.toUpperCase() : baseChar; }); }
+    function renderCustomKeyboard(isFillMode = false) {
+      const container = document.getElementById('keyboard-container'); if(!container) return; container.innerHTML = "";
+      const rows = [ ['!', '"', '$', '%', '&', "'", '(', ')', '-', '¥'], ['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['z','x','c','v','b','n','m',',','.','?'] ];
+      const board = document.createElement('div'); board.className = 'keyboard';
+      
+      rows.forEach((row, rIdx) => {
+        const rowDiv = document.createElement('div'); rowDiv.className = 'key-row';
+        if(rIdx === 3) {
+          const shiftBtn = document.createElement('button'); shiftBtn.className = 'key key-wide'; shiftBtn.id = 'shift-btn'; shiftBtn.style.touchAction = 'none'; 
+          shiftBtn.onpointerdown = (e) => { e.preventDefault(); if(e.button !== 0 && e.pointerType === 'mouse') return; if (shiftPressStartTime > 0) return; shiftPressStartTime = Date.now(); shiftTimer1s = setTimeout(() => { if (shiftBtn && !isShiftHoldMode) { shiftBtn.style.background = '#FF9800'; shiftBtn.innerText = '⇪'; } }, 1000); shiftTimer2s = setTimeout(() => { isShiftHoldMode = true; shiftMode = 0; updateKeyboardDisplay(); }, 2000); };
+          const handlePointerUp = (e) => { e.preventDefault(); if (shiftPressStartTime === 0) return; clearTimeout(shiftTimer1s); clearTimeout(shiftTimer2s); const duration = Date.now() - shiftPressStartTime; shiftPressStartTime = 0; if (isShiftHoldMode) { isShiftHoldMode = false; shiftMode = 0; } else if (duration >= 1000) { shiftMode = (shiftMode === 2) ? 0 : 2; } else if (duration > 0 && duration < 1000) { shiftMode = (shiftMode === 1 || shiftMode === 2) ? 0 : 1; } updateKeyboardDisplay(); };
+          shiftBtn.onpointerup = handlePointerUp; shiftBtn.onpointerleave = handlePointerUp; shiftBtn.onpointercancel = handlePointerUp; shiftBtn.oncontextmenu = (e) => { e.preventDefault(); return false; }; 
+          rowDiv.appendChild(shiftBtn);
+        }
+        
+        row.forEach(char => {
+          const keyBtn = document.createElement('button'); keyBtn.innerText = char;
+          if (/[a-z]/.test(char)) { keyBtn.className = 'key key-char'; keyBtn.setAttribute('data-char', char); } else { keyBtn.className = 'key'; }
+          keyBtn.onclick = () => {
+            const isUpper = shiftMode > 0 || isShiftHoldMode; let inputChar = char;
+            if (/[a-z]/.test(char) && isUpper) inputChar = char.toUpperCase();
+            
+            if (isFillMode) handleFillInput(inputChar);
+            else document.getElementById('type-answer').value += inputChar;
+            
+            if (shiftMode === 1) { shiftMode = 0; updateKeyboardDisplay(); }
+          };
+          rowDiv.appendChild(keyBtn);
+        });
+        
+        if(rIdx === 3) {
+          const bsBtn = document.createElement('button'); bsBtn.className = 'key key-wide'; bsBtn.innerText = '⌫';
+          bsBtn.onclick = () => { 
+            if(isFillMode) handleFillBackspace();
+            else { let val = document.getElementById('type-answer').value; document.getElementById('type-answer').value = val.slice(0, -1); }
+          };
+          rowDiv.appendChild(bsBtn);
+        }
+        board.appendChild(rowDiv);
+      });
+      
+      const bottomRow = document.createElement('div'); bottomRow.className = 'key-row';
+      const spaceBtn = document.createElement('button'); spaceBtn.className = 'key'; spaceBtn.style.flex = "3"; spaceBtn.innerText = "Space";
+      spaceBtn.onclick = () => { if(isFillMode) handleFillInput(" "); else document.getElementById('type-answer').value += " "; };
+      
+      if (!isFillMode) {
+        const enterBtn = document.createElement('button'); enterBtn.className = 'key key-action'; enterBtn.innerText = "けってい";
+        enterBtn.onclick = () => { const userA = document.getElementById('type-answer').value; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); checkAnswer(userA, correctA, q); };
+        bottomRow.appendChild(spaceBtn); bottomRow.appendChild(enterBtn);
+      } else {
+        const fillSubmitBtn = document.createElement('button'); fillSubmitBtn.className = 'key key-action'; fillSubmitBtn.id = "fill-submit-btn"; fillSubmitBtn.innerText = "✨ これで回答する"; fillSubmitBtn.disabled = true;
+        fillSubmitBtn.onclick = () => submitFillAnswer();
+        bottomRow.appendChild(spaceBtn); bottomRow.appendChild(fillSubmitBtn);
+      }
+      
+      board.appendChild(bottomRow); container.appendChild(board);
+      updateKeyboardDisplay();
+    }
+
+    function startVoiceInput() {
+      if(!recognition) { alert("お使いのブラウザは音声入力に対応していません。SafariかChromeを使ってね！"); return; }
+      const feedback = document.getElementById('voice-feedback'); const btn = document.getElementById('voice-btn'); const displayField = document.getElementById('voice-recognized-text');
+      displayField.value = ""; btn.innerText = "🎙️ 聞き取り中..."; btn.style.background = "#e50914"; feedback.innerHTML = "英語ではなしてください...";
+      recognition.onresult = (event) => {
+        let interimTranscript = ''; let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; else interimTranscript += event.results[i][0].transcript; }
+        let currentTranscript = finalTranscript || interimTranscript; displayField.value = currentTranscript;
+        if (currentTranscript) {
+          const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
+          if(normalizeText(currentTranscript) === normalizeText(correctA)) { recognition.stop(); displayField.value = currentTranscript; checkAnswer(currentTranscript, correctA, q); } 
+          else if (finalTranscript) { displayField.value = currentTranscript; feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${currentTranscript}」</b><br>ちがうみたい！もう一度🎙️をおしてね。`; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; }
+        }
+      };
+      recognition.onerror = () => { feedback.innerText = "聞き取れませんでした。もう一度おしてね。"; btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; };
+      recognition.onend = () => { if(btn.innerText.includes("聞き取り中")) { btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; } };
+      recognition.start();
+    }
+
+    function prepareQuiz() {
+      currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
+      const order = document.getElementById('setting-order').value; 
+      const ansType = document.getElementById('setting-answer-type').value;
+
+      filteredQuestions = [...currentQuestions];
+
+      if (ansType.startsWith("fill_")) {
+        const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+        filteredQuestions = filteredQuestions.filter(q => {
+          let w = (q["英単語"] || q["英文"] || "").trim();
+          return w.length > numBlanks;
+        });
+        if (filteredQuestions.length === 0) {
+          alert("選択した文字数を隠せる単語がありません！隠す数を減らしてください。");
+          return;
+        }
+      }
+
+      if (currentIsReviewMode) {
+        const user = JSON.parse(localStorage.getItem('app_kid_user')); 
+        const unitKey = getDetailedUnitId(); 
+        const history = user.historyJson[unitKey] || {};
+        filteredQuestions = filteredQuestions.filter(q => checkIsNigate(history[q["通し番号"]]));
+        if (filteredQuestions.length === 0) { alert("ニガテな問題はありません！通常モードでスタートします。"); currentIsReviewMode = false; document.getElementById('setting-play-mode').value = 'normal'; filteredQuestions = [...currentQuestions]; }
+      }
+      if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
+      currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
+    }
+
+    function showQuestion() {
+      if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
+      maxDeduction = 0;
+      clearTimeout(autoNextTimer); 
+      
+      const q = filteredQuestions[currentQuestionIndex]; 
+      const format = document.getElementById('setting-format').value; 
+      const answerType = document.getElementById('setting-answer-type').value;
+      const isWord = currentModeName.includes("単語");
+      
+      document.getElementById('quiz-progress').innerText = (isTrainingMode?"🎯 特訓ルート: ":"") + (currentIsReviewMode?"🔥特訓中! ":"") + `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
+      
+      let qText = "", correctA = "", engTextForAudio = "";
+      if (format === "ja_to_en") { qText = q["日本語"]; correctA = (q["英単語"] || q["英文"]).trim(); } 
+      else if (format === "en_to_ja") { qText = (q["英単語"] || q["英文"]).trim(); correctA = q["日本語"]; }
+      else if (format === "qtext_to_en") { qText = q["疑問文"]; correctA = q["英文"].trim(); }
+      else if (format === "en_audio_to_ja") { engTextForAudio = q["英単語"] || q["英文"]; correctA = q["日本語"]; }
+      else if (format === "qaudio_to_en") { engTextForAudio = q["疑問文"]; correctA = q["英文"]; }
+
+      if (format.includes("audio")) {
+        document.getElementById('quiz-q-text').innerHTML = `<button onclick="speakText('${engTextForAudio.replace(/'/g, "\\'")}')" class="submit-btn btn-blue" style="border-radius:50px;">🔊 英語をきく</button>`;
+        setTimeout(() => speakText(engTextForAudio), 500); 
+      } else {
+        document.getElementById('quiz-q-text').innerText = qText; 
+      }
+
+      document.getElementById('quiz-feedback').innerHTML = ""; 
+      document.getElementById('quiz-next-btn').style.display = "none";
+      
+      const hintArea = document.getElementById('quiz-hint-area');
+      const hintTextDisplay = document.getElementById('hint-display-text');
+      const wordBlankArea = document.getElementById('quiz-word-blank-area');
+      hintTextDisplay.style.display = "none"; hintTextDisplay.innerText = "";
+      wordBlankArea.style.display = "none"; wordBlankArea.innerHTML = "";
+      
+      document.getElementById('hint-btn-2').innerText = isWord ? "💡 イニシャルと文字数を見る（-7 Pt）" : "💡 ヒントを見る（-7 Pt）";
+
+      if (answerType === "4choice" || format.includes("en_to_ja") || format === "en_audio_to_ja" || answerType.startsWith("fill_")) {
+        hintArea.style.display = "none";
+      } else {
+        hintArea.style.display = "flex";
+        document.getElementById('hint-btn-1').disabled = false;
+        document.getElementById('hint-btn-2').disabled = false;
+        document.getElementById('hint-btn-3').disabled = false;
+      }
+
+      const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
+      
+      if (answerType === "4choice") {
+        let choices = [correctA]; 
+        let others = currentQuestions.filter(item => { if(format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en") return (item["英単語"] || item["英文"]) !== correctA; else return item["日本語"] !== correctA; }).sort(() => Math.random() - 0.5);
+        for (let i = 0; i < 3 && i < others.length; i++) { choices.push((format === "ja_to_en" || format.includes("to_en")) ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); }
+        choices.sort(() => Math.random() - 0.5);
+        choices.forEach(c => { const btn = document.createElement('button'); btn.innerText = c; btn.className = "choice-btn"; btn.onclick = () => checkAnswer(c, correctA, q); answerArea.appendChild(btn); });
+      } 
+      else if (answerType === "typing") { 
+        shiftMode = 0; isShiftHoldMode = false;
+        answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div>`; 
+        renderCustomKeyboard(false);
+      }
+      else if (answerType === "voice") {
+        answerArea.innerHTML = `<input type="text" id="voice-recognized-text" class="large-input" readonly placeholder="ここに聞き取った言葉が出ます"><button id="voice-btn" class="submit-btn btn-blue" style="padding: 20px 40px; font-size: 24px; border-radius: 50px; display: block; margin: 0 auto;" onclick="startVoiceInput()">🎙️ マイクでこたえる</button><div id="voice-feedback" style="margin-top:15px; font-size:18px; color:#ccc;">おうちの静かな場所でやってみてね。</div>`;
+      }
+      else if (answerType.startsWith("fill_")) {
+        setupFillBlankQuiz(correctA, answerType);
+      }
+    }
+
+    function setupFillBlankQuiz(word, ansType) {
+      const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+      const wordBlankArea = document.getElementById('quiz-word-blank-area');
+      const answerArea = document.getElementById('quiz-answer-area');
+      
+      wordBlankArea.style.display = "block";
+      fillBlanksData = [];
+      activeFillBlankIndex = 0;
+
+      let availableIndices = [];
+      for(let i=1; i<word.length; i++) {
+        if(/[a-zA-Z]/.test(word[i])) availableIndices.push(i);
+      }
+      availableIndices.sort(() => Math.random() - 0.5);
+      let hiddenIndices = availableIndices.slice(0, numBlanks).sort((a,b)=>a-b);
+
+      let displayHtml = "";
+      let blankCount = 0;
+
+      for (let i=0; i<word.length; i++) {
+        if (hiddenIndices.includes(i)) {
+          displayHtml += `<span class="blank-box ${blankCount === 0 ? 'active' : ''}" id="fill-blank-${blankCount}" onclick="selectFillBlank(${blankCount})">_</span>`;
+          fillBlanksData.push({ originalIndex: i, correctChar: word[i], userInput: '', uiIndex: blankCount });
+          blankCount++;
+        } else {
+          displayHtml += `<span>${word[i]}</span>`;
+        }
+      }
+      wordBlankArea.innerHTML = displayHtml;
+
+      if (ansType === "fill_typing") {
+        shiftMode = 0; isShiftHoldMode = false;
+        answerArea.innerHTML = `<div id="keyboard-container"></div>`; 
+        renderCustomKeyboard(true); 
+      } else if (ansType === "fill_4choice") {
+        answerArea.innerHTML = `
+          <div id="fill-4choice-container" class="fill-choices"></div>
+          <button id="fill-submit-btn" class="submit-btn btn-green" style="display:none; margin: 20px auto 0;" onclick="submitFillAnswer()">✨ これで回答する</button>
+        `;
+        renderFill4ChoiceButtons();
+      }
+    }
+
+    function selectFillBlank(index) {
+      document.querySelectorAll('.blank-box').forEach(b => b.classList.remove('active'));
+      activeFillBlankIndex = index;
+      document.getElementById(`fill-blank-${index}`).classList.add('active');
+      
+      const ansType = document.getElementById('setting-answer-type').value;
+      if (ansType === "fill_4choice") {
+        renderFill4ChoiceButtons();
+      }
+    }
+
+    function renderFill4ChoiceButtons() {
+      const container = document.getElementById('fill-4choice-container');
+      container.innerHTML = "";
+      
+      let correctChar = fillBlanksData[activeFillBlankIndex].correctChar;
+      let letters = "abcdefghijklmnopqrstuvwxyz";
+      if (correctChar === correctChar.toUpperCase()) letters = letters.toUpperCase();
+      
+      let choices = [correctChar];
+      while(choices.length < 4) {
+        let r = letters[Math.floor(Math.random() * letters.length)];
+        if(!choices.includes(r)) choices.push(r);
+      }
+      choices.sort(() => Math.random() - 0.5);
+
+      choices.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = "fill-choice-btn";
+        btn.innerText = c;
+        btn.onclick = () => { handleFillInput(c); };
+        container.appendChild(btn);
+      });
+    }
+
+    function handleFillInput(char) {
+      fillBlanksData[activeFillBlankIndex].userInput = char;
+      document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = char;
+      
+      let nextIndex = fillBlanksData.findIndex(b => b.userInput === '');
+      if (nextIndex !== -1) {
+        selectFillBlank(nextIndex);
+      } else {
+        checkFillCompletion();
+      }
+    }
+
+    function handleFillBackspace() {
+      fillBlanksData[activeFillBlankIndex].userInput = '';
+      document.getElementById(`fill-blank-${activeFillBlankIndex}`).innerText = "_";
+      checkFillCompletion();
+    }
+
+    function checkFillCompletion() {
+      const allFilled = fillBlanksData.every(b => b.userInput !== '');
+      const submitBtn = document.getElementById('fill-submit-btn');
+      if (submitBtn) {
+        if (allFilled) {
+          submitBtn.disabled = false;
+          submitBtn.style.display = "block";
+          submitBtn.classList.remove('btn-gray');
+        } else {
+          submitBtn.disabled = true;
+          if (document.getElementById('setting-answer-type').value === "fill_4choice") {
+            submitBtn.style.display = "none";
+          }
+        }
+      }
+    }
+
+    function submitFillAnswer() {
+      const q = filteredQuestions[currentQuestionIndex];
+      let correctA = (q["英単語"] || q["英文"]).trim();
+      
+      let constructedAnswer = "";
+      let fillIdx = 0;
+      for(let i=0; i<correctA.length; i++) {
+        let blankData = fillBlanksData.find(b => b.originalIndex === i);
+        if (blankData) constructedAnswer += blankData.userInput;
+        else constructedAnswer += correctA[i];
+      }
+      
+      checkAnswer(constructedAnswer, correctA, q);
+    }
+
+    function useHint(type, penalty) { const q = filteredQuestions[currentQuestionIndex]; const hintTextDisplay = document.getElementById('hint-display-text'); const format = document.getElementById('setting-format').value; const isWord = currentModeName.includes("単語"); maxDeduction = Math.max(maxDeduction, penalty); if (type !== 3) document.getElementById(`hint-btn-${type}`).disabled = true; if (type === 1 || type === 2) { let hintStr = ""; if (type === 1) hintStr = q["イニシャル"] || "ヒントなし"; else if (type === 2) hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし"); hintTextDisplay.innerText = hintStr; hintTextDisplay.style.display = "block"; } else if (type === 3) { let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); speakText(correctA, 0.8); } }
+    function skipQuestion() { const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); checkAnswer("[スキップしました]", correctA, q); }
+    
+    function checkAnswer(userA, correctA, q) {
+      document.querySelectorAll('#section-quiz button').forEach(b => b.disabled = true);
+      const isCorrect = normalizeText(userA) === normalizeText(correctA); 
+      const isWord = currentModeName.includes("単語");
+      const format = document.getElementById('setting-format').value; 
+      const ansType = document.getElementById('setting-answer-type').value;
+
+      let basePoint = 0;
+      if (ansType.startsWith("fill_")) {
+        const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
+        basePoint = 5 + numBlanks;
+      } else if (isWord) {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = 20;
+      } else {
+        if (ansType === "4choice") basePoint = (format.includes("to_en")) ? 3 : 2;
+        else if (ansType === "typing" || ansType === "voice") basePoint = (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
+      }
+
+      quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
+      const feedback = document.getElementById('quiz-feedback');
+      
+      document.getElementById('quiz-word-blank-area').style.display = "none";
+      
+      if (isCorrect) {
+        feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
+      } else {
+        let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
+        feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${correctA}</b>`;
+      }
+      
+      speakText(correctA); 
+      const nextBtn = document.getElementById('quiz-next-btn'); nextBtn.disabled = false; nextBtn.style.display = "block";
+      document.querySelectorAll('#section-quiz .cancel-btn').forEach(btn => btn.disabled = false);
+      autoNextTimer = setTimeout(() => { nextQuestion(); }, 3000);
+    }
+
+    function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); currentQuestionIndex++; showQuestion(); }
+    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); openSettingsScreen(); }
+    
+    function finishQuiz() {
+      switchSection('section-result'); 
+      document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; 
+      document.getElementById('result-retry-btn').style.display = "none"; document.getElementById('result-settings-btn').style.display = "none"; document.getElementById('result-home-btn').style.display = "none";
+
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      const isRandom = document.getElementById('setting-order').value === 'random';
+      const detailedUnitId = getDetailedUnitId(); 
+
+      let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
+      if (isTrainingMode) {
+        payload.trainingStepIndex = currentTrainingStepIndex; // 特訓ルートの進捗保存用
+      }
+
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
+      .then(r => r.json()).then(d => {
+        if(d.status === "success") {
+          let bonusMsg = "";
+          if (currentIsReviewMode) bonusMsg += `<p style="color:#FF9800;font-weight:bold;margin:5px 0;">🔥 ニガテ特訓ボーナス適用</p>`;
+          if (d.bonusApplied) bonusMsg += `<p style="color:#e50914;font-weight:bold;margin:5px 0;">🎲 ランダム出題ボーナス（10%UP）</p>`;
+          if (isTrainingMode) bonusMsg += `<p style="color:#9C27B0;font-weight:bold;margin:5px 0;">🎯 特訓ルートクリア！</p>`;
+
+          document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + bonusMsg + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
+          user.points = d.newTotal; user.historyJson = d.historyJson; user.dailyPointsJson = d.dailyPointsJson; 
+          if(d.trainingProgressJson) {
+            user.trainingProgressJson = d.trainingProgressJson;
+          }
+          localStorage.setItem('app_kid_user', JSON.stringify(user));
+          
+          if (!isTrainingMode) {
+              document.getElementById('result-retry-btn').style.display = "block"; 
+              document.getElementById('result-settings-btn').style.display = "block"; 
+          }
+          document.getElementById('result-home-btn').style.display = "block";
+        }
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const answerInput = document.getElementById('type-answer');
+      const quizSection = document.getElementById('section-quiz');
+      if (!quizSection.classList.contains('active')) return;
+
+      const ansType = document.getElementById('setting-answer-type').value;
+
+      if (ansType === "typing" && answerInput) {
+        if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key))) { e.preventDefault(); }
+        if (e.key === 'Enter') { const enterBtn = Array.from(document.querySelectorAll('.key-action')).find(btn => btn.innerText === "けってい"); if (enterBtn && !enterBtn.disabled) enterBtn.click(); } 
+        else if (e.key === 'Backspace') { answerInput.value = answerInput.value.slice(0, -1); } 
+        else if (e.key === ' ') { answerInput.value += ' '; } 
+        else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) { answerInput.value += e.key; }
+      }
+      else if (ansType === "fill_typing") {
+        if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key))) { e.preventDefault(); }
+        if (e.key === 'Enter') { const enterBtn = document.getElementById('fill-submit-btn'); if (enterBtn && !enterBtn.disabled) enterBtn.click(); }
+        else if (e.key === 'Backspace') { handleFillBackspace(); }
+        else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) { handleFillInput(e.key); }
+      }
+    });
 
   </script>
 </body>
