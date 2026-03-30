@@ -74,14 +74,9 @@
     <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;"><h2 id="welcome-message" style="margin: 0;"></h2><button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button></div>
     <div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;"><p style="margin:0; font-size:18px;">げんざいのポイント</p><div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div></div>
     
-    <div id="home-route-area" style="display:none;">
-        <h3 style="color: #9C27B0; margin-bottom: 5px;">🔥 今日の特訓ルート</h3>
-        <div id="route-container" class="route-container"><p>よみこみ中...</p></div>
-        <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: block; margin: 10px auto 0;">次の問題に取り組む ▶</button>
-    </div>
-    
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
       <button class="menu-btn btn-red" onclick="loadMaterials(this)">自由に学習する</button>
+      <button class="menu-btn btn-purple" onclick="openTrainingMenu()">🎯 特訓メニューへ</button>
       <button class="menu-btn btn-blue" onclick="loadExternalLearning(this)">📚 アプリ以外の勉強を記録</button>
       <button type="button" class="menu-btn btn-gray" style="margin-top:8px; font-size:15px; padding:12px 16px;" onclick="openExternalAdminApproval()">🔐 おうちの人：外部学習の承認</button>
       <hr style="border-color:#444; width: 90%; max-width:350px; margin: 15px 0;">
@@ -100,6 +95,13 @@
         <button type="button" class="submit-btn btn-gray" style="flex:1; min-width:120px;" onclick="resetStopwatch('home')">リセット</button>
       </div>
     </div>
+  </div>
+
+  <div id="section-training" class="section">
+    <h1>🎯 特訓メニュー</h1>
+    <div id="route-container" class="route-container"><p>よみこみまち...</p></div>
+    <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: block; margin: 10px auto 0;">次の問題に取り組む ▶</button>
+    <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
   </div>
   
   <div id="section-rewards" class="section"><h1>🎁 けいひん こうかんじょ</h1><div id="rewards-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
@@ -205,7 +207,7 @@
 
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgQTwpB4d3QnOJ_kQYU-HjZ4x35rBDamfu9HKqjm3-unpa4xjnwra3b8DWB5XnpRq6Aw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyWO1QND6eyB76MNUs-7q5HKYDvEPVyu6z1S--6RT9wiXPzIumhRXYhh2R1zQfIiYssUg/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -223,6 +225,30 @@
     let activeFillBlankIndex = 0;
     let voiceFailCount = 0;
 
+    const digitWords1to19 = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+    const digitWordsTens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+    function numberToWordsEn(num) {
+      num = Number(num);
+      if (!isFinite(num) || num < 0 || num > 9999) return String(num);
+      if (num < 20) return digitWords1to19[num];
+      if (num < 100) {
+        const t = Math.floor(num / 10), r = num % 10;
+        return digitWordsTens[t] + (r ? " " + digitWords1to19[r] : "");
+      }
+      if (num < 1000) {
+        const h = Math.floor(num / 100), r = num % 100;
+        return digitWords1to19[h] + " hundred" + (r ? " " + numberToWordsEn(r) : "");
+      }
+      const th = Math.floor(num / 1000), r = num % 1000;
+      return digitWords1to19[th] + " thousand" + (r ? " " + numberToWordsEn(r) : "");
+    }
+    function convertDigitsToWordsInText(text) {
+      const tokens = String(text == null ? "" : text).split(/(\s+)/); // keep spaces
+      return tokens.map(tok => {
+        if (/^\d+$/.test(tok)) return numberToWordsEn(tok);
+        return tok;
+      }).join("");
+    }
     const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
     /** showQuestion と同じルールで正解文字列を得る（欠損データでも例外にしない） */
@@ -376,9 +402,6 @@
       switchSection('section-home'); 
       document.getElementById('header-user-info').innerText = `ID: ${user.id} / ${user.name}`; document.getElementById('global-header').style.display = 'block';
       document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; 
-      
-      // 特訓ルートを取得して表示
-      fetchTrainingRoute(user.id);
     }
 
     function toggleBtnLoading(btn, isLoading, originalText = "") { if(!btn) return ""; if(isLoading) { const text = btn.innerHTML; btn.innerHTML = "⏳ よみこみ中..."; btn.classList.add("btn-loading"); return text; } else { btn.innerHTML = originalText; btn.classList.remove("btn-loading"); } }
@@ -462,6 +485,14 @@
         if (nextRoute) {
             startRouteStep(nextRoute);
         }
+    }
+
+    function openTrainingMenu() {
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      if (!user) { alert("ログインし直してください"); return; }
+      switchSection('section-training');
+      document.getElementById('route-container').innerHTML = "<p>ルートを確認中...</p>";
+      fetchTrainingRoute(user.id);
     }
 
     // 指定されたルートステップを開始する準備
@@ -1313,7 +1344,9 @@
           resolvedCorrect = getCorrectAnswerForQuestion(q, format);
         }
 
-        const isCorrect = normalizeText(userA) === normalizeText(resolvedCorrect);
+        const normalizedUser = normalizeText(convertDigitsToWordsInText(userA));
+        const normalizedCorrect = normalizeText(resolvedCorrect);
+        const isCorrect = normalizedUser === normalizedCorrect;
         const basePoint = computeQuizBasePoint(format, ansType, isWord);
 
         quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
