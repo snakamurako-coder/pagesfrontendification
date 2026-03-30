@@ -408,8 +408,10 @@
 
     // ====== ★ 特訓ルートの取得と表示 ======
     function fetchTrainingRoute(userId) {
-        document.getElementById('home-route-area').style.display = 'block';
-        document.getElementById('route-container').innerHTML = "<p>ルートを確認中...</p>";
+        const homeRouteArea = document.getElementById('home-route-area');
+        if (homeRouteArea) homeRouteArea.style.display = 'block';
+        const routeContainer = document.getElementById('route-container');
+        if (routeContainer) routeContainer.innerHTML = "<p>ルートを確認中...</p>";
         
         fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId }) })
         .then(r=>r.json()).then(d=>{
@@ -417,11 +419,11 @@
                 dailyRouteData = d.route;
                 currentProgressData = d.progress;
                 renderTrainingRoute();
-            } else {
-                document.getElementById('route-container').innerHTML = "<p>ルートの取得に失敗しました。</p>";
+            } else if (routeContainer) {
+                routeContainer.innerHTML = "<p>ルートの取得に失敗しました。</p>";
             }
         }).catch(e => {
-            document.getElementById('route-container').innerHTML = "<p>通信エラーが発生しました。</p>";
+            if (routeContainer) routeContainer.innerHTML = "<p>通信エラーが発生しました。</p>";
         });
     }
 
