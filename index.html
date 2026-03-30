@@ -243,11 +243,7 @@
       return digitWords1to19[th] + " thousand" + (r ? " " + numberToWordsEn(r) : "");
     }
     function convertDigitsToWordsInText(text) {
-      const tokens = String(text == null ? "" : text).split(/(\s+)/); // keep spaces
-      return tokens.map(tok => {
-        if (/^\d+$/.test(tok)) return numberToWordsEn(tok);
-        return tok;
-      }).join("");
+      return String(text == null ? "" : text).replace(/\d+/g, n => numberToWordsEn(n));
     }
     const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
 
@@ -1347,7 +1343,7 @@
         }
 
         const normalizedUser = normalizeText(convertDigitsToWordsInText(userA));
-        const normalizedCorrect = normalizeText(resolvedCorrect);
+        const normalizedCorrect = normalizeText(convertDigitsToWordsInText(resolvedCorrect));
         const isCorrect = normalizedUser === normalizedCorrect;
         const basePoint = computeQuizBasePoint(format, ansType, isWord);
 
