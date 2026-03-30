@@ -1083,21 +1083,23 @@
       recognition.onresult = (event) => {
         let interimTranscript = ''; let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; else interimTranscript += event.results[i][0].transcript; }
-        let currentTranscript = finalTranscript || interimTranscript; displayField.value = currentTranscript;
-        if (currentTranscript) {
+        let rawTranscript = finalTranscript || interimTranscript; 
+        const displayText = convertDigitsToWordsInText(rawTranscript);
+        displayField.value = displayText;
+        if (displayText) {
           const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
-          if(normalizeText(currentTranscript) === normalizeText(correctA)) { 
-            recognition.stop(); displayField.value = currentTranscript; checkAnswer(currentTranscript, correctA, q); 
+          if(normalizeText(displayText) === normalizeText(correctA)) { 
+            recognition.stop(); displayField.value = displayText; checkAnswer(displayText, correctA, q); 
           } 
           else if (finalTranscript) { 
             voiceFailCount++;
             if (voiceFailCount >= 5) {
               recognition.stop();
-              displayField.value = currentTranscript;
-              checkAnswer(currentTranscript, correctA, q);
+              displayField.value = displayText;
+              checkAnswer(displayText, correctA, q);
             } else {
-              displayField.value = currentTranscript; 
-              feedback.innerHTML = `聞き取った言葉：<br><b style="color:#FF9800;">「${currentTranscript}」</b><br>ちがうみたい！もう一度🎙️をおしてね。<br><span style="font-size:14px; color:#F44336;">（まちがい: ${voiceFailCount}回 / 5回で不正解）</span>`; 
+              displayField.value = displayText; 
+              feedback.innerHTML = `聞き取った言葉：<br><b style='color:#FF9800;'>「${displayText}」</b><br>ちがうみたい！もう一度🎙️をおしてね。<br><span style="font-size:14px; color:#F44336;">（まちがい: ${voiceFailCount}回 / 5回で不正解）</span>`; 
               btn.innerText = "🎙️ マイクでこたえる"; btn.style.background = "#2196F3"; 
             }
           }
