@@ -242,6 +242,48 @@
       const th = Math.floor(num / 1000), r = num % 1000;
       return digitWords1to19[th] + " thousand" + (r ? " " + numberToWordsEn(r) : "");
     }
+    function numberToWordsSplitYear(num) {
+      // 1000-9999 を「twenty twenty five」のように 2桁+2桁で読む
+      num = Number(num);
+      if (!isFinite(num) || num < 1000 || num > 9999) return "";
+      const firstTwo = Math.floor(num / 100);
+      const lastTwo = num % 100;
+      return numberToWordsEn(firstTwo) + (lastTwo ? " " + numberToWordsEn(lastTwo) : "");
+    }
+    function numberToWordsVariants(numStr) {
+      const n = Number(numStr);
+      const out = new Set();
+      out.add(numStr); // 数字そのもの
+      if (!isFinite(n) || n < 0 || n > 9999) return [...out];
+      out.add(numberToWordsEn(n)); // 標準
+      if (n >= 1000 && n <= 3000) {
+        const yearStyle = numberToWordsEn(n);
+        out.add(yearStyle);
+        const split = numberToWordsSplitYear(n);
+        if (split) out.add(split);
+      }
+      return [...out];
+    }
+    function expandTextVariants(text) {
+      const variants = [""];
+      const str = String(text == null ? "" : text);
+      let last = 0;
+      str.replace(/\d+/g, (m, idx) => {
+        const before = str.slice(last, idx);
+        const numberForms = numberToWordsVariants(m);
+        const next = [];
+        variants.forEach(v => {
+          numberForms.forEach(form => next.push(v + before + form));
+        });
+        variants.length = 0;
+        variants.push(...next);
+        last = idx + m.length;
+      });
+      if (last < str.length) {
+        variants.forEach((v, i) => variants[i] = v + str.slice(last));
+      }
+      return variants;
+    }
     function convertDigitsToWordsInText(text) {
       return String(text == null ? "" : text).replace(/\d+/g, n => numberToWordsEn(n));
     }
@@ -1342,9 +1384,10 @@
           resolvedCorrect = getCorrectAnswerForQuestion(q, format);
         }
 
-        const normalizedUser = normalizeText(convertDigitsToWordsInText(userA));
-        const normalizedCorrect = normalizeText(convertDigitsToWordsInText(resolvedCorrect));
-        const isCorrect = normalizedUser === normalizedCorrect;
+        const userVariants = expandTextVariants(userA).map(t => normalizeText(t));
+        const correctVariants = expandTextVariants(resolvedCorrect).map(t => normalizeText(t));
+        const correctSet = new Set(correctVariants);
+        const isCorrect = userVariants.some(u => correctSet.has(u));
         const basePoint = computeQuizBasePoint(format, ansType, isWord);
 
         quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
