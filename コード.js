@@ -134,30 +134,62 @@ function setupSystem() {
     }
   }
 
-  // ★ 新しい「特訓メニュー」の構造（学習ルート）
+  // ★ 特訓メニュー1（従来名「特訓メニュー」互換）＋ 特訓メニュー2～12（ヘッダーのみ）
+  const trainingHeader = ["対象ユーザー", "単元", "問題の形式", "こたえ方", "出し方", "隠す文字数"];
+  const trainingPatterns = [
+    ["全員", "", "英単語→日本語", "4択", "ランダム", ""],
+    ["全員", "", "英単語→日本語", "タイピング", "ランダム", ""],
+    ["全員", "", "英単語→日本語", "音声", "ランダム", ""],
+    ["全員", "", "日本語→英単語", "4択", "ランダム", ""],
+    ["全員", "", "日本語→英単語", "タイピング", "ランダム", ""],
+    ["全員", "", "日本語→英単語", "音声", "ランダム", ""],
+    ["全員", "", "日本語→英単語", "穴埋め4択", "ランダム", 1],
+    ["全員", "", "日本語→英単語", "穴埋めタイピング", "ランダム", 1],
+    ["全員", "", "音声→日本語", "4択", "ランダム", ""],
+    ["全員", "", "音声→日本語", "タイピング", "ランダム", ""],
+    ["全員", "", "音声→日本語", "音声", "ランダム", ""],
+    ["全員", "", "音声→英単語", "タイピング", "ランダム", ""],
+    ["全員", "", "音声→英単語", "音声", "ランダム", ""],
+    ["全員", "", "英語→英語", "タイピング", "ランダム", ""],
+    ["全員", "", "英語→英語", "音声", "ランダム", ""]
+  ];
   let trainingSheet = adminSs.getSheetByName("特訓メニュー");
   if (!trainingSheet) {
     trainingSheet = adminSs.insertSheet("特訓メニュー");
-    trainingSheet.appendRow(["対象ユーザー", "単元", "問題の形式", "こたえ方", "出し方", "隠す文字数"]);
-    const patterns = [
-      ["全員", "", "英単語→日本語", "4択", "ランダム", ""],
-      ["全員", "", "英単語→日本語", "タイピング", "ランダム", ""],
-      ["全員", "", "英単語→日本語", "音声", "ランダム", ""],
-      ["全員", "", "日本語→英単語", "4択", "ランダム", ""],
-      ["全員", "", "日本語→英単語", "タイピング", "ランダム", ""],
-      ["全員", "", "日本語→英単語", "音声", "ランダム", ""],
-      ["全員", "", "日本語→英単語", "穴埋め4択", "ランダム", 1],
-      ["全員", "", "日本語→英単語", "穴埋めタイピング", "ランダム", 1],
-      ["全員", "", "音声→日本語", "4択", "ランダム", ""],
-      ["全員", "", "音声→日本語", "タイピング", "ランダム", ""],
-      ["全員", "", "音声→日本語", "音声", "ランダム", ""],
-      ["全員", "", "音声→英単語", "タイピング", "ランダム", ""],
-      ["全員", "", "音声→英単語", "音声", "ランダム", ""],
-      ["全員", "", "英語→英語", "タイピング", "ランダム", ""],
-      ["全員", "", "英語→英語", "音声", "ランダム", ""]
-    ];
-    patterns.forEach(p => trainingSheet.appendRow(p));
+    trainingSheet.appendRow(trainingHeader);
+    trainingPatterns.forEach(p => trainingSheet.appendRow(p));
     logMessage += "✅ 新しい「特訓メニュー（学習ルート）」を追加しました。\n";
+  }
+  if (!adminSs.getSheetByName("特訓メニュー1")) {
+    const s1 = adminSs.insertSheet("特訓メニュー1");
+    const src = adminSs.getSheetByName("特訓メニュー");
+    if (src) {
+      const data = src.getDataRange().getValues();
+      if (data.length) s1.getRange(1, 1, data.length, data[0].length).setValues(data);
+      else s1.appendRow(trainingHeader);
+    } else {
+      s1.appendRow(trainingHeader);
+      trainingPatterns.forEach(p => s1.appendRow(p));
+    }
+    logMessage += "✅ 「特訓メニュー1」を追加しました（従来の「特訓メニュー」と同じ内容）。\n";
+  }
+  for (let m = 2; m <= 12; m++) {
+    const nm = "特訓メニュー" + m;
+    if (!adminSs.getSheetByName(nm)) {
+      const sh = adminSs.insertSheet(nm);
+      sh.appendRow(trainingHeader);
+      logMessage += "✅ 「" + nm + "」を追加しました。\n";
+    }
+  }
+  const appSettingsTrain = adminSs.getSheetByName("アプリ設定");
+  if (appSettingsTrain) {
+    const asData = appSettingsTrain.getDataRange().getValues();
+    const existing = {};
+    for (let ri = 0; ri < asData.length; ri++) existing[String(asData[ri][0] || "")] = true;
+    for (let m = 1; m <= 12; m++) {
+      const k = "特訓メニュー" + m + "_表示名";
+      if (!existing[k]) appSettingsTrain.appendRow([k, ""]);
+    }
   }
 
   console.log(logMessage);
@@ -204,25 +236,88 @@ function doPost(e) {
 function doOptions(e) { return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT); }
 
 // ==========================================
-// ★ 新しい特訓ルート機能
+// ★ 特訓ルート（メニュー1～12）
 // ==========================================
+function getTrainingMenuSheet_(adminSs, menuId) {
+  const name = "特訓メニュー" + menuId;
+  let sheet = adminSs.getSheetByName(name);
+  if (!sheet && menuId === 1) sheet = adminSs.getSheetByName("特訓メニュー");
+  return sheet;
+}
+
+/** 旧形式（今日のキー直下に stepIndex: true）を { "1": { stepIndex: true } } に寄せる */
+function migrateTrainingProgressIfNeeded_(trainingProgressJson) {
+  if (!trainingProgressJson) return;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const t = trainingProgressJson[todayStr];
+  if (!t || typeof t !== "object") return;
+  var hasNestedMenu = false;
+  for (var k in t) {
+    if (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].indexOf(String(k)) >= 0) {
+      if (t[k] && typeof t[k] === "object" && !Array.isArray(t[k])) {
+        hasNestedMenu = true;
+        break;
+      }
+    }
+  }
+  if (hasNestedMenu) return;
+  var hasFlatTrue = false;
+  for (var k2 in t) {
+    if (t[k2] === true) {
+      hasFlatTrue = true;
+      break;
+    }
+  }
+  if (!hasFlatTrue) return;
+  var nested = {};
+  for (var k3 in t) {
+    if (t[k3] === true) nested[k3] = true;
+  }
+  trainingProgressJson[todayStr] = { "1": nested };
+}
+
+function normalizeProgressForMenu_(todayBlock, menuId) {
+  const mid = String(menuId);
+  if (!todayBlock || typeof todayBlock !== "object") return {};
+  if (todayBlock[mid] && typeof todayBlock[mid] === "object" && !Array.isArray(todayBlock[mid])) {
+    return todayBlock[mid];
+  }
+  if (mid === "1") {
+    var hasLegacy = false;
+    for (var k in todayBlock) {
+      if (todayBlock[k] === true) {
+        hasLegacy = true;
+        break;
+      }
+    }
+    if (hasLegacy) {
+      var out = {};
+      for (var k2 in todayBlock) {
+        if (todayBlock[k2] === true) out[k2] = true;
+      }
+      return out;
+    }
+  }
+  return {};
+}
+
 function handleGetTrainingRoute(req) {
   const props = PropertiesService.getScriptProperties();
   const adminSs = SpreadsheetApp.openById(props.getProperty('ADMIN_SS_ID'));
-  
-  // 1. ルート（メニュー）の取得
-  const sheet = adminSs.getSheetByName("特訓メニュー");
+  let menuId = parseInt(req.trainingMenuId, 10);
+  if (isNaN(menuId) || menuId < 1 || menuId > 12) menuId = 1;
+
+  const sheet = getTrainingMenuSheet_(adminSs, menuId);
   const route = [];
   if (sheet) {
     const data = sheet.getDataRange().getValues();
     const header = data[0] || [];
     const blankIdx = header.indexOf("隠す文字数");
-    // 行を上から順番に読み込み、対象ユーザーならリストに追加
     for (let i = 1; i < data.length; i++) {
       let target = String(data[i][0]);
       if (target === "全員" || target.includes(req.userId)) {
         route.push({
-          stepIndex: i, // 行番号を固有IDとして使用
+          stepIndex: i,
           unitName: data[i][1],
           qFormat: data[i][2],
           aFormat: data[i][3],
@@ -233,25 +328,21 @@ function handleGetTrainingRoute(req) {
     }
   }
 
-  // 2. 今日の進捗状況の取得
   const usersSheet = adminSs.getSheetByName("users");
   const userData = usersSheet.getDataRange().getValues();
   let progressData = {};
-  const todayStr = new Date().toISOString().split('T')[0]; // "2023-10-27" のような形式
+  const todayStr = new Date().toISOString().split('T')[0];
 
   for (let i = 1; i < userData.length; i++) {
     if (userData[i][0] === req.userId) {
-      // 8列目(インデックス7)が進捗JSON
       const rawProgress = JSON.parse(userData[i][7] || "{}");
-      // 今日の日付のデータだけを返す（日付が変わったら空っぽとして扱う）
-      if (rawProgress[todayStr]) {
-        progressData = rawProgress[todayStr];
-      }
+      const todayBlock = rawProgress[todayStr] || {};
+      progressData = normalizeProgressForMenu_(todayBlock, menuId);
       break;
     }
   }
 
-  return sendResponse({ status: "success", route: route, progress: progressData });
+  return sendResponse({ status: "success", route: route, progress: progressData, menuId: menuId });
 }
 
 // 学習結果の保存（進捗チェックの更新を追加）
@@ -322,13 +413,15 @@ function handleSaveLearningSession(req) {
   userData.dailyPointsJson[todayStr] = Math.round(userData.dailyPointsJson[todayStr] * 100) / 100;
   userData.lastStudyJson[req.unitId] = now.toISOString();
 
-  // ★ 特訓ルートのステップをクリアした場合は、今日の進捗にチェックを入れる
+  // ★ 特訓ルートのステップをクリアした場合は、今日の進捗にチェックを入れる（メニューID別）
   if (req.trainingStepIndex) {
-    if (!userData.trainingProgressJson[todayStr]) {
-      userData.trainingProgressJson = {}; // 過去のゴミを消して今日からスタート
-      userData.trainingProgressJson[todayStr] = {};
-    }
-    userData.trainingProgressJson[todayStr][req.trainingStepIndex] = true;
+    migrateTrainingProgressIfNeeded_(userData.trainingProgressJson);
+    let mid = parseInt(req.trainingMenuId, 10);
+    if (isNaN(mid) || mid < 1 || mid > 12) mid = 1;
+    const midStr = String(mid);
+    if (!userData.trainingProgressJson[todayStr]) userData.trainingProgressJson[todayStr] = {};
+    if (!userData.trainingProgressJson[todayStr][midStr]) userData.trainingProgressJson[todayStr][midStr] = {};
+    userData.trainingProgressJson[todayStr][midStr][req.trainingStepIndex] = true;
   }
 
   usersSheet.getRange(targetRowIdx, 4).setValue(newTotalPoints);
@@ -337,7 +430,7 @@ function handleSaveLearningSession(req) {
   usersSheet.getRange(targetRowIdx, 7).setValue(JSON.stringify(userData.dailyPointsJson));
   usersSheet.getRange(targetRowIdx, 8).setValue(JSON.stringify(userData.trainingProgressJson)); // ★ 保存
 
-  return sendResponse({ status: "success", earnedPoints: earnedPoints, newTotal: newTotalPoints, historyJson: userData.historyJson, dailyPointsJson: userData.dailyPointsJson, bonusApplied: req.isRandom });
+  return sendResponse({ status: "success", earnedPoints: earnedPoints, newTotal: newTotalPoints, historyJson: userData.historyJson, dailyPointsJson: userData.dailyPointsJson, bonusApplied: req.isRandom, trainingProgressJson: userData.trainingProgressJson });
 }
 
 // ==========================================
