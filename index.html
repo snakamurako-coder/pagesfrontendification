@@ -44,12 +44,13 @@
     .checkbox { width: 24px; height: 24px; border: 2px solid #fff; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;}
     .cleared .checkbox { background: #4CAF50; border-color: #4CAF50; }
     
-    /* キーボード用のCSS */
+    /* キーボード用のCSS（--vk-font-px / --vk-pad-px / --kb-scale は JS で設定） */
+    .keyboard-scale-wrap { width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; transform: scale(var(--kb-scale, 1)); transform-origin: top center; }
     .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
     .key-row { display: flex; justify-content: center; gap: 4px; }
-    .key { flex: 1; padding: 14px 0; font-size: 18px; font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
+    .key { flex: 1; padding: calc(var(--vk-pad-px, 14) * 1px) 0; font-size: calc(var(--vk-font-px, 18) * 1px); font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
     .key:active { transform: translateY(4px); box-shadow: 0 0 #333; background: #777; }
-    .key-wide { flex: 1.5; font-size: 16px; background: #444; }
+    .key-wide { flex: 1.5; font-size: calc(var(--vk-font-px, 16) * 1px); background: #444; }
     .key-action { background: #2196F3; flex: 2; box-shadow: 0 4px #0d47a1; }
     .key-action:active { box-shadow: 0 0 #0d47a1; }
     .key-action:disabled { background: #555; box-shadow: 0 4px #333; color:#888; cursor:not-allowed;}
@@ -59,7 +60,13 @@
     .blank-box { display: inline-block; min-width: 35px; min-height: 45px; border-bottom: 4px solid #888; text-align: center; margin: 0 4px; color: #FF9800; cursor: pointer; vertical-align: bottom; }
     .blank-box.active { border-bottom: 4px solid #e50914; background: rgba(229, 9, 20, 0.2); border-radius: 4px 4px 0 0; }
     .fill-choices { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
-    .fill-choice-btn { width: 60px; height: 60px; font-size: 30px; border-radius: 10px; background: #333; color: white; border: 2px solid #555; font-weight: bold; cursor: pointer; }    
+    .fill-choice-btn { width: 60px; height: 60px; font-size: 30px; border-radius: 10px; background: #333; color: white; border: 2px solid #555; font-weight: bold; cursor: pointer; }
+    .fill-pos-correct { background: rgba(76, 175, 80, 0.4); border-radius: 4px; padding: 0 3px; }
+    .fill-pos-wrong { background: rgba(244, 67, 54, 0.45); border-radius: 4px; padding: 0 3px; box-decoration-break: clone; }
+    .quiz-feedback-block { text-align: left; max-width: 100%; margin-top: 8px; }
+    .quiz-feedback-your-label { font-weight: bold; color: #ccc; margin-bottom: 6px; }
+    .quiz-feedback-judge-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+    .training-menu-picker-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-width: 520px; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -99,9 +106,12 @@
 
   <div id="section-training" class="section">
     <h1>🎯 特訓メニュー</h1>
-    <div id="route-container" class="route-container"><p>よみこみまち...</p></div>
-    <button id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: block; margin: 10px auto 0;">次の問題に取り組む ▶</button>
-    <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
+    <p style="text-align:center;color:#aaa;max-width:420px;margin:0 auto 12px;font-size:14px;">メニューをえらんでね（<code style="color:#9C27B0;">アプリ設定</code>で「特訓メニュー1_表示名」などと名前をつけられます）</p>
+    <div id="training-menu-picker"></div>
+    <div id="route-container" class="route-container" style="display:none;"><p>よみこみまち...</p></div>
+    <button type="button" id="next-route-btn" class="submit-btn btn-purple" onclick="startNextRoute()" style="width: 90%; max-width: 350px; display: none; margin: 10px auto 0;">次の問題に取り組む ▶</button>
+    <button type="button" class="cancel-btn" style="margin-top:12px;" onclick="backToTrainingMenuPicker()">メニュー一覧にもどる</button>
+    <button class="cancel-btn" style="margin-top:12px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
   </div>
   
   <div id="section-rewards" class="section"><h1>🎁 けいひん こうかんじょ</h1><div id="rewards-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
@@ -166,6 +176,21 @@
       <select id="setting-blank-count" class="large-select"></select>
     </div>
 
+    <div class="setting-group" style="border: 2px solid #607D8B;">
+      <h3 style="color:#90A4AE;">キーボード（タイピング・穴埋め）</h3>
+      <label style="display:block;color:#ccc;margin-bottom:8px;">全体の大きさ <span id="kbd-scale-label">100</span>%</label>
+      <input type="range" id="kbd-scale-range" min="80" max="200" value="100" style="width:100%;max-width:360px;" oninput="applyKeyboardSettingsFromControls()">
+      <label style="display:block;color:#ccc;margin:12px 0 8px;">キーの文字サイズ <span id="kbd-font-label">18</span>px</label>
+      <input type="range" id="kbd-font-range" min="14" max="40" value="18" style="width:100%;max-width:360px;" oninput="applyKeyboardSettingsFromControls()">
+      <p style="font-size:13px;color:#888;margin-top:8px;">タブレットでは大きめにすると押しやすいよ。設定はこの端末に保存されます。</p>
+    </div>
+    <div class="setting-group" style="border: 2px solid #795548;">
+      <h3 style="color:#BCAAA4;">正誤の音</h3>
+      <label style="display:flex;align-items:center;gap:10px;color:#ccc;cursor:pointer;">
+        <input type="checkbox" id="answer-sound-enabled" checked onchange="saveAnswerSoundSetting()"> せいかいは「ピンポン」、まちがいは「ブッブー」
+      </label>
+    </div>
+
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
     <button class="cancel-btn" style="margin-top:20px;" onclick="switchSection('section-materials')">もどる</button>
   </div>
@@ -181,6 +206,15 @@
     <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
 
     <div id="quiz-answer-area"></div>
+    <div id="quiz-keyboard-settings-panel" style="display:none; max-width: 420px; margin: 10px auto 0; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px;">
+      <button type="button" class="cancel-btn" style="width:100%;margin-bottom:8px;font-size:13px;" onclick="toggleQuizKeyboardPanel()">⌨️ キーボードの大きさをかえる</button>
+      <div id="quiz-keyboard-settings-body" style="display:none;">
+        <label style="display:block;color:#aaa;font-size:13px;">全体 <span id="quiz-kbd-scale-label">100</span>%</label>
+        <input type="range" id="quiz-kbd-scale-range" min="80" max="200" value="100" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
+        <label style="display:block;color:#aaa;font-size:13px;margin-top:8px;">文字 <span id="quiz-kbd-font-label">18</span>px</label>
+        <input type="range" id="quiz-kbd-font-range" min="14" max="40" value="18" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
+      </div>
+    </div>
     
     <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
       <button id="hint-btn-1" onclick="useHint(1, 5)" class="hint-btn">💡 イニシャルを見る（-5 Pt）</button>
@@ -207,7 +241,7 @@
 
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgQTwpB4d3QnOJ_kQYU-HjZ4x35rBDamfu9HKqjm3-unpa4xjnwra3b8DWB5XnpRq6Aw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwy8B0M5EdJ8lWAD06qWinVw_k7jg0tLfngvXfOhpcAGETmpgMx_WDO7ooeopqCkZLZUg/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -404,15 +438,178 @@
     let dailyRouteData = []; 
     let currentProgressData = {}; 
     let currentTrainingStepIndex = null;
+    let currentTrainingMenuId = 1;
     let isTrainingMode = false;
 
     window.onload = () => { 
         const saved = localStorage.getItem('app_kid_user'); 
+        initKeyboardAndSoundSettings();
         if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); prefetchMaterials(); }
         else fetchUsers(); 
     };
 
-    function fetchAppSettings() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; }); }
+    function fetchAppSettings() { return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; return d; }); }
+
+    const LS_KBD_SCALE = 'vk_scale_pct';
+    const LS_KBD_FONT = 'vk_key_font_px';
+    const LS_ANSWER_SOUND = 'answer_sound_enabled';
+
+    function initKeyboardAndSoundSettings() {
+      if (localStorage.getItem(LS_KBD_SCALE) === null) localStorage.setItem(LS_KBD_SCALE, '100');
+      if (localStorage.getItem(LS_KBD_FONT) === null) localStorage.setItem(LS_KBD_FONT, '18');
+      if (localStorage.getItem(LS_ANSWER_SOUND) === null) localStorage.setItem(LS_ANSWER_SOUND, '1');
+      const sc = document.getElementById('kbd-scale-range');
+      const ft = document.getElementById('kbd-font-range');
+      if (sc) sc.value = localStorage.getItem(LS_KBD_SCALE);
+      if (ft) ft.value = localStorage.getItem(LS_KBD_FONT);
+      const qsc = document.getElementById('quiz-kbd-scale-range');
+      const qft = document.getElementById('quiz-kbd-font-range');
+      if (qsc) qsc.value = localStorage.getItem(LS_KBD_SCALE);
+      if (qft) qft.value = localStorage.getItem(LS_KBD_FONT);
+      const snd = document.getElementById('answer-sound-enabled');
+      if (snd) snd.checked = localStorage.getItem(LS_ANSWER_SOUND) !== '0';
+      applyKeyboardSettingsFromControls('settings');
+    }
+
+    function saveAnswerSoundSetting() {
+      const el = document.getElementById('answer-sound-enabled');
+      localStorage.setItem(LS_ANSWER_SOUND, el && el.checked ? '1' : '0');
+    }
+
+    function applyKeyboardSettingsFromControls(from) {
+      let scalePct = parseInt(localStorage.getItem(LS_KBD_SCALE) || '100', 10);
+      let fontPx = parseInt(localStorage.getItem(LS_KBD_FONT) || '18', 10);
+      if (from === 'settings' || !from) {
+        const sc = document.getElementById('kbd-scale-range');
+        const ft = document.getElementById('kbd-font-range');
+        if (sc) scalePct = parseInt(sc.value, 10);
+        if (ft) fontPx = parseInt(ft.value, 10);
+      }
+      if (from === 'quiz') {
+        const sc = document.getElementById('quiz-kbd-scale-range');
+        const ft = document.getElementById('quiz-kbd-font-range');
+        if (sc) scalePct = parseInt(sc.value, 10);
+        if (ft) fontPx = parseInt(ft.value, 10);
+      }
+      if (isNaN(scalePct)) scalePct = 100;
+      if (isNaN(fontPx)) fontPx = 18;
+      localStorage.setItem(LS_KBD_SCALE, String(scalePct));
+      localStorage.setItem(LS_KBD_FONT, String(fontPx));
+      const scale = scalePct / 100;
+      const padPx = Math.max(8, Math.round(fontPx * 0.72));
+      document.documentElement.style.setProperty('--vk-font-px', String(fontPx));
+      document.documentElement.style.setProperty('--vk-pad-px', String(padPx));
+      document.documentElement.style.setProperty('--kb-scale', String(scale));
+      const syncLabels = () => {
+        const l1 = document.getElementById('kbd-scale-label');
+        const l2 = document.getElementById('kbd-font-label');
+        const q1 = document.getElementById('quiz-kbd-scale-label');
+        const q2 = document.getElementById('quiz-kbd-font-label');
+        if (l1) l1.innerText = String(scalePct);
+        if (l2) l2.innerText = String(fontPx);
+        if (q1) q1.innerText = String(scalePct);
+        if (q2) q2.innerText = String(fontPx);
+      };
+      const syncRanges = () => {
+        const ids = ['kbd-scale-range', 'kbd-font-range', 'quiz-kbd-scale-range', 'quiz-kbd-font-range'];
+        ids.forEach(id => { const el = document.getElementById(id); if (!el) return; if (id.indexOf('scale') >= 0) el.value = scalePct; else el.value = fontPx; });
+      };
+      syncRanges();
+      syncLabels();
+      const wrap = document.querySelector('.keyboard-scale-wrap');
+      if (wrap) {
+        wrap.style.setProperty('--kb-scale', String(scale));
+        wrap.style.setProperty('--vk-font-px', String(fontPx));
+        wrap.style.setProperty('--vk-pad-px', String(padPx));
+      }
+      const quizSec = document.getElementById('section-quiz');
+      if (quizSec && quizSec.classList.contains('active')) {
+        const at = document.getElementById('setting-answer-type') && document.getElementById('setting-answer-type').value;
+        if (at === 'typing') renderCustomKeyboard(false);
+        else if (at === 'fill_typing') renderCustomKeyboard(true);
+      }
+    }
+
+    function toggleQuizKeyboardPanel() {
+      const body = document.getElementById('quiz-keyboard-settings-body');
+      if (!body) return;
+      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    }
+
+    let answerAudioCtx = null;
+    function playAnswerSound(isCorrect) {
+      if (localStorage.getItem(LS_ANSWER_SOUND) === '0') return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!answerAudioCtx) answerAudioCtx = new AC();
+        const ctx = answerAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const g = ctx.createGain();
+        g.connect(ctx.destination);
+        g.gain.value = 0.2;
+        if (isCorrect) {
+          [880, 1174].forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            o.connect(g);
+            const t0 = ctx.currentTime + i * 0.09;
+            o.start(t0);
+            o.stop(t0 + 0.1);
+          });
+        } else {
+          const o = ctx.createOscillator();
+          o.type = 'square';
+          o.frequency.value = 180;
+          o.connect(g);
+          const t0 = ctx.currentTime;
+          o.start(t0);
+          o.stop(t0 + 0.22);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode) {
+      let userLineHtml = '';
+      if (fillMode && fillBlanksData && fillBlanksData.length) {
+        const word = String(resolvedCorrect != null ? resolvedCorrect : '');
+        const ua = String(userA != null ? userA : '');
+        for (let i = 0; i < word.length; i++) {
+          const bd = fillBlanksData.find(b => b.originalIndex === i);
+          const ch = ua[i] != null ? ua[i] : '';
+          if (bd) {
+            const ok = normalizeText(String(bd.correctChar)) === normalizeText(String(ch));
+            userLineHtml += `<span class="${ok ? 'fill-pos-correct' : 'fill-pos-wrong'}">${escapeHtml(ch)}</span>`;
+          } else {
+            userLineHtml += escapeHtml(ch);
+          }
+        }
+      } else {
+        userLineHtml = escapeHtml(userA);
+      }
+      let judgeHtml = '';
+      if (isSkip) judgeHtml = `<span style="font-size:28px;font-weight:bold;color:#FF9800;">⏭️</span>`;
+      else judgeHtml = isCorrect
+        ? `<span style="color:#4CAF50;font-size:32px;font-weight:bold;">⭕</span>`
+        : `<span style="color:#F44336;font-size:32px;font-weight:bold;">×</span>`;
+      const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
+      let html = `<div class="quiz-feedback-block">
+        <div class="quiz-feedback-your-label">あなたのこたえ</div>
+        <div style="font-size:22px;word-break:break-all;line-height:1.4;">${userLineHtml}</div>
+        <div class="quiz-feedback-judge-row">
+          <div>${judgeHtml}</div>
+          <div style="flex:1;min-width:120px;color:#eee;font-size:20px;">せいかい: <b style="color:#fff;">${escapeHtml(correctDisp)}</b></div>
+        </div>`;
+      if (maxDeduction > 0) html += `<br><span style="font-size:16px;color:#FF9800;">ヒントをつかったので -${maxDeduction}Pt されます</span>`;
+      html += `</div>`;
+      return html;
+    }
     
     function prefetchMaterials() {
         if (materialsData.length > 0) return Promise.resolve();
@@ -451,7 +648,7 @@
         const routeContainer = document.getElementById('route-container');
         if (routeContainer) routeContainer.innerHTML = "<p>ルートを確認中...</p>";
         
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId }) })
+        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId, trainingMenuId: currentTrainingMenuId }) })
         .then(r=>r.json()).then(d=>{
             if(d.status === "success") {
                 dailyRouteData = d.route;
@@ -531,6 +728,40 @@
       const user = JSON.parse(localStorage.getItem('app_kid_user'));
       if (!user) { alert("ログインし直してください"); return; }
       switchSection('section-training');
+      document.getElementById('training-menu-picker').style.display = 'block';
+      document.getElementById('route-container').style.display = 'none';
+      document.getElementById('next-route-btn').style.display = 'none';
+      renderTrainingMenuPicker();
+    }
+
+    function backToTrainingMenuPicker() {
+      document.getElementById('training-menu-picker').style.display = 'block';
+      document.getElementById('route-container').style.display = 'none';
+      document.getElementById('next-route-btn').style.display = 'none';
+      renderTrainingMenuPicker();
+    }
+
+    function renderTrainingMenuPicker() {
+      const box = document.getElementById('training-menu-picker');
+      if (!box) return;
+      box.innerHTML = "<p style='text-align:center;color:#888;'>よみこみ中...</p>";
+      fetchAppSettings().then(d => {
+        const settings = (d && d.status === 'success' && d.settings) ? d.settings : {};
+        let html = "<div class='training-menu-picker-inner'>";
+        for (let m = 1; m <= 12; m++) {
+          const label = String(settings['特訓メニュー' + m + '_表示名'] || '').trim() || ('特訓メニュー' + m);
+          html += `<button type="button" class="submit-btn btn-purple" style="min-height:48px;padding:10px;font-size:15px;" onclick="selectTrainingMenu(${m})">${escapeHtml(label)}</button>`;
+        }
+        html += "</div>";
+        box.innerHTML = html;
+      }).catch(() => { box.innerHTML = "<p style='color:#f88;'>読み込みに失敗しました</p>"; });
+    }
+
+    function selectTrainingMenu(menuId) {
+      currentTrainingMenuId = menuId;
+      const user = JSON.parse(localStorage.getItem('app_kid_user'));
+      document.getElementById('training-menu-picker').style.display = 'none';
+      document.getElementById('route-container').style.display = 'block';
       document.getElementById('route-container').innerHTML = "<p>ルートを確認中...</p>";
       fetchTrainingRoute(user.id);
     }
@@ -949,6 +1180,7 @@
     }
 
     function openSettingsScreen() {
+      initKeyboardAndSoundSettings();
       switchSection('section-settings'); 
       document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
       const fSelect = document.getElementById('setting-format');
@@ -1019,6 +1251,14 @@
     function updateKeyboardDisplay() { const isUpper = shiftMode > 0 || isShiftHoldMode; const shiftBtn = document.getElementById('shift-btn'); if (shiftBtn) { if (shiftMode === 2) { shiftBtn.innerText = '⇪'; shiftBtn.style.background = '#FF9800'; } else if (shiftMode === 1 || isShiftHoldMode) { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#e50914'; } else { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#444'; } } document.querySelectorAll('.key-char').forEach(btn => { const baseChar = btn.getAttribute('data-char'); if (/[a-z]/.test(baseChar)) btn.innerText = isUpper ? baseChar.toUpperCase() : baseChar; }); }
     function renderCustomKeyboard(isFillMode = false) {
       const container = document.getElementById('keyboard-container'); if(!container) return; container.innerHTML = "";
+      const scalePct = parseInt(localStorage.getItem(LS_KBD_SCALE) || '100', 10);
+      const fontPx = parseInt(localStorage.getItem(LS_KBD_FONT) || '18', 10);
+      const padPx = Math.max(8, Math.round(fontPx * 0.72));
+      const wrap = document.createElement('div');
+      wrap.className = 'keyboard-scale-wrap';
+      wrap.style.setProperty('--kb-scale', String(scalePct / 100));
+      wrap.style.setProperty('--vk-font-px', String(fontPx));
+      wrap.style.setProperty('--vk-pad-px', String(padPx));
       const rows = [ ['!', '"', '$', '%', '&', "'", '(', ')', '-', '¥'], ['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['z','x','c','v','b','n','m',',','.','?'] ];
       const board = document.createElement('div'); board.className = 'keyboard';
       
@@ -1072,7 +1312,9 @@
         bottomRow.appendChild(spaceBtn); bottomRow.appendChild(fillSubmitBtn);
       }
       
-      board.appendChild(bottomRow); container.appendChild(board);
+      board.appendChild(bottomRow);
+      wrap.appendChild(board);
+      container.appendChild(wrap);
       updateKeyboardDisplay();
     }
 
@@ -1174,6 +1416,13 @@
       const format = document.getElementById('setting-format').value; 
       const answerType = document.getElementById('setting-answer-type').value;
       const isWord = currentModeName.includes("単語");
+
+      const kbdPanel = document.getElementById('quiz-keyboard-settings-panel');
+      if (kbdPanel) {
+        kbdPanel.style.display = (answerType === 'typing' || answerType === 'fill_typing') ? 'block' : 'none';
+        const kbdBody = document.getElementById('quiz-keyboard-settings-body');
+        if (kbdBody) kbdBody.style.display = 'none';
+      }
       
       document.getElementById('quiz-progress').innerText = (isTrainingMode?"🎯 特訓ルート: ":"") + (currentIsReviewMode?"🔥特訓中! ":"") + `第 ${currentQuestionIndex + 1} 問 / 全 ${filteredQuestions.length} 問`;
       
@@ -1397,12 +1646,14 @@
 
         document.getElementById('quiz-word-blank-area').style.display = "none";
 
-        if (isCorrect) {
-          feedback.innerHTML = `<span style='color:#4CAF50;font-size:30px;font-weight:bold;'>⭕️ せいかい！</span>` + (maxDeduction > 0 ? `<br><span style='font-size:16px;color:#FF9800;'>ヒントをつかったので -${maxDeduction}Pt されます</span>` : "");
-        } else {
-          let errorTitle = userA === "[スキップしました]" ? "⏭️ スキップしました" : "❌ ざんねん...";
-          feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>${errorTitle}</span><br>せいかいは：<b style="color:#fff; font-size:28px;">${resolvedCorrect}</b>`;
-        }
+        const isSkip = userA === "[スキップしました]";
+        const fillFeedback = ansType.startsWith("fill_");
+        if (!isSkip) playAnswerSound(isCorrect);
+        let titleLine = "";
+        if (isSkip) titleLine = `<p style="color:#FF9800;font-size:22px;font-weight:bold;margin:0 0 6px;">スキップしました</p>`;
+        else if (isCorrect) titleLine = `<p style="color:#4CAF50;font-size:24px;font-weight:bold;margin:0 0 6px;">せいかい！</p>`;
+        else titleLine = `<p style="color:#F44336;font-size:24px;font-weight:bold;margin:0 0 6px;">ざんねん...</p>`;
+        feedback.innerHTML = titleLine + buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip);
 
         speakText(String(resolvedCorrect ?? ""));
         advanceScheduled = true;
@@ -1447,7 +1698,8 @@
 
       let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
       if (isTrainingMode) {
-        payload.trainingStepIndex = currentTrainingStepIndex; // 特訓ルートの進捗保存用
+        payload.trainingStepIndex = currentTrainingStepIndex;
+        payload.trainingMenuId = currentTrainingMenuId;
       }
 
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
