@@ -44,10 +44,28 @@
     .checkbox { width: 24px; height: 24px; border: 2px solid #fff; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;}
     .cleared .checkbox { background: #4CAF50; border-color: #4CAF50; }
     
-    /* キーボード用のCSS（--vk-font-px / --vk-pad-px / --kb-scale は JS で設定） */
-    .keyboard-scale-wrap { width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; transform: scale(var(--kb-scale, 1)); transform-origin: top center; }
-    .keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 5px; box-sizing: border-box; }
-    .key-row { display: flex; justify-content: center; gap: 4px; }
+    /* キーボード用（--kb-scale はレイアウトに反映：transform は使わない） */
+    .keyboard-scale-wrap {
+      --kb-scale: 1;
+      width: 100%;
+      max-width: min(100%, calc(800px * var(--kb-scale)));
+      margin-left: auto;
+      margin-right: auto;
+      box-sizing: border-box;
+    }
+    .keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: calc(6px * var(--kb-scale));
+      margin-top: 5px;
+      width: 100%;
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 calc(5px * var(--kb-scale));
+      box-sizing: border-box;
+    }
+    .key-row { display: flex; justify-content: center; gap: calc(4px * var(--kb-scale)); }
     .key { flex: 1; padding: calc(var(--vk-pad-px, 14) * 1px) 0; font-size: calc(var(--vk-font-px, 18) * 1px); font-weight: bold; border-radius: 6px; background: #555; color: white; border: none; cursor: pointer; user-select: none; box-shadow: 0 4px #333; transition: 0.1s; }
     .key:active { transform: translateY(4px); box-shadow: 0 0 #333; background: #777; }
     .key-wide { flex: 1.5; font-size: calc(var(--vk-font-px, 16) * 1px); background: #444; }
@@ -67,6 +85,7 @@
     .quiz-feedback-your-label { font-weight: bold; color: #ccc; margin-bottom: 6px; }
     .quiz-feedback-judge-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
     .training-menu-picker-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-width: 520px; margin: 0 auto; }
+    #quiz-keyboard-settings-panel { margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -178,7 +197,7 @@
 
     <div class="setting-group" style="border: 2px solid #607D8B;">
       <h3 style="color:#90A4AE;">キーボード（タイピング・穴埋め）</h3>
-      <label style="display:block;color:#ccc;margin-bottom:8px;">全体の大きさ <span id="kbd-scale-label">100</span>%</label>
+      <label style="display:block;color:#ccc;margin-bottom:8px;">全体の幅 <span id="kbd-scale-label">100</span>%（キーボードの横幅）</label>
       <input type="range" id="kbd-scale-range" min="80" max="200" value="100" style="width:100%;max-width:360px;" oninput="applyKeyboardSettingsFromControls()">
       <label style="display:block;color:#ccc;margin:12px 0 8px;">キーの文字サイズ <span id="kbd-font-label">18</span>px</label>
       <input type="range" id="kbd-font-range" min="14" max="40" value="18" style="width:100%;max-width:360px;" oninput="applyKeyboardSettingsFromControls()">
@@ -187,7 +206,7 @@
     <div class="setting-group" style="border: 2px solid #795548;">
       <h3 style="color:#BCAAA4;">正誤の音</h3>
       <label style="display:flex;align-items:center;gap:10px;color:#ccc;cursor:pointer;">
-        <input type="checkbox" id="answer-sound-enabled" checked onchange="saveAnswerSoundSetting()"> せいかいは「ピンポン」、まちがいは「ブッブー」
+        <input type="checkbox" id="answer-sound-enabled" checked onchange="syncAnswerSoundFromCheckbox(this)"> せいかいは「ピンポン」、まちがいは「ブッブー」
       </label>
     </div>
 
@@ -206,15 +225,6 @@
     <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
 
     <div id="quiz-answer-area"></div>
-    <div id="quiz-keyboard-settings-panel" style="display:none; max-width: 420px; margin: 10px auto 0; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px;">
-      <button type="button" class="cancel-btn" style="width:100%;margin-bottom:8px;font-size:13px;" onclick="toggleQuizKeyboardPanel()">⌨️ キーボードの大きさをかえる</button>
-      <div id="quiz-keyboard-settings-body" style="display:none;">
-        <label style="display:block;color:#aaa;font-size:13px;">全体 <span id="quiz-kbd-scale-label">100</span>%</label>
-        <input type="range" id="quiz-kbd-scale-range" min="80" max="200" value="100" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
-        <label style="display:block;color:#aaa;font-size:13px;margin-top:8px;">文字 <span id="quiz-kbd-font-label">18</span>px</label>
-        <input type="range" id="quiz-kbd-font-range" min="14" max="40" value="18" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
-      </div>
-    </div>
     
     <div id="quiz-hint-area" class="hint-btn-group" style="display:none;">
       <button id="hint-btn-1" onclick="useHint(1, 5)" class="hint-btn">💡 イニシャルを見る（-5 Pt）</button>
@@ -225,6 +235,18 @@
     
     <div id="quiz-feedback"></div>
     <button id="quiz-next-btn" class="submit-btn btn-green" style="display:none; margin:0 auto;" onclick="nextQuestion()">つぎへ ▶</button>
+    <div id="quiz-keyboard-settings-panel" style="display:none; max-width: 420px; margin: 16px auto 0; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px;">
+      <label style="display:flex;align-items:center;gap:10px;color:#ccc;font-size:14px;cursor:pointer;margin-bottom:10px;">
+        <input type="checkbox" id="quiz-answer-sound-enabled" onchange="syncAnswerSoundFromCheckbox(this)"> 正誤の音（ピンポン／ブッブー）
+      </label>
+      <button type="button" class="cancel-btn" style="width:100%;margin-bottom:8px;font-size:13px;" onclick="toggleQuizKeyboardPanel()">⌨️ キーボードの大きさをかえる</button>
+      <div id="quiz-keyboard-settings-body" style="display:none;">
+        <label style="display:block;color:#aaa;font-size:13px;">全体の幅 <span id="quiz-kbd-scale-label">100</span>%</label>
+        <input type="range" id="quiz-kbd-scale-range" min="80" max="200" value="100" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
+        <label style="display:block;color:#aaa;font-size:13px;margin-top:8px;">文字サイズ <span id="quiz-kbd-font-label">18</span>px</label>
+        <input type="range" id="quiz-kbd-font-range" min="14" max="40" value="18" style="width:100%;" oninput="applyKeyboardSettingsFromControls('quiz')">
+      </div>
+    </div>
   </div>
   
   <div id="section-result" class="section">
@@ -466,14 +488,21 @@
       const qft = document.getElementById('quiz-kbd-font-range');
       if (qsc) qsc.value = localStorage.getItem(LS_KBD_SCALE);
       if (qft) qft.value = localStorage.getItem(LS_KBD_FONT);
+      const on = localStorage.getItem(LS_ANSWER_SOUND) !== '0';
       const snd = document.getElementById('answer-sound-enabled');
-      if (snd) snd.checked = localStorage.getItem(LS_ANSWER_SOUND) !== '0';
+      const qsnd = document.getElementById('quiz-answer-sound-enabled');
+      if (snd) snd.checked = on;
+      if (qsnd) qsnd.checked = on;
       applyKeyboardSettingsFromControls('settings');
     }
 
-    function saveAnswerSoundSetting() {
-      const el = document.getElementById('answer-sound-enabled');
-      localStorage.setItem(LS_ANSWER_SOUND, el && el.checked ? '1' : '0');
+    function syncAnswerSoundFromCheckbox(el) {
+      if (!el) return;
+      localStorage.setItem(LS_ANSWER_SOUND, el.checked ? '1' : '0');
+      const a = document.getElementById('answer-sound-enabled');
+      const q = document.getElementById('quiz-answer-sound-enabled');
+      if (a && el !== a) a.checked = el.checked;
+      if (q && el !== q) q.checked = el.checked;
     }
 
     function applyKeyboardSettingsFromControls(from) {
@@ -499,7 +528,6 @@
       const padPx = Math.max(8, Math.round(fontPx * 0.72));
       document.documentElement.style.setProperty('--vk-font-px', String(fontPx));
       document.documentElement.style.setProperty('--vk-pad-px', String(padPx));
-      document.documentElement.style.setProperty('--kb-scale', String(scale));
       const syncLabels = () => {
         const l1 = document.getElementById('kbd-scale-label');
         const l2 = document.getElementById('kbd-font-label');
@@ -516,12 +544,11 @@
       };
       syncRanges();
       syncLabels();
-      const wrap = document.querySelector('.keyboard-scale-wrap');
-      if (wrap) {
+      document.querySelectorAll('.keyboard-scale-wrap').forEach(wrap => {
         wrap.style.setProperty('--kb-scale', String(scale));
         wrap.style.setProperty('--vk-font-px', String(fontPx));
         wrap.style.setProperty('--vk-pad-px', String(padPx));
-      }
+      });
       const quizSec = document.getElementById('section-quiz');
       if (quizSec && quizSec.classList.contains('active')) {
         const at = document.getElementById('setting-answer-type') && document.getElementById('setting-answer-type').value;
@@ -1256,7 +1283,7 @@
       const padPx = Math.max(8, Math.round(fontPx * 0.72));
       const wrap = document.createElement('div');
       wrap.className = 'keyboard-scale-wrap';
-      wrap.style.setProperty('--kb-scale', String(scalePct / 100));
+      wrap.style.setProperty('--kb-scale', String(Math.max(0.5, Math.min(2.5, scalePct / 100))));
       wrap.style.setProperty('--vk-font-px', String(fontPx));
       wrap.style.setProperty('--vk-pad-px', String(padPx));
       const rows = [ ['!', '"', '$', '%', '&', "'", '(', ')', '-', '¥'], ['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['z','x','c','v','b','n','m',',','.','?'] ];
