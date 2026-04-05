@@ -27,6 +27,8 @@
     .large-input { padding: 15px; font-size: 24px; width: 90%; max-width: 400px; border-radius: 8px; text-align: center; margin-bottom: 10px; background: #fff; color: #000; border: 2px solid #888; box-sizing: border-box; }
     .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top:10px; transition: 0.2s; }
     #quiz-feedback { margin: 16px auto 12px; font-size: 24px; min-height: 40px; max-width: 420px; width: 100%; }
+    /* タイピング時はフィードバックをキーボード直上に移す（#quiz-answer-area 内） */
+    #quiz-answer-area #quiz-feedback { margin-top: 10px; margin-bottom: 10px; }
     .hint-btn-group { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px; }
     .hint-btn { background: #FF9800; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; width: 90%; max-width: 350px;}
     .hint-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
@@ -1558,6 +1560,24 @@
       currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
     }
 
+    /** 正誤表示を「つぎへ」ボタンの直前の定位置へ戻す（answerArea を空にする前に必須） */
+    function restoreQuizFeedbackLocation() {
+      const fb = document.getElementById('quiz-feedback');
+      const nextBtn = document.getElementById('quiz-next-btn');
+      if (!fb || !nextBtn || !nextBtn.parentNode) return;
+      if (fb.nextElementSibling !== nextBtn) {
+        nextBtn.parentNode.insertBefore(fb, nextBtn);
+      }
+    }
+
+    /** カスタムキーボード使用時は、正答・○× をキーボードより上（入力の直下）に表示 */
+    function placeQuizFeedbackAboveKeyboard(answerAreaEl) {
+      const fb = document.getElementById('quiz-feedback');
+      const kbd = document.getElementById('keyboard-container');
+      if (!fb || !kbd || !answerAreaEl || !answerAreaEl.contains(kbd)) return;
+      answerAreaEl.insertBefore(fb, kbd);
+    }
+
     function showQuestion() {
       if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
       maxDeduction = 0;
@@ -1617,6 +1637,7 @@
         document.getElementById('hint-btn-3').disabled = false;
       }
 
+      restoreQuizFeedbackLocation();
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
       
       if (answerType === "4choice") {
@@ -1630,6 +1651,7 @@
         shiftMode = 0; isShiftHoldMode = false;
         answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div>`; 
         renderCustomKeyboard(false);
+        placeQuizFeedbackAboveKeyboard(answerArea);
       }
       else if (answerType === "voice") {
         answerArea.innerHTML = `<input type="text" id="voice-recognized-text" class="large-input" readonly placeholder="ここに聞き取った言葉が出ます"><button id="voice-btn" class="submit-btn btn-blue" style="padding: 20px 40px; font-size: 24px; border-radius: 50px; display: block; margin: 0 auto;" onclick="startVoiceInput()">🎙️ マイクでこたえる</button><div id="voice-feedback" style="margin-top:15px; font-size:18px; color:#ccc;">おうちの静かな場所でやってみてね。</div>`;
@@ -1673,7 +1695,8 @@
       if (ansType === "fill_typing") {
         shiftMode = 0; isShiftHoldMode = false;
         answerArea.innerHTML = `<div id="keyboard-container"></div>`; 
-        renderCustomKeyboard(true); 
+        renderCustomKeyboard(true);
+        placeQuizFeedbackAboveKeyboard(answerArea);
       } else if (ansType === "fill_4choice") {
         answerArea.innerHTML = `
           <div id="fill-4choice-container" class="fill-choices"></div>
@@ -1815,6 +1838,11 @@
         }
         feedback.innerHTML = buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip, ansType, plusLine);
         updateSessionScoreDisplay();
+        if (ansType === "typing" || ansType === "fill_typing") {
+          requestAnimationFrame(() => {
+            try { feedback.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_) {}
+          });
+        }
 
         speakText(String(resolvedCorrect ?? ""));
         advanceScheduled = true;
