@@ -345,6 +345,18 @@ function handleGetTrainingRoute(req) {
   return sendResponse({ status: "success", route: route, progress: progressData, menuId: menuId });
 }
 
+/** materials ブックのシート名が「単語A_40」のように末尾 _数字 なら、その数字を得点％として最後に乗算（未指定は100） */
+function parseUnitSheetPointPercent_(sheetName) {
+  const s = String(sheetName || "");
+  const m = s.match(/_(\d+)$/);
+  if (!m) return 100;
+  let p = parseInt(m[1], 10);
+  if (isNaN(p)) return 100;
+  if (p < 0) p = 0;
+  if (p > 100) p = 100;
+  return p;
+}
+
 // 学習結果の保存（進捗チェックの更新を追加）
 function handleSaveLearningSession(req) {
   const props = PropertiesService.getScriptProperties();
@@ -406,7 +418,11 @@ function handleSaveLearningSession(req) {
     if (unitHistory[qId].times.length > 10) unitHistory[qId].times.shift();
   });
 
-  const earnedPoints = Math.round((sessionRawPoints * multiplier) * 100) / 100;
+  let earnedPoints = Math.round((sessionRawPoints * multiplier) * 100) / 100;
+  const sheetPointPercent = parseUnitSheetPointPercent_(req.unitSheetName);
+  if (sheetPointPercent !== 100) {
+    earnedPoints = Math.round(earnedPoints * (sheetPointPercent / 100) * 100) / 100;
+  }
   const newTotalPoints = Math.round((userData.points + earnedPoints) * 100) / 100;
   
   userData.dailyPointsJson[todayStr] = (userData.dailyPointsJson[todayStr] || 0) + earnedPoints;
@@ -430,7 +446,7 @@ function handleSaveLearningSession(req) {
   usersSheet.getRange(targetRowIdx, 7).setValue(JSON.stringify(userData.dailyPointsJson));
   usersSheet.getRange(targetRowIdx, 8).setValue(JSON.stringify(userData.trainingProgressJson)); // ★ 保存
 
-  return sendResponse({ status: "success", earnedPoints: earnedPoints, newTotal: newTotalPoints, historyJson: userData.historyJson, dailyPointsJson: userData.dailyPointsJson, bonusApplied: req.isRandom, trainingProgressJson: userData.trainingProgressJson });
+  return sendResponse({ status: "success", earnedPoints: earnedPoints, newTotal: newTotalPoints, historyJson: userData.historyJson, dailyPointsJson: userData.dailyPointsJson, bonusApplied: req.isRandom, trainingProgressJson: userData.trainingProgressJson, sheetPointPercent: sheetPointPercent });
 }
 
 // ==========================================

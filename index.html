@@ -263,7 +263,7 @@
 
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyWO1QND6eyB76MNUs-7q5HKYDvEPVyu6z1S--6RT9wiXPzIumhRXYhh2R1zQfIiYssUg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwy8B0M5EdJ8lWAD06qWinVw_k7jg0tLfngvXfOhpcAGETmpgMx_WDO7ooeopqCkZLZUg/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -1723,7 +1723,7 @@
       const isRandom = document.getElementById('setting-order').value === 'random';
       const detailedUnitId = getDetailedUnitId(); 
 
-      let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
+      let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, unitSheetName: currentUnitName, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
       if (isTrainingMode) {
         payload.trainingStepIndex = currentTrainingStepIndex;
         payload.trainingMenuId = currentTrainingMenuId;
@@ -1736,6 +1736,9 @@
           if (currentIsReviewMode) bonusMsg += `<p style="color:#FF9800;font-weight:bold;margin:5px 0;">🔥 ニガテ特訓ボーナス適用</p>`;
           if (d.bonusApplied) bonusMsg += `<p style="color:#e50914;font-weight:bold;margin:5px 0;">🎲 ランダム出題ボーナス（10%UP）</p>`;
           if (isTrainingMode) bonusMsg += `<p style="color:#9C27B0;font-weight:bold;margin:5px 0;">🎯 特訓ルートクリア！</p>`;
+          if (d.sheetPointPercent != null && Number(d.sheetPointPercent) < 100) {
+            bonusMsg += `<p style="color:#90CAF9;font-size:15px;margin:6px 0;">📎 この単元のシート名に「_${d.sheetPointPercent}」がついているため、かくとくポイントは <strong>${d.sheetPointPercent}%</strong> になっています。</p>`;
+          }
 
           document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + bonusMsg + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
           user.points = d.newTotal; user.historyJson = d.historyJson; user.dailyPointsJson = d.dailyPointsJson; 
