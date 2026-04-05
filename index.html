@@ -220,6 +220,7 @@
       <h3 id="quiz-progress" style="color: #aaa; margin:0; font-size:16px;">第 1 問</h3>
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
+    <div id="quiz-score-bar" style="margin:0 0 12px; padding:10px 12px; background:#1e1e1e; border:1px solid #444; border-radius:10px; font-size:15px; color:#ccc; text-align:center; line-height:1.5;"></div>
     <div id="quiz-q-text">もんだい文</div>
     
     <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
@@ -376,6 +377,90 @@
         if (ansType === "typing" || ansType === "voice") return (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
       }
       return 0;
+    }
+
+    /** GAS parseUnitSheetPointPercent_ と同じ（シート名末尾 _数字 ＝得点％） */
+    function parseUnitSheetPointPercentClient(sheetName) {
+      const s = String(sheetName || "");
+      const m = s.match(/_(\d+)$/);
+      if (!m) return 100;
+      let p = parseInt(m[1], 10);
+      if (isNaN(p)) return 100;
+      if (p < 0) p = 0;
+      if (p > 100) p = 100;
+      return p;
+    }
+
+    /** handleSaveLearningSession と同じ係数（時間・ニガテ・ランダム） */
+    function computePointsMultiplierClient() {
+      const user = JSON.parse(localStorage.getItem('app_kid_user') || '{}');
+      const unitId = getDetailedUnitId();
+      let mult = 1.0;
+      const lastStudyTimeStr = user.lastStudyJson && user.lastStudyJson[unitId];
+      if (lastStudyTimeStr) {
+        const lastTime = new Date(lastStudyTimeStr);
+        const diffHours = (Date.now() - lastTime) / (1000 * 60 * 60);
+        let basePercent = 10 + Math.floor(diffHours / 2) * 10;
+        if (basePercent > 100) basePercent = 100;
+        mult = basePercent / 100;
+      }
+      if (currentIsReviewMode) mult += 0.4;
+      if (document.getElementById('setting-order') && document.getElementById('setting-order').value === 'random') mult += 0.1;
+      return mult;
+    }
+
+    /** GAS と同じ二段階の丸め */
+    function applySessionEarnedFromRaw(sessionRawPoints, multiplier, sheetPointPercent) {
+      let earned = Math.round(sessionRawPoints * multiplier * 100) / 100;
+      if (sheetPointPercent !== 100) {
+        earned = Math.round(earned * (sheetPointPercent / 100) * 100) / 100;
+      }
+      return earned;
+    }
+
+    function rawPointsFromQuizResults(results) {
+      let sum = 0;
+      (results || []).forEach(res => {
+        if (res.isCorrect) {
+          const qpt = Math.max(1, (Number(res.basePoint) || 2) - (Number(res.maxDeduction) || 0));
+          sum += qpt;
+        }
+      });
+      return sum;
+    }
+
+    function sumMaxPossibleRawForSession() {
+      if (!filteredQuestions || filteredQuestions.length === 0) return 0;
+      const format = document.getElementById('setting-format').value;
+      const ansType = document.getElementById('setting-answer-type').value;
+      const isWord = currentModeName.includes("単語");
+      const bp = computeQuizBasePoint(format, ansType, isWord);
+      return filteredQuestions.length * bp;
+    }
+
+    function formatPointDisplayNum(v) {
+      const n = Number(v);
+      if (isNaN(n)) return '0';
+      if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+      return String(Math.round(n * 100) / 100);
+    }
+
+    function updateSessionScoreDisplay() {
+      const el = document.getElementById('quiz-score-bar');
+      if (!el || !filteredQuestions || filteredQuestions.length === 0) {
+        if (el) el.innerHTML = "";
+        return;
+      }
+      const mult = computePointsMultiplierClient();
+      const sheetPct = parseUnitSheetPointPercentClient(currentUnitName);
+      const maxRaw = sumMaxPossibleRawForSession();
+      const maxEarned = applySessionEarnedFromRaw(maxRaw, mult, sheetPct);
+      const curRaw = rawPointsFromQuizResults(quizResults);
+      const curEarned = applySessionEarnedFromRaw(curRaw, mult, sheetPct);
+      const parts = [];
+      parts.push(`このセッションの得点 <strong style="color:#FFD54F;font-size:20px;">${formatPointDisplayNum(curEarned)}</strong> / <span style="color:#aaa;">${formatPointDisplayNum(maxEarned)}</span> 点`);
+      parts.push(`<span style="font-size:12px;color:#888;">（全問せいかい・ヒントなしのときの最大。時間・ニガテ・ランダム・単元シート名の補正％を含む）</span>`);
+      el.innerHTML = parts.join('<br>');
     }
 
     let recognition = null;
@@ -1522,6 +1607,7 @@
       else if (answerType.startsWith("fill_")) {
         setupFillBlankQuiz(correctA, answerType);
       }
+      updateSessionScoreDisplay();
     }
 
     function setupFillBlankQuiz(word, ansType) {
@@ -1690,7 +1776,19 @@
         if (isSkip) titleLine = `<p style="color:#FF9800;font-size:22px;font-weight:bold;margin:0 0 6px;">スキップしました</p>`;
         else if (isCorrect) titleLine = `<p style="color:#4CAF50;font-size:24px;font-weight:bold;margin:0 0 6px;">せいかい！</p>`;
         else titleLine = `<p style="color:#F44336;font-size:24px;font-weight:bold;margin:0 0 6px;">ざんねん...</p>`;
-        feedback.innerHTML = titleLine + buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip);
+        let plusLine = "";
+        if (isCorrect && !isSkip) {
+          const mult = computePointsMultiplierClient();
+          const sheetPct = parseUnitSheetPointPercentClient(currentUnitName);
+          const rawBefore = rawPointsFromQuizResults(quizResults.slice(0, -1));
+          const rawAfter = rawPointsFromQuizResults(quizResults);
+          const eBefore = applySessionEarnedFromRaw(rawBefore, mult, sheetPct);
+          const eAfter = applySessionEarnedFromRaw(rawAfter, mult, sheetPct);
+          const d = Math.round((eAfter - eBefore) * 100) / 100;
+          if (d > 0) plusLine = `<p style="margin:8px 0 0;color:#FFD54F;font-size:22px;font-weight:bold;">＋${formatPointDisplayNum(d)}点</p>`;
+        }
+        feedback.innerHTML = titleLine + plusLine + buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip);
+        updateSessionScoreDisplay();
 
         speakText(String(resolvedCorrect ?? ""));
         advanceScheduled = true;
@@ -1708,6 +1806,7 @@
         } catch (_) {
           quizResults.push({ questionId: q["通し番号"] || 0, isCorrect: false, timeSec: 0, basePoint: 0, maxDeduction: 0 });
         }
+        updateSessionScoreDisplay();
         advanceScheduled = true;
       } finally {
         const nextBtn = document.getElementById('quiz-next-btn');
