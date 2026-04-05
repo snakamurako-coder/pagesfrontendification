@@ -26,7 +26,7 @@
     .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .large-input { padding: 15px; font-size: 24px; width: 90%; max-width: 400px; border-radius: 8px; text-align: center; margin-bottom: 10px; background: #fff; color: #000; border: 2px solid #888; box-sizing: border-box; }
     .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top:10px; transition: 0.2s; }
-    #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
+    #quiz-feedback { margin: 16px auto 12px; font-size: 24px; min-height: 40px; max-width: 420px; width: 100%; }
     .hint-btn-group { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px; }
     .hint-btn { background: #FF9800; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; width: 90%; max-width: 350px;}
     .hint-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
@@ -81,9 +81,25 @@
     .fill-choice-btn { width: 60px; height: 60px; font-size: 30px; border-radius: 10px; background: #333; color: white; border: 2px solid #555; font-weight: bold; cursor: pointer; }
     .fill-pos-correct { background: rgba(76, 175, 80, 0.4); border-radius: 4px; padding: 0 3px; }
     .fill-pos-wrong { background: rgba(244, 67, 54, 0.45); border-radius: 4px; padding: 0 3px; box-decoration-break: clone; }
-    .quiz-feedback-block { text-align: left; max-width: 100%; margin-top: 8px; }
-    .quiz-feedback-your-label { font-weight: bold; color: #ccc; margin-bottom: 6px; }
-    .quiz-feedback-judge-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+    .quiz-feedback-panel { max-width: 400px; margin: 0 auto; width: 90%; text-align: center; }
+    .quiz-feedback-your-label { font-weight: bold; color: #aaa; font-size: 14px; margin-bottom: 6px; letter-spacing: 0.05em; }
+    .quiz-feedback-mirror-input {
+      padding: 15px; font-size: 24px; width: 100%; max-width: 400px; border-radius: 8px; text-align: center; margin: 0 auto 10px;
+      background: #2a2a2a; color: #fff; border: 2px solid #666; box-sizing: border-box; word-break: break-all; line-height: 1.35;
+    }
+    .quiz-feedback-mirror-skip { color: #FF9800; border-color: #FF9800; background: #2a2218; }
+    .quiz-feedback-mirror-choice {
+      display: block; width: 100%; max-width: 400px; margin: 0 auto 10px; padding: 20px; font-size: 22px;
+      background: #333; color: #fff; border: 2px solid #555; border-radius: 10px; text-align: center; box-sizing: border-box;
+    }
+    .quiz-feedback-judge { font-size: 44px; font-weight: bold; margin: 4px 0 12px; line-height: 1.1; }
+    .quiz-feedback-correct-label { font-size: 13px; color: #81C784; margin: 8px 0 4px; font-weight: bold; }
+    .quiz-feedback-correct-box {
+      padding: 14px 16px; font-size: 22px; width: 100%; max-width: 400px; margin: 0 auto 10px; box-sizing: border-box;
+      background: #1b2e1b; border: 1px solid #4CAF50; border-radius: 8px; color: #e8f5e9; word-break: break-all; line-height: 1.35;
+    }
+    .quiz-feedback-hint-penalty { display: block; font-size: 15px; color: #FF9800; margin-top: 8px; }
+    .quiz-feedback-points-plus { margin-top: 10px; color: #FFD54F; font-size: 22px; font-weight: bold; }
     .training-menu-picker-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-width: 520px; margin: 0 auto; }
     #quiz-keyboard-settings-panel { margin-top: 16px; }
   </style>
@@ -697,40 +713,54 @@
       return m[1] + "（補正" + pct + "％）";
     }
 
-    function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode) {
-      let userLineHtml = '';
-      if (fillMode && fillBlanksData && fillBlanksData.length) {
-        const word = String(resolvedCorrect != null ? resolvedCorrect : '');
-        const ua = String(userA != null ? userA : '');
+    function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode, answerType, pointsPlusHtml) {
+      const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
+      let userSlotHtml = "";
+      if (isSkip) {
+        userSlotHtml = `<div class="quiz-feedback-mirror-input quiz-feedback-mirror-skip">スキップしました</div>`;
+      } else if (fillMode && fillBlanksData && fillBlanksData.length) {
+        const word = String(resolvedCorrect != null ? resolvedCorrect : "");
+        const ua = String(userA != null ? userA : "");
+        let userLineHtml = "";
         for (let i = 0; i < word.length; i++) {
           const bd = fillBlanksData.find(b => b.originalIndex === i);
-          const ch = ua[i] != null ? ua[i] : '';
+          const ch = ua[i] != null ? ua[i] : "";
           if (bd) {
             const ok = normalizeText(String(bd.correctChar)) === normalizeText(String(ch));
-            userLineHtml += `<span class="${ok ? 'fill-pos-correct' : 'fill-pos-wrong'}">${escapeHtml(ch)}</span>`;
+            userLineHtml += `<span class="${ok ? "fill-pos-correct" : "fill-pos-wrong"}">${escapeHtml(ch)}</span>`;
           } else {
             userLineHtml += escapeHtml(ch);
           }
         }
+        userSlotHtml = `<div class="word-blank-container" style="margin: 8px auto 10px; text-align: center;">${userLineHtml}</div>`;
+      } else if (answerType === "4choice") {
+        userSlotHtml = `<div class="quiz-feedback-mirror-choice">${escapeHtml(userA)}</div>`;
       } else {
-        userLineHtml = escapeHtml(userA);
+        userSlotHtml = `<div class="quiz-feedback-mirror-input">${escapeHtml(userA)}</div>`;
       }
-      let judgeHtml = '';
-      if (isSkip) judgeHtml = `<span style="font-size:28px;font-weight:bold;color:#FF9800;">⏭️</span>`;
-      else judgeHtml = isCorrect
-        ? `<span style="color:#4CAF50;font-size:32px;font-weight:bold;">⭕</span>`
-        : `<span style="color:#F44336;font-size:32px;font-weight:bold;">×</span>`;
-      const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
-      let html = `<div class="quiz-feedback-block">
+
+      let judgeHtml = "";
+      if (isSkip) judgeHtml = `<div class="quiz-feedback-judge" style="color:#FF9800;">⏭️</div>`;
+      else if (isCorrect) judgeHtml = `<div class="quiz-feedback-judge" style="color:#4CAF50;">⭕</div>`;
+      else judgeHtml = `<div class="quiz-feedback-judge" style="color:#F44336;">×</div>`;
+
+      let correctBlock = "";
+      if (!isCorrect || isSkip) {
+        correctBlock = `<div class="quiz-feedback-correct-label">せいかい</div><div class="quiz-feedback-correct-box">${escapeHtml(correctDisp)}</div>`;
+      }
+
+      let hintHtml = "";
+      if (maxDeduction > 0) hintHtml = `<span class="quiz-feedback-hint-penalty">ヒントをつかったので -${maxDeduction}Pt されます</span>`;
+
+      const plus = pointsPlusHtml ? String(pointsPlusHtml) : "";
+      return `<div class="quiz-feedback-panel">
         <div class="quiz-feedback-your-label">あなたのこたえ</div>
-        <div style="font-size:22px;word-break:break-all;line-height:1.4;">${userLineHtml}</div>
-        <div class="quiz-feedback-judge-row">
-          <div>${judgeHtml}</div>
-          <div style="flex:1;min-width:120px;color:#eee;font-size:20px;">せいかい: <b style="color:#fff;">${escapeHtml(correctDisp)}</b></div>
-        </div>`;
-      if (maxDeduction > 0) html += `<br><span style="font-size:16px;color:#FF9800;">ヒントをつかったので -${maxDeduction}Pt されます</span>`;
-      html += `</div>`;
-      return html;
+        ${userSlotHtml}
+        ${judgeHtml}
+        ${correctBlock}
+        ${hintHtml}
+        ${plus}
+      </div>`;
     }
     
     function prefetchMaterials() {
@@ -1772,10 +1802,6 @@
         const isSkip = userA === "[スキップしました]";
         const fillFeedback = ansType.startsWith("fill_");
         if (!isSkip) playAnswerSound(isCorrect);
-        let titleLine = "";
-        if (isSkip) titleLine = `<p style="color:#FF9800;font-size:22px;font-weight:bold;margin:0 0 6px;">スキップしました</p>`;
-        else if (isCorrect) titleLine = `<p style="color:#4CAF50;font-size:24px;font-weight:bold;margin:0 0 6px;">せいかい！</p>`;
-        else titleLine = `<p style="color:#F44336;font-size:24px;font-weight:bold;margin:0 0 6px;">ざんねん...</p>`;
         let plusLine = "";
         if (isCorrect && !isSkip) {
           const mult = computePointsMultiplierClient();
@@ -1785,9 +1811,9 @@
           const eBefore = applySessionEarnedFromRaw(rawBefore, mult, sheetPct);
           const eAfter = applySessionEarnedFromRaw(rawAfter, mult, sheetPct);
           const d = Math.round((eAfter - eBefore) * 100) / 100;
-          if (d > 0) plusLine = `<p style="margin:8px 0 0;color:#FFD54F;font-size:22px;font-weight:bold;">＋${formatPointDisplayNum(d)}点</p>`;
+          if (d > 0) plusLine = `<p class="quiz-feedback-points-plus">＋${formatPointDisplayNum(d)}点</p>`;
         }
-        feedback.innerHTML = titleLine + plusLine + buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip);
+        feedback.innerHTML = buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip, ansType, plusLine);
         updateSessionScoreDisplay();
 
         speakText(String(resolvedCorrect ?? ""));
