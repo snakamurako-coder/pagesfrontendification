@@ -602,6 +602,16 @@
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    /** materials シート名「単語A_40」→ 一覧・タイトル用「単語A（補正40％）」（API・保存は raw 名のまま） */
+    function formatUnitSheetDisplayLabel(sheetName) {
+      const s = String(sheetName || "");
+      const m = s.match(/^(.*)_(\d+)$/);
+      if (!m) return s;
+      const pct = parseInt(m[2], 10);
+      if (isNaN(pct) || pct < 0 || pct > 100) return s;
+      return m[1] + "（補正" + pct + "％）";
+    }
+
     function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode) {
       let userLineHtml = '';
       if (fillMode && fillBlanksData && fillBlanksData.length) {
@@ -710,8 +720,8 @@
             
             const checkboxHtml = `<div class="checkbox">${isCleared ? '✔' : ''}</div>`;
             const infoHtml = `<div style="flex-grow:1; margin-left:10px;">
-                                <div style="font-weight:bold;">${route.unitName}</div>
-                                <div style="font-size:12px; color:#aaa;">${route.qFormat} / ${route.aFormat}</div>
+                                <div style="font-weight:bold;">${escapeHtml(formatUnitSheetDisplayLabel(route.unitName))}</div>
+                                <div style="font-size:12px; color:#aaa;">${escapeHtml(route.qFormat)} / ${escapeHtml(route.aFormat)}</div>
                               </div>`;
             
             div.innerHTML = checkboxHtml + infoHtml;
@@ -827,7 +837,7 @@
                 }
             }
             if(!foundModeId) {
-                alert(`「${route.unitName}」のデータが見つかりませんでした。`);
+                alert(`「${formatUnitSheetDisplayLabel(route.unitName)}」のデータが見つかりませんでした。`);
                 fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
                 return;
             }
@@ -1191,7 +1201,7 @@
     }
 
     // （いつもの学習のロード関連）
-    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
     function loadQuestionsForSettings(btn, mId, mName, uName) { 
       const origText = toggleBtnLoading(btn, true); 
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) })
@@ -1209,7 +1219,7 @@
     function openSettingsScreen() {
       initKeyboardAndSoundSettings();
       switchSection('section-settings'); 
-      document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
+      document.getElementById('settings-title').innerText=`【${currentModeName}】${formatUnitSheetDisplayLabel(currentUnitName)}`;
       const fSelect = document.getElementById('setting-format');
       if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; } 
       else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; }
@@ -1737,7 +1747,7 @@
           if (d.bonusApplied) bonusMsg += `<p style="color:#e50914;font-weight:bold;margin:5px 0;">🎲 ランダム出題ボーナス（10%UP）</p>`;
           if (isTrainingMode) bonusMsg += `<p style="color:#9C27B0;font-weight:bold;margin:5px 0;">🎯 特訓ルートクリア！</p>`;
           if (d.sheetPointPercent != null && Number(d.sheetPointPercent) < 100) {
-            bonusMsg += `<p style="color:#90CAF9;font-size:15px;margin:6px 0;">📎 この単元のシート名に「_${d.sheetPointPercent}」がついているため、かくとくポイントは <strong>${d.sheetPointPercent}%</strong> になっています。</p>`;
+            bonusMsg += `<p style="color:#90CAF9;font-size:15px;margin:6px 0;">📎 ${escapeHtml(formatUnitSheetDisplayLabel(currentUnitName))} のため、かくとくポイントは <strong>${d.sheetPointPercent}%</strong> になっています。</p>`;
           }
 
           document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + bonusMsg + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
