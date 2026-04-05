@@ -26,7 +26,7 @@
     .choice-btn { display: block; width: 90%; max-width: 400px; margin: 15px auto; padding: 20px; font-size: 22px; background: #333; color: white; border: 2px solid #555; border-radius: 10px; cursor: pointer; }
     .large-input { padding: 15px; font-size: 24px; width: 90%; max-width: 400px; border-radius: 8px; text-align: center; margin-bottom: 10px; background: #fff; color: #000; border: 2px solid #888; box-sizing: border-box; }
     .submit-btn { padding: 15px 40px; font-size: 22px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top:10px; transition: 0.2s; }
-    #quiz-feedback { margin: 20px 0; font-size: 24px; min-height: 60px; }
+    #quiz-feedback { margin: 16px auto 12px; font-size: 24px; min-height: 40px; max-width: 420px; width: 100%; }
     .hint-btn-group { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px; }
     .hint-btn { background: #FF9800; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; width: 90%; max-width: 350px;}
     .hint-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
@@ -81,9 +81,25 @@
     .fill-choice-btn { width: 60px; height: 60px; font-size: 30px; border-radius: 10px; background: #333; color: white; border: 2px solid #555; font-weight: bold; cursor: pointer; }
     .fill-pos-correct { background: rgba(76, 175, 80, 0.4); border-radius: 4px; padding: 0 3px; }
     .fill-pos-wrong { background: rgba(244, 67, 54, 0.45); border-radius: 4px; padding: 0 3px; box-decoration-break: clone; }
-    .quiz-feedback-block { text-align: left; max-width: 100%; margin-top: 8px; }
-    .quiz-feedback-your-label { font-weight: bold; color: #ccc; margin-bottom: 6px; }
-    .quiz-feedback-judge-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+    .quiz-feedback-panel { max-width: 400px; margin: 0 auto; width: 90%; text-align: center; }
+    .quiz-feedback-your-label { font-weight: bold; color: #aaa; font-size: 14px; margin-bottom: 6px; letter-spacing: 0.05em; }
+    .quiz-feedback-mirror-input {
+      padding: 15px; font-size: 24px; width: 100%; max-width: 400px; border-radius: 8px; text-align: center; margin: 0 auto 10px;
+      background: #2a2a2a; color: #fff; border: 2px solid #666; box-sizing: border-box; word-break: break-all; line-height: 1.35;
+    }
+    .quiz-feedback-mirror-skip { color: #FF9800; border-color: #FF9800; background: #2a2218; }
+    .quiz-feedback-mirror-choice {
+      display: block; width: 100%; max-width: 400px; margin: 0 auto 10px; padding: 20px; font-size: 22px;
+      background: #333; color: #fff; border: 2px solid #555; border-radius: 10px; text-align: center; box-sizing: border-box;
+    }
+    .quiz-feedback-judge { font-size: 44px; font-weight: bold; margin: 4px 0 12px; line-height: 1.1; }
+    .quiz-feedback-correct-label { font-size: 13px; color: #81C784; margin: 8px 0 4px; font-weight: bold; }
+    .quiz-feedback-correct-box {
+      padding: 14px 16px; font-size: 22px; width: 100%; max-width: 400px; margin: 0 auto 10px; box-sizing: border-box;
+      background: #1b2e1b; border: 1px solid #4CAF50; border-radius: 8px; color: #e8f5e9; word-break: break-all; line-height: 1.35;
+    }
+    .quiz-feedback-hint-penalty { display: block; font-size: 15px; color: #FF9800; margin-top: 8px; }
+    .quiz-feedback-points-plus { margin-top: 10px; color: #FFD54F; font-size: 22px; font-weight: bold; }
     .training-menu-picker-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-width: 520px; margin: 0 auto; }
     #quiz-keyboard-settings-panel { margin-top: 16px; }
   </style>
@@ -220,6 +236,7 @@
       <h3 id="quiz-progress" style="color: #aaa; margin:0; font-size:16px;">第 1 問</h3>
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
+    <div id="quiz-score-bar" style="margin:0 0 12px; padding:10px 12px; background:#1e1e1e; border:1px solid #444; border-radius:10px; font-size:15px; color:#ccc; text-align:center; line-height:1.5;"></div>
     <div id="quiz-q-text">もんだい文</div>
     
     <div id="quiz-word-blank-area" class="word-blank-container" style="display:none;"></div>
@@ -263,7 +280,7 @@
 
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwy8B0M5EdJ8lWAD06qWinVw_k7jg0tLfngvXfOhpcAGETmpgMx_WDO7ooeopqCkZLZUg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby4DfnwogIJLkF0IyfhiB6byrCLBrtGfo7Bju8b03YRXc8ENvb4jvUhWC8UkWNVoEQBRQ/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -376,6 +393,90 @@
         if (ansType === "typing" || ansType === "voice") return (format.includes("qtext") || format.includes("qaudio")) ? 30 : 25;
       }
       return 0;
+    }
+
+    /** GAS parseUnitSheetPointPercent_ と同じ（シート名末尾 _数字 ＝得点％） */
+    function parseUnitSheetPointPercentClient(sheetName) {
+      const s = String(sheetName || "");
+      const m = s.match(/_(\d+)$/);
+      if (!m) return 100;
+      let p = parseInt(m[1], 10);
+      if (isNaN(p)) return 100;
+      if (p < 0) p = 0;
+      if (p > 100) p = 100;
+      return p;
+    }
+
+    /** handleSaveLearningSession と同じ係数（時間・ニガテ・ランダム） */
+    function computePointsMultiplierClient() {
+      const user = JSON.parse(localStorage.getItem('app_kid_user') || '{}');
+      const unitId = getDetailedUnitId();
+      let mult = 1.0;
+      const lastStudyTimeStr = user.lastStudyJson && user.lastStudyJson[unitId];
+      if (lastStudyTimeStr) {
+        const lastTime = new Date(lastStudyTimeStr);
+        const diffHours = (Date.now() - lastTime) / (1000 * 60 * 60);
+        let basePercent = 10 + Math.floor(diffHours / 2) * 10;
+        if (basePercent > 100) basePercent = 100;
+        mult = basePercent / 100;
+      }
+      if (currentIsReviewMode) mult += 0.4;
+      if (document.getElementById('setting-order') && document.getElementById('setting-order').value === 'random') mult += 0.1;
+      return mult;
+    }
+
+    /** GAS と同じ二段階の丸め */
+    function applySessionEarnedFromRaw(sessionRawPoints, multiplier, sheetPointPercent) {
+      let earned = Math.round(sessionRawPoints * multiplier * 100) / 100;
+      if (sheetPointPercent !== 100) {
+        earned = Math.round(earned * (sheetPointPercent / 100) * 100) / 100;
+      }
+      return earned;
+    }
+
+    function rawPointsFromQuizResults(results) {
+      let sum = 0;
+      (results || []).forEach(res => {
+        if (res.isCorrect) {
+          const qpt = Math.max(1, (Number(res.basePoint) || 2) - (Number(res.maxDeduction) || 0));
+          sum += qpt;
+        }
+      });
+      return sum;
+    }
+
+    function sumMaxPossibleRawForSession() {
+      if (!filteredQuestions || filteredQuestions.length === 0) return 0;
+      const format = document.getElementById('setting-format').value;
+      const ansType = document.getElementById('setting-answer-type').value;
+      const isWord = currentModeName.includes("単語");
+      const bp = computeQuizBasePoint(format, ansType, isWord);
+      return filteredQuestions.length * bp;
+    }
+
+    function formatPointDisplayNum(v) {
+      const n = Number(v);
+      if (isNaN(n)) return '0';
+      if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+      return String(Math.round(n * 100) / 100);
+    }
+
+    function updateSessionScoreDisplay() {
+      const el = document.getElementById('quiz-score-bar');
+      if (!el || !filteredQuestions || filteredQuestions.length === 0) {
+        if (el) el.innerHTML = "";
+        return;
+      }
+      const mult = computePointsMultiplierClient();
+      const sheetPct = parseUnitSheetPointPercentClient(currentUnitName);
+      const maxRaw = sumMaxPossibleRawForSession();
+      const maxEarned = applySessionEarnedFromRaw(maxRaw, mult, sheetPct);
+      const curRaw = rawPointsFromQuizResults(quizResults);
+      const curEarned = applySessionEarnedFromRaw(curRaw, mult, sheetPct);
+      const parts = [];
+      parts.push(`このセッションの得点 <strong style="color:#FFD54F;font-size:20px;">${formatPointDisplayNum(curEarned)}</strong> / <span style="color:#aaa;">${formatPointDisplayNum(maxEarned)}</span> 点`);
+      parts.push(`<span style="font-size:12px;color:#888;">（全問せいかい・ヒントなしのときの最大。時間・ニガテ・ランダム・単元シート名の補正％を含む）</span>`);
+      el.innerHTML = parts.join('<br>');
     }
 
     let recognition = null;
@@ -602,40 +703,64 @@
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode) {
-      let userLineHtml = '';
-      if (fillMode && fillBlanksData && fillBlanksData.length) {
-        const word = String(resolvedCorrect != null ? resolvedCorrect : '');
-        const ua = String(userA != null ? userA : '');
+    /** materials シート名「単語A_40」→ 一覧・タイトル用「単語A（補正40％）」（API・保存は raw 名のまま） */
+    function formatUnitSheetDisplayLabel(sheetName) {
+      const s = String(sheetName || "");
+      const m = s.match(/^(.*)_(\d+)$/);
+      if (!m) return s;
+      const pct = parseInt(m[2], 10);
+      if (isNaN(pct) || pct < 0 || pct > 100) return s;
+      return m[1] + "（補正" + pct + "％）";
+    }
+
+    function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode, answerType, pointsPlusHtml) {
+      const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
+      let userSlotHtml = "";
+      if (isSkip) {
+        userSlotHtml = `<div class="quiz-feedback-mirror-input quiz-feedback-mirror-skip">スキップしました</div>`;
+      } else if (fillMode && fillBlanksData && fillBlanksData.length) {
+        const word = String(resolvedCorrect != null ? resolvedCorrect : "");
+        const ua = String(userA != null ? userA : "");
+        let userLineHtml = "";
         for (let i = 0; i < word.length; i++) {
           const bd = fillBlanksData.find(b => b.originalIndex === i);
-          const ch = ua[i] != null ? ua[i] : '';
+          const ch = ua[i] != null ? ua[i] : "";
           if (bd) {
             const ok = normalizeText(String(bd.correctChar)) === normalizeText(String(ch));
-            userLineHtml += `<span class="${ok ? 'fill-pos-correct' : 'fill-pos-wrong'}">${escapeHtml(ch)}</span>`;
+            userLineHtml += `<span class="${ok ? "fill-pos-correct" : "fill-pos-wrong"}">${escapeHtml(ch)}</span>`;
           } else {
             userLineHtml += escapeHtml(ch);
           }
         }
+        userSlotHtml = `<div class="word-blank-container" style="margin: 8px auto 10px; text-align: center;">${userLineHtml}</div>`;
+      } else if (answerType === "4choice") {
+        userSlotHtml = `<div class="quiz-feedback-mirror-choice">${escapeHtml(userA)}</div>`;
       } else {
-        userLineHtml = escapeHtml(userA);
+        userSlotHtml = `<div class="quiz-feedback-mirror-input">${escapeHtml(userA)}</div>`;
       }
-      let judgeHtml = '';
-      if (isSkip) judgeHtml = `<span style="font-size:28px;font-weight:bold;color:#FF9800;">⏭️</span>`;
-      else judgeHtml = isCorrect
-        ? `<span style="color:#4CAF50;font-size:32px;font-weight:bold;">⭕</span>`
-        : `<span style="color:#F44336;font-size:32px;font-weight:bold;">×</span>`;
-      const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
-      let html = `<div class="quiz-feedback-block">
+
+      let judgeHtml = "";
+      if (isSkip) judgeHtml = `<div class="quiz-feedback-judge" style="color:#FF9800;">⏭️</div>`;
+      else if (isCorrect) judgeHtml = `<div class="quiz-feedback-judge" style="color:#4CAF50;">⭕</div>`;
+      else judgeHtml = `<div class="quiz-feedback-judge" style="color:#F44336;">×</div>`;
+
+      let correctBlock = "";
+      if (!isCorrect || isSkip) {
+        correctBlock = `<div class="quiz-feedback-correct-label">せいかい</div><div class="quiz-feedback-correct-box">${escapeHtml(correctDisp)}</div>`;
+      }
+
+      let hintHtml = "";
+      if (maxDeduction > 0) hintHtml = `<span class="quiz-feedback-hint-penalty">ヒントをつかったので -${maxDeduction}Pt されます</span>`;
+
+      const plus = pointsPlusHtml ? String(pointsPlusHtml) : "";
+      return `<div class="quiz-feedback-panel">
         <div class="quiz-feedback-your-label">あなたのこたえ</div>
-        <div style="font-size:22px;word-break:break-all;line-height:1.4;">${userLineHtml}</div>
-        <div class="quiz-feedback-judge-row">
-          <div>${judgeHtml}</div>
-          <div style="flex:1;min-width:120px;color:#eee;font-size:20px;">せいかい: <b style="color:#fff;">${escapeHtml(correctDisp)}</b></div>
-        </div>`;
-      if (maxDeduction > 0) html += `<br><span style="font-size:16px;color:#FF9800;">ヒントをつかったので -${maxDeduction}Pt されます</span>`;
-      html += `</div>`;
-      return html;
+        ${userSlotHtml}
+        ${judgeHtml}
+        ${correctBlock}
+        ${hintHtml}
+        ${plus}
+      </div>`;
     }
     
     function prefetchMaterials() {
@@ -710,8 +835,8 @@
             
             const checkboxHtml = `<div class="checkbox">${isCleared ? '✔' : ''}</div>`;
             const infoHtml = `<div style="flex-grow:1; margin-left:10px;">
-                                <div style="font-weight:bold;">${route.unitName}</div>
-                                <div style="font-size:12px; color:#aaa;">${route.qFormat} / ${route.aFormat}</div>
+                                <div style="font-weight:bold;">${escapeHtml(formatUnitSheetDisplayLabel(route.unitName))}</div>
+                                <div style="font-size:12px; color:#aaa;">${escapeHtml(route.qFormat)} / ${escapeHtml(route.aFormat)}</div>
                               </div>`;
             
             div.innerHTML = checkboxHtml + infoHtml;
@@ -827,7 +952,7 @@
                 }
             }
             if(!foundModeId) {
-                alert(`「${route.unitName}」のデータが見つかりませんでした。`);
+                alert(`「${formatUnitSheetDisplayLabel(route.unitName)}」のデータが見つかりませんでした。`);
                 fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
                 return;
             }
@@ -1191,7 +1316,7 @@
     }
 
     // （いつもの学習のロード関連）
-    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${u}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
     function loadQuestionsForSettings(btn, mId, mName, uName) { 
       const origText = toggleBtnLoading(btn, true); 
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) })
@@ -1209,7 +1334,7 @@
     function openSettingsScreen() {
       initKeyboardAndSoundSettings();
       switchSection('section-settings'); 
-      document.getElementById('settings-title').innerText=`【${currentModeName}】${currentUnitName}`;
+      document.getElementById('settings-title').innerText=`【${currentModeName}】${formatUnitSheetDisplayLabel(currentUnitName)}`;
       const fSelect = document.getElementById('setting-format');
       if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; } 
       else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; }
@@ -1512,6 +1637,7 @@
       else if (answerType.startsWith("fill_")) {
         setupFillBlankQuiz(correctA, answerType);
       }
+      updateSessionScoreDisplay();
     }
 
     function setupFillBlankQuiz(word, ansType) {
@@ -1676,11 +1802,19 @@
         const isSkip = userA === "[スキップしました]";
         const fillFeedback = ansType.startsWith("fill_");
         if (!isSkip) playAnswerSound(isCorrect);
-        let titleLine = "";
-        if (isSkip) titleLine = `<p style="color:#FF9800;font-size:22px;font-weight:bold;margin:0 0 6px;">スキップしました</p>`;
-        else if (isCorrect) titleLine = `<p style="color:#4CAF50;font-size:24px;font-weight:bold;margin:0 0 6px;">せいかい！</p>`;
-        else titleLine = `<p style="color:#F44336;font-size:24px;font-weight:bold;margin:0 0 6px;">ざんねん...</p>`;
-        feedback.innerHTML = titleLine + buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip);
+        let plusLine = "";
+        if (isCorrect && !isSkip) {
+          const mult = computePointsMultiplierClient();
+          const sheetPct = parseUnitSheetPointPercentClient(currentUnitName);
+          const rawBefore = rawPointsFromQuizResults(quizResults.slice(0, -1));
+          const rawAfter = rawPointsFromQuizResults(quizResults);
+          const eBefore = applySessionEarnedFromRaw(rawBefore, mult, sheetPct);
+          const eAfter = applySessionEarnedFromRaw(rawAfter, mult, sheetPct);
+          const d = Math.round((eAfter - eBefore) * 100) / 100;
+          if (d > 0) plusLine = `<p class="quiz-feedback-points-plus">＋${formatPointDisplayNum(d)}点</p>`;
+        }
+        feedback.innerHTML = buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip, ansType, plusLine);
+        updateSessionScoreDisplay();
 
         speakText(String(resolvedCorrect ?? ""));
         advanceScheduled = true;
@@ -1698,6 +1832,7 @@
         } catch (_) {
           quizResults.push({ questionId: q["通し番号"] || 0, isCorrect: false, timeSec: 0, basePoint: 0, maxDeduction: 0 });
         }
+        updateSessionScoreDisplay();
         advanceScheduled = true;
       } finally {
         const nextBtn = document.getElementById('quiz-next-btn');
@@ -1723,7 +1858,7 @@
       const isRandom = document.getElementById('setting-order').value === 'random';
       const detailedUnitId = getDetailedUnitId(); 
 
-      let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
+      let payload = { action: "save_learning_session", userId: user.id, unitId: detailedUnitId, unitSheetName: currentUnitName, isReviewMode: currentIsReviewMode, isRandom: isRandom, results: quizResults };
       if (isTrainingMode) {
         payload.trainingStepIndex = currentTrainingStepIndex;
         payload.trainingMenuId = currentTrainingMenuId;
@@ -1736,6 +1871,9 @@
           if (currentIsReviewMode) bonusMsg += `<p style="color:#FF9800;font-weight:bold;margin:5px 0;">🔥 ニガテ特訓ボーナス適用</p>`;
           if (d.bonusApplied) bonusMsg += `<p style="color:#e50914;font-weight:bold;margin:5px 0;">🎲 ランダム出題ボーナス（10%UP）</p>`;
           if (isTrainingMode) bonusMsg += `<p style="color:#9C27B0;font-weight:bold;margin:5px 0;">🎯 特訓ルートクリア！</p>`;
+          if (d.sheetPointPercent != null && Number(d.sheetPointPercent) < 100) {
+            bonusMsg += `<p style="color:#90CAF9;font-size:15px;margin:6px 0;">📎 ${escapeHtml(formatUnitSheetDisplayLabel(currentUnitName))} のため、かくとくポイントは <strong>${d.sheetPointPercent}%</strong> になっています。</p>`;
+          }
 
           document.getElementById('result-content').innerHTML = `<h2 style="color:#4CAF50;">✨ おつかれさま！ ✨</h2>` + bonusMsg + `<p>かくとくポイント: <span style="color:gold;font-size:30px;">+${d.earnedPoints}</span></p><hr style="border-color:#444;"><p>合計ポイント: ${d.newTotal}</p>`;
           user.points = d.newTotal; user.historyJson = d.historyJson; user.dailyPointsJson = d.dailyPointsJson; 
