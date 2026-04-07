@@ -21,8 +21,22 @@ function setupSystem() {
     DriveApp.getFileById(wordModeSs.getId()).moveTo(materialsFolder);
 
     const phraseModeSs = SpreadsheetApp.create("表現練習モード");
-    phraseModeSs.getSheets()[0].setName("単元C").appendRow(["通し番号", "日本語", "英文", "別解１", "別解２", "別解３", "別解４", "別解５", "疑問文", "穴埋め１", "穴埋め２", "イニシャル", "イニシャルと文字数", "ヒント"]);
-    phraseModeSs.getSheets()[0].appendRow([1, "私は8歳です。", "I'm eight years old.", "I am eight years old.", "", "", "", "", "How old are you?", "I'm (     ) years old.", "", "I", "I'm _ _ _ _ _", "年齢を聞かれた時の答え方だよ。"]);
+    const phraseHeaders = [
+      "通し番号", "日本語", "英文", "別解１", "別解２", "別解３", "別解４", "別解５", "疑問文", "穴埋め１", "穴埋め２", "イニシャル", "イニシャルと文字数", "ヒント",
+      "並び替え用英文", "並び替え箇所", "並び替え語句ダミー",
+      "並び替え語句1", "並び替え語句2", "並び替え語句3", "並び替え語句4", "並び替え語句5", "並び替え語句6", "並び替え語句7", "並び替え語句8"
+    ];
+    phraseModeSs.getSheets()[0].setName("単元C").appendRow(phraseHeaders);
+    phraseModeSs.getSheets()[0].appendRow([
+      1, "私は8歳です。", "I'm eight years old.", "I am eight years old.", "", "", "", "", "How old are you?", "I'm (     ) years old.", "", "I", "I'm _ _ _ _ _", "年齢を聞かれた時の答え方だよ。",
+      "", "", "",
+      "", "", "", "", "", "", "", ""
+    ]);
+    phraseModeSs.getSheets()[0].appendRow([
+      2, "これは私が昨日買った本です。", "This is the book I bought yesterday.", "", "", "", "", "", "", "", "", "", "", "本を指さしながら言う表現の練習だよ。",
+      "This is the book I bought yesterday.", "This is the book I bought yesterday.", "a",
+      "This", "is", "the", "book", "I", "bought", "yesterday.", ""
+    ]);
     DriveApp.getFileById(phraseModeSs.getId()).moveTo(materialsFolder);
     
     logMessage += "✅ サンプル教材を作成しました。\n";
@@ -93,7 +107,10 @@ function setupSystem() {
       ["基本Pt_qtext_to_en_typing", 30],
       ["基本Pt_qtext_to_en_voice", 30],
       ["基本Pt_qaudio_to_en_typing", 30],
-      ["基本Pt_qaudio_to_en_voice", 30]
+      ["基本Pt_qaudio_to_en_voice", 30],
+      ["基本Pt_ja_to_en_sort_sort_all", 25],
+      ["基本Pt_ja_to_en_sort_sort_dummy", 28],
+      ["基本Pt_ja_to_en_sort_sort_missing", 30]
     ];
     defaultPointRows.forEach(row => {
       if (!existingKeys.has(row[0])) {
