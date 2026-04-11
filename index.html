@@ -104,6 +104,22 @@
     .quiz-feedback-points-plus { margin-top: 10px; color: #FFD54F; font-size: 22px; font-weight: bold; }
     .training-menu-picker-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-width: 520px; margin: 0 auto; }
     #quiz-keyboard-settings-panel { margin-top: 16px; }
+
+    /* 並び替え（表現練習） */
+    .sort-quiz-root { max-width: 520px; margin: 0 auto; text-align: left; }
+    .sort-area-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .sort-area-label { font-size: 14px; font-weight: bold; color: #aaa; }
+    .sort-btn-small { padding: 8px 12px; font-size: 13px; background: #607D8B; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    .sort-btn-small:active { background: #455a64; }
+    .sortable-area { min-height: 56px; padding: 12px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; transition: background-color 0.2s; box-sizing: border-box; }
+    .sort-answer-slot { background: #1a2836; border: 3px dashed #2196F3; box-shadow: inset 0 2px 6px rgba(0,0,0,0.35); }
+    .sort-word-pool { background: #252525; border: 3px dashed #757575; }
+    .sort-trash-slot { background: #2a1a1a; border: 3px dashed #c62828; }
+    .sort-missing-toolbar { margin-bottom: 16px; text-align: center; }
+    .sort-missing-desc { font-size: 14px; color: #aaa; margin: 0 0 10px; line-height: 1.4; }
+    .word-card { background: #333; border: 1px solid #555; padding: 12px 16px; border-radius: 8px; box-shadow: 0 3px 5px rgba(0,0,0,0.25); cursor: grab; font-size: 1.1em; color: #fff; user-select: none; touch-action: manipulation; max-width: 100%; word-break: break-word; }
+    .word-card:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.45; background: #444 !important; }
   </style>
 </head>
 <body>
@@ -280,6 +296,7 @@
 
   <div class="footer">Kojiro Nakamura all rights reserved</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままでOK） ▼
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycby4DfnwogIJLkF0IyfhiB6byrCLBrtGfo7Bju8b03YRXc8ENvb4jvUhWC8UkWNVoEQBRQ/exec";
@@ -362,7 +379,7 @@
     function convertDigitsToWordsInText(text) {
       return String(text == null ? "" : text).replace(/\d+/g, n => numberToWordsEn(n));
     }
-    const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
+    const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,\-!?。、！？]/g, " ").replace(/\s+/g, ' ').trim();
 
     /** showQuestion と同じルールで正解文字列を得る（欠損データでも例外にしない） */
     function getCorrectAnswerForQuestion(q, format) {
@@ -373,7 +390,175 @@
       if (format === "qaudio_to_en") return String(q["英文"] || "").trim();
       if (format === "en_audio_to_en") return String(q["英単語"] || q["英文"] || "").trim();
       if (format === "en_to_en") return String(q["英単語"] || q["英文"] || "").trim();
+      if (format === "ja_to_en_sort") return getSortPrimaryCorrectDisplay(q);
       return "";
+    }
+
+    function parseSortPhraseTokens(q) {
+      const list = [];
+      for (let i = 1; i <= 40; i++) {
+        const key = "並び替え語句" + i;
+        if (q[key] != null && String(q[key]).trim() !== "") list.push(String(q[key]).trim());
+      }
+      return list;
+    }
+
+    function getDummyTokenForSort(q) {
+      const raw = String(q["並び替え語句ダミー"] || "").trim();
+      if (!raw) return "";
+      const parts = raw.split(/[，,]/).map(s => s.trim()).filter(Boolean);
+      return parts[0] || "";
+    }
+
+    function getSortPrimaryCorrectDisplay(q) {
+      return String(q["並び替え箇所"] || q["英文"] || "").trim();
+    }
+
+    function getSortAcceptableRawStrings(q) {
+      const list = [];
+      const add = (s) => { const t = String(s || "").trim(); if (t) list.push(t); };
+      add(q["並び替え箇所"]);
+      add(q["英文"]);
+      for (let i = 1; i <= 5; i++) add(q["別解" + i]);
+      return [...new Set(list)];
+    }
+
+    function isSortAnswerCorrect(userJoined, q) {
+      const u = normalizeText(userJoined);
+      if (!u) return false;
+      for (const s of getSortAcceptableRawStrings(q)) {
+        const variants = expandTextVariants(s).map(t => normalizeText(t));
+        if (variants.some(v => v === u)) return true;
+      }
+      return false;
+    }
+
+    function shuffleArrayInPlace(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    }
+
+    let sortQuizState = null;
+
+    function destroySortQuizIfAny() {
+      if (sortQuizState && Array.isArray(sortQuizState.sortables)) {
+        sortQuizState.sortables.forEach(s => { try { s.destroy(); } catch (e) {} });
+      }
+      sortQuizState = null;
+      window.__sortMissingModeActive = false;
+    }
+
+    function checkSortQuizSubmit() {
+      const btn = document.getElementById("sort-submit-btn");
+      if (!btn || !sortQuizState) return;
+      const slot = document.getElementById("sort-answer-slot");
+      if (!slot) return;
+      const ok = slot.children.length === sortQuizState.expectedCount;
+      btn.style.display = ok ? "block" : "none";
+    }
+
+    function addSortMissingWordCard() {
+      const inp = document.getElementById("sort-missing-input");
+      const pool = document.getElementById("sort-word-pool");
+      if (!inp || !pool) return;
+      const val = inp.value.trim();
+      if (!val) return;
+      const card = document.createElement("div");
+      card.className = "word-card";
+      card.textContent = val;
+      card.dataset.userMade = "1";
+      pool.appendChild(card);
+      inp.value = "";
+      checkSortQuizSubmit();
+    }
+
+    function submitSortQuizAnswer() {
+      const q = filteredQuestions[currentQuestionIndex];
+      const slot = document.getElementById("sort-answer-slot");
+      if (!slot || !sortQuizState) return;
+      const userJoined = Array.from(slot.children).map(c => c.textContent).join(" ");
+      checkAnswer(userJoined, sortQuizState.primaryCorrect, q);
+    }
+
+    function placeQuizFeedbackAtTopOfAnswerArea(answerAreaEl) {
+      const fb = document.getElementById("quiz-feedback");
+      if (!fb || !answerAreaEl) return;
+      if (answerAreaEl.firstChild !== fb) answerAreaEl.insertBefore(fb, answerAreaEl.firstChild);
+    }
+
+    function setupSortQuiz(q, answerType) {
+      const variant = answerType === "sort_all" ? "all" : answerType === "sort_dummy" ? "dummy" : "missing";
+      const tokens = parseSortPhraseTokens(q);
+      const expectedCount = tokens.length;
+      let poolTokens = tokens.slice();
+      let missingIdx = -1;
+      if (variant === "missing") {
+        missingIdx = Math.floor(Math.random() * poolTokens.length);
+        poolTokens = poolTokens.filter((_, i) => i !== missingIdx);
+      }
+      const extras = [];
+      if (variant === "dummy") {
+        const d = getDummyTokenForSort(q);
+        if (d) extras.push(d);
+      }
+      const allCards = poolTokens.concat(extras);
+      shuffleArrayInPlace(allCards);
+      const primaryDisplay = getSortPrimaryCorrectDisplay(q);
+      sortQuizState = {
+        expectedCount,
+        variant,
+        missingIdx,
+        primaryCorrect: primaryDisplay,
+        sortables: []
+      };
+      const trashLabel = variant === "dummy" ? "使わないカード（除外置き場）" : "使わないカード（整理用）";
+      const showMissing = variant === "missing";
+      const answerArea = document.getElementById("quiz-answer-area");
+      answerArea.innerHTML =
+        `<div id="sort-quiz-root" class="sort-quiz-root">` +
+        (showMissing
+          ? `<div class="sort-missing-toolbar"><p class="sort-missing-desc">たりないカードはキーボードで入力して「カードにする」で追加できます。</p><input type="text" id="sort-missing-input" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div></div>`
+          : "") +
+        `<div class="sort-area-header"><span class="sort-area-label">回答欄（ここにカードを並べてください）</span></div>` +
+        `<div id="sort-answer-slot" class="sortable-area sort-answer-slot"></div>` +
+        `<div class="sort-area-header"><span class="sort-area-label">仮置き場（自由に並べ替え可能）</span>` +
+        `<button type="button" id="sort-move-all-btn" class="sort-btn-small">↑ この順で回答欄にいれる</button></div>` +
+        `<div id="sort-word-pool" class="sortable-area sort-word-pool"></div>` +
+        `<div class="sort-area-header"><span class="sort-area-label">${escapeHtml(trashLabel)}</span></div>` +
+        `<div id="sort-trash-slot" class="sortable-area sort-trash-slot"></div>` +
+        `<button type="button" id="sort-submit-btn" class="submit-btn btn-green" style="display:none;width:100%;max-width:420px;margin:16px auto 0;">これで回答する</button></div>`;
+      const pool = document.getElementById("sort-word-pool");
+      allCards.forEach(w => {
+        const card = document.createElement("div");
+        card.className = "word-card";
+        card.textContent = w;
+        pool.appendChild(card);
+      });
+      if (showMissing) {
+        shiftMode = 0; isShiftHoldMode = false;
+        renderCustomKeyboard(false, true);
+      }
+      const opts = { group: "sort-shared", animation: 150, ghostClass: "sortable-ghost", onSort: () => checkSortQuizSubmit() };
+      ["sort-answer-slot", "sort-word-pool", "sort-trash-slot"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof Sortable !== "undefined") sortQuizState.sortables.push(Sortable.create(el, opts));
+      });
+      const moveBtn = document.getElementById("sort-move-all-btn");
+      if (moveBtn) {
+        moveBtn.onclick = () => {
+          const wp = document.getElementById("sort-word-pool");
+          const ans = document.getElementById("sort-answer-slot");
+          if (!wp || !ans) return;
+          Array.from(wp.children).forEach(c => ans.appendChild(c));
+          checkSortQuizSubmit();
+        };
+      }
+      const sub = document.getElementById("sort-submit-btn");
+      if (sub) sub.onclick = () => submitSortQuizAnswer();
+      placeQuizFeedbackAtTopOfAnswerArea(answerArea);
     }
 
     function computeQuizBasePoint(format, ansType, isWord) {
@@ -385,6 +570,15 @@
         if (hasCustom) return customPoint;
         const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
         return 5 + numBlanks;
+      }
+      if (format === "ja_to_en_sort") {
+        const sk = `基本Pt_${format}_${ansType}`;
+        const cp = Number(appSettings[sk]);
+        if (!isNaN(cp)) return cp;
+        if (ansType === "sort_all") return 25;
+        if (ansType === "sort_dummy") return 28;
+        if (ansType === "sort_missing") return 30;
+        return 25;
       }
       if (hasCustom) return customPoint;
       if (isWord) {
@@ -655,8 +849,10 @@
       const quizSec = document.getElementById('section-quiz');
       if (quizSec && quizSec.classList.contains('active')) {
         const at = document.getElementById('setting-answer-type') && document.getElementById('setting-answer-type').value;
+        const fmt = document.getElementById('setting-format') && document.getElementById('setting-format').value;
         if (at === 'typing') renderCustomKeyboard(false);
         else if (at === 'fill_typing') renderCustomKeyboard(true);
+        else if (fmt === 'ja_to_en_sort' && at === 'sort_missing') renderCustomKeyboard(false, true);
       }
     }
 
@@ -1339,7 +1535,7 @@
       document.getElementById('settings-title').innerText=`【${currentModeName}】${formatUnitSheetDisplayLabel(currentUnitName)}`;
       const fSelect = document.getElementById('setting-format');
       if (currentModeName.includes("単語")) { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="en_audio_to_ja">英語読み上げ ➔ 日本語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; } 
-      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; }
+      else { fSelect.innerHTML = `<option value="ja_to_en">日本語 ➔ 英語にする</option><option value="ja_to_en_sort">並び替え（日本語付き）</option><option value="en_to_ja">英語 ➔ 日本語にする</option><option value="qtext_to_en">疑問文 ➔ 英語にする</option><option value="qaudio_to_en">疑問文(読み上げ) ➔ 英語にする</option><option value="en_audio_to_en">英語読み上げ ➔ 英語にする</option><option value="en_to_en">英語 ➔ 英語にする</option>`; }
       updateAnswerTypeUI();
     }
 
@@ -1348,6 +1544,14 @@
       const aSelect = document.getElementById('setting-answer-type');
       aSelect.innerHTML = "";
       const isWord = currentModeName.includes("単語");
+
+      if (format === "ja_to_en_sort") {
+        aSelect.innerHTML += `<option value="sort_all" selected>すべて用いる</option>`;
+        aSelect.innerHTML += `<option value="sort_dummy">不要語混入</option>`;
+        aSelect.innerHTML += `<option value="sort_missing">不足語補足</option>`;
+        toggleBlankSetting();
+        return;
+      }
 
       if (format === "ja_to_en") {
         aSelect.innerHTML += `<option value="4choice">４択（えらぶ）</option>`;
@@ -1403,8 +1607,9 @@
 
     let shiftMode = 0; let isShiftHoldMode = false; let shiftPressStartTime = 0; let shiftTimer1s = null; let shiftTimer2s = null;
     function updateKeyboardDisplay() { const isUpper = shiftMode > 0 || isShiftHoldMode; const shiftBtn = document.getElementById('shift-btn'); if (shiftBtn) { if (shiftMode === 2) { shiftBtn.innerText = '⇪'; shiftBtn.style.background = '#FF9800'; } else if (shiftMode === 1 || isShiftHoldMode) { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#e50914'; } else { shiftBtn.innerText = '⇧'; shiftBtn.style.background = '#444'; } } document.querySelectorAll('.key-char').forEach(btn => { const baseChar = btn.getAttribute('data-char'); if (/[a-z]/.test(baseChar)) btn.innerText = isUpper ? baseChar.toUpperCase() : baseChar; }); }
-    function renderCustomKeyboard(isFillMode = false) {
+    function renderCustomKeyboard(isFillMode = false, sortMissingMode = false) {
       const container = document.getElementById('keyboard-container'); if(!container) return; container.innerHTML = "";
+      window.__sortMissingModeActive = !!sortMissingMode;
       const scalePct = parseInt(localStorage.getItem(LS_KBD_SCALE) || '100', 10);
       const fontPx = parseInt(localStorage.getItem(LS_KBD_FONT) || '18', 10);
       const padPx = Math.max(8, Math.round(fontPx * 0.72));
@@ -1433,7 +1638,10 @@
             const isUpper = shiftMode > 0 || isShiftHoldMode; let inputChar = char;
             if (/[a-z]/.test(char) && isUpper) inputChar = char.toUpperCase();
             
-            if (isFillMode) handleFillInput(inputChar);
+            if (sortMissingMode) {
+              const inp = document.getElementById('sort-missing-input');
+              if (inp) inp.value += inputChar;
+            } else if (isFillMode) handleFillInput(inputChar);
             else document.getElementById('type-answer').value += inputChar;
             
             if (shiftMode === 1) { shiftMode = 0; updateKeyboardDisplay(); }
@@ -1444,7 +1652,10 @@
         if(rIdx === 3) {
           const bsBtn = document.createElement('button'); bsBtn.className = 'key key-wide'; bsBtn.innerText = '⌫';
           bsBtn.onclick = () => { 
-            if(isFillMode) handleFillBackspace();
+            if (sortMissingMode) {
+              const inp = document.getElementById('sort-missing-input');
+              if (inp) inp.value = inp.value.slice(0, -1);
+            } else if(isFillMode) handleFillBackspace();
             else { let val = document.getElementById('type-answer').value; document.getElementById('type-answer').value = val.slice(0, -1); }
           };
           rowDiv.appendChild(bsBtn);
@@ -1454,9 +1665,19 @@
       
       const bottomRow = document.createElement('div'); bottomRow.className = 'key-row';
       const spaceBtn = document.createElement('button'); spaceBtn.className = 'key'; spaceBtn.style.flex = "3"; spaceBtn.innerText = "Space";
-      spaceBtn.onclick = () => { if(isFillMode) handleFillInput(" "); else document.getElementById('type-answer').value += " "; };
+      spaceBtn.onclick = () => {
+        if (sortMissingMode) {
+          const inp = document.getElementById('sort-missing-input');
+          if (inp) inp.value += " ";
+        } else if(isFillMode) handleFillInput(" ");
+        else document.getElementById('type-answer').value += " ";
+      };
       
-      if (!isFillMode) {
+      if (sortMissingMode) {
+        const cardBtn = document.createElement('button'); cardBtn.className = 'key key-action'; cardBtn.innerText = "カードにする";
+        cardBtn.onclick = () => addSortMissingWordCard();
+        bottomRow.appendChild(spaceBtn); bottomRow.appendChild(cardBtn);
+      } else if (!isFillMode) {
         const enterBtn = document.createElement('button'); enterBtn.className = 'key key-action'; enterBtn.innerText = "けってい";
         enterBtn.onclick = () => { const userA = document.getElementById('type-answer').value; const q = filteredQuestions[currentQuestionIndex]; const format = document.getElementById('setting-format').value; let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); checkAnswer(userA, correctA, q); };
         bottomRow.appendChild(spaceBtn); bottomRow.appendChild(enterBtn);
@@ -1534,8 +1755,26 @@
       currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
       const order = document.getElementById('setting-order').value; 
       const ansType = document.getElementById('setting-answer-type').value;
+      const format = document.getElementById('setting-format').value;
 
       filteredQuestions = [...currentQuestions];
+
+      if (format === "ja_to_en_sort") {
+        filteredQuestions = filteredQuestions.filter(q => {
+          const toks = parseSortPhraseTokens(q);
+          const slot = String(q["並び替え箇所"] || "").trim();
+          if (toks.length < 2 || !slot) return false;
+          if (ansType === "sort_dummy") {
+            const d = getDummyTokenForSort(q);
+            if (!d) return false;
+          }
+          return true;
+        });
+        if (filteredQuestions.length === 0) {
+          alert("並び替えのデータが足りません。\n「並び替え箇所」と「並び替え語句1」…を確認してください。\n不要語混入の場合は「並び替え語句ダミー」も必要です。");
+          return;
+        }
+      }
 
       if (ansType.startsWith("fill_")) {
         const numBlanks = parseInt(document.getElementById('setting-blank-count').value) || 1;
@@ -1583,6 +1822,7 @@
       maxDeduction = 0;
       voiceFailCount = 0;
       clearTimeout(autoNextTimer); 
+      destroySortQuizIfAny();
       
       const q = filteredQuestions[currentQuestionIndex]; 
       const format = document.getElementById('setting-format').value; 
@@ -1591,7 +1831,7 @@
 
       const kbdPanel = document.getElementById('quiz-keyboard-settings-panel');
       if (kbdPanel) {
-        kbdPanel.style.display = (answerType === 'typing' || answerType === 'fill_typing') ? 'block' : 'none';
+        kbdPanel.style.display = (answerType === 'typing' || answerType === 'fill_typing' || (format === 'ja_to_en_sort' && answerType === 'sort_missing')) ? 'block' : 'none';
         const kbdBody = document.getElementById('quiz-keyboard-settings-body');
         if (kbdBody) kbdBody.style.display = 'none';
       }
@@ -1607,7 +1847,11 @@
       else if (format === "en_audio_to_en") { engTextForAudio = q["英単語"] || q["英文"]; correctA = (q["英単語"] || q["英文"]).trim(); }
       else if (format === "en_to_en") { qText = (q["英単語"] || q["英文"]).trim(); engTextForAudio = qText; correctA = qText; }
 
-      if (format.includes("audio")) {
+      if (format === "ja_to_en_sort") {
+        const ja = String(q["日本語"] || "");
+        const refEn = String(q["並び替え用英文"] || "").trim();
+        document.getElementById('quiz-q-text').innerHTML = `<div style="font-size:36px;font-weight:bold;margin-bottom:8px;">${escapeHtml(ja)}</div>${refEn ? `<div style="font-size:22px;color:#aaa;line-height:1.4;">${escapeHtml(refEn)}</div>` : ''}`;
+      } else if (format.includes("audio")) {
         document.getElementById('quiz-q-text').innerHTML = `<button onclick="speakText('${engTextForAudio.replace(/'/g, "\\'")}')" class="submit-btn btn-blue" style="border-radius:50px;">🔊 英語をきく</button>`;
         setTimeout(() => speakText(engTextForAudio), 500); 
       } else if (format === "en_to_en") {
@@ -1640,7 +1884,10 @@
       restoreQuizFeedbackLocation();
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
       
-      if (answerType === "4choice") {
+      if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {
+        setupSortQuiz(q, answerType);
+      }
+      else if (answerType === "4choice") {
         let choices = [correctA]; 
         let others = currentQuestions.filter(item => { if(format === "ja_to_en" || format === "qtext_to_en" || format === "qaudio_to_en" || format === "en_audio_to_en" || format === "en_to_en") return (item["英単語"] || item["英文"]) !== correctA; else return item["日本語"] !== correctA; }).sort(() => Math.random() - 0.5);
         for (let i = 0; i < 3 && i < others.length; i++) { choices.push((format === "ja_to_en" || format.includes("to_en")) ? (others[i]["英単語"] || others[i]["英文"]) : others[i]["日本語"]); }
@@ -1791,7 +2038,27 @@
       checkAnswer(constructedAnswer, correctA, q);
     }
 
-    function useHint(type, penalty) { const q = filteredQuestions[currentQuestionIndex]; const hintTextDisplay = document.getElementById('hint-display-text'); const format = document.getElementById('setting-format').value; const isWord = currentModeName.includes("単語"); maxDeduction = Math.max(maxDeduction, penalty); if (type !== 3) document.getElementById(`hint-btn-${type}`).disabled = true; if (type === 1 || type === 2) { let hintStr = ""; if (type === 1) hintStr = q["イニシャル"] || "ヒントなし"; else if (type === 2) hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし"); hintTextDisplay.innerText = hintStr; hintTextDisplay.style.display = "block"; } else if (type === 3) { let correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]); speakText(correctA, 0.8); } }
+    function useHint(type, penalty) {
+      const q = filteredQuestions[currentQuestionIndex];
+      const hintTextDisplay = document.getElementById('hint-display-text');
+      const format = document.getElementById('setting-format').value;
+      const isWord = currentModeName.includes("単語");
+      maxDeduction = Math.max(maxDeduction, penalty);
+      if (type !== 3) document.getElementById(`hint-btn-${type}`).disabled = true;
+      if (type === 1 || type === 2) {
+        let hintStr = "";
+        if (type === 1) hintStr = q["イニシャル"] || "ヒントなし";
+        else if (type === 2) hintStr = isWord ? (q["イニシャルと文字数"] || "ヒントなし") : (q["ヒント"] || q["イニシャルと文字数"] || "ヒントなし");
+        hintTextDisplay.innerText = hintStr;
+        hintTextDisplay.style.display = "block";
+      } else if (type === 3) {
+        let speakSrc = "";
+        if (format === "ja_to_en_sort") speakSrc = q["英文"] || q["並び替え箇所"] || "";
+        else if (format.includes("qtext") || format.includes("qaudio")) speakSrc = q["英文"];
+        else speakSrc = q["英単語"] || q["英文"];
+        speakText(speakSrc, 0.8);
+      }
+    }
     function skipQuestion() {
       const q = filteredQuestions[currentQuestionIndex];
       const format = document.getElementById('setting-format').value;
@@ -1811,10 +2078,16 @@
           resolvedCorrect = getCorrectAnswerForQuestion(q, format);
         }
 
-        const userVariants = expandTextVariants(userA).map(t => normalizeText(t));
-        const correctVariants = expandTextVariants(resolvedCorrect).map(t => normalizeText(t));
-        const correctSet = new Set(correctVariants);
-        const isCorrect = userVariants.some(u => correctSet.has(u));
+        let isCorrect = false;
+        if (format === "ja_to_en_sort") {
+          resolvedCorrect = getSortPrimaryCorrectDisplay(q);
+          isCorrect = isSortAnswerCorrect(userA, q);
+        } else {
+          const userVariants = expandTextVariants(userA).map(t => normalizeText(t));
+          const correctVariants = expandTextVariants(resolvedCorrect).map(t => normalizeText(t));
+          const correctSet = new Set(correctVariants);
+          isCorrect = userVariants.some(u => correctSet.has(u));
+        }
         const basePoint = computeQuizBasePoint(format, ansType, isWord);
 
         quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
@@ -1838,16 +2111,19 @@
         }
         feedback.innerHTML = buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillFeedback && !isSkip, ansType, plusLine);
         updateSessionScoreDisplay();
-        if (ansType === "typing" || ansType === "fill_typing") {
+        if (ansType === "typing" || ansType === "fill_typing" || format === "ja_to_en_sort") {
           requestAnimationFrame(() => {
             try { feedback.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_) {}
           });
         }
 
-        speakText(String(resolvedCorrect ?? ""));
+        if (format === "ja_to_en_sort") destroySortQuizIfAny();
+        const speakLine = (format === "ja_to_en_sort" && q["英文"]) ? q["英文"] : String(resolvedCorrect ?? "");
+        speakText(String(speakLine));
         advanceScheduled = true;
       } catch (e) {
         console.error(e);
+        try { if (document.getElementById('setting-format') && document.getElementById('setting-format').value === 'ja_to_en_sort') destroySortQuizIfAny(); } catch (_) {}
         const feedback = document.getElementById('quiz-feedback');
         try { document.getElementById('quiz-word-blank-area').style.display = "none"; } catch (_) {}
         feedback.innerHTML = `<span style='color:#F44336;font-size:30px;font-weight:bold;'>⚠️ エラー</span><br><span style="font-size:18px;">「つぎへ」でつづけてね。</span>`;
