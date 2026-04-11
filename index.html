@@ -379,7 +379,7 @@
     function convertDigitsToWordsInText(text) {
       return String(text == null ? "" : text).replace(/\d+/g, n => numberToWordsEn(n));
     }
-    const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,!?。、！？]/g, "").replace(/\s+/g, ' ').trim();
+    const normalizeText = (text) => String(text == null ? "" : text).toLowerCase().replace(/[.,\-!?。、！？]/g, " ").replace(/\s+/g, ' ').trim();
 
     /** showQuestion と同じルールで正解文字列を得る（欠損データでも例外にしない） */
     function getCorrectAnswerForQuestion(q, format) {
