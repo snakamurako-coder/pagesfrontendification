@@ -340,7 +340,9 @@
       allStrokes: [],
       pointerId: null,
       pointerType: '',
-      lastTapAt: 0
+      lastTapAt: 0,
+      penWidth: parseInt(localStorage.getItem('pen_width') || '4', 10),
+      penMode: localStorage.getItem('pen_mode') || 'pen'
     };
 
     const digitWords1to19 = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
@@ -1731,11 +1733,98 @@
       return null;
     }
 
+    function setPenMode(mode) {
+      handwritingState.penMode = mode;
+      localStorage.setItem('pen_mode', mode);
+      const btnPen = document.getElementById('btn-pen-mode');
+      const btnEraser = document.getElementById('btn-eraser-mode');
+      if (btnPen) btnPen.classList.toggle('active', mode === 'pen');
+      if (btnEraser) btnEraser.classList.toggle('active', mode === 'eraser');
+    }
+
+    function setPenWidth(width) {
+      const w = parseInt(width, 10);
+      handwritingState.penWidth = w;
+      localStorage.setItem('pen_width', w);
+      const label = document.getElementById('pen-width-label');
+      if (label) label.innerText = w;
+      const canvas = document.getElementById('pen-canvas');
+      if (canvas && canvas.dataset.ready === "1") {
+        const ctx = canvas.getContext('2d');
+        ctx.lineWidth = w;
+      }
+    }
+
+    function undoPenStroke() {
+      if (handwritingState.allStrokes.length > 0) {
+        handwritingState.allStrokes.pop();
+        redrawAllStrokes();
+      }
+    }
+
+    function redrawAllStrokes() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      
+      handwritingState.allStrokes.forEach(stroke => {
+        if (stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+      });
+    }
+
+    function distSqToSegment(p1, p2, pt) {
+      const l2 = (p2.x - p1.x)**2 + (p2.y - p1.y)**2;
+      if (l2 === 0) return (pt.x - p1.x)**2 + (pt.y - p1.y)**2;
+      let t = ((pt.x - p1.x) * (p2.x - p1.x) + (pt.y - p1.y) * (p2.y - p1.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return (pt.x - (p1.x + t * (p2.x - p1.x)))**2 + (pt.y - (p1.y + t * (p2.y - p1.y)))**2;
+    }
+
+    function checkEraserCollision(pt) {
+      const ERASER_RADIUS = 20;
+      const ERASER_RADIUS_SQ = ERASER_RADIUS * ERASER_RADIUS;
+      let hitIdx = -1;
+      
+      for (let i = handwritingState.allStrokes.length - 1; i >= 0; i--) {
+        const stroke = handwritingState.allStrokes[i];
+        let hit = false;
+        for (let j = 0; j < stroke.length - 1; j++) {
+          if (distSqToSegment(stroke[j], stroke[j+1], pt) <= ERASER_RADIUS_SQ) {
+            hit = true;
+            break;
+          }
+        }
+        if (!hit && stroke.length === 1) {
+          if ((stroke[0].x - pt.x)**2 + (stroke[0].y - pt.y)**2 <= ERASER_RADIUS_SQ) {
+            hit = true;
+          }
+        }
+        if (hit) {
+          hitIdx = i;
+          break;
+        }
+      }
+      
+      if (hitIdx !== -1) {
+        handwritingState.allStrokes.splice(hitIdx, 1);
+        redrawAllStrokes();
+      }
+    }
+
     function clearPenCanvas() {
       const canvas = document.getElementById('pen-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
       handwritingState.currentStroke = [];
       handwritingState.allStrokes = [];
       handwritingState.isDrawing = false;
@@ -1761,8 +1850,16 @@
     function initializePenCanvas() {
       const canvas = document.getElementById('pen-canvas');
       if (!canvas || canvas.dataset.ready === "1") return;
+      
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
       const ctx = canvas.getContext('2d');
-      ctx.lineWidth = 4;
+      ctx.scale(dpr, dpr);
+      
+      ctx.lineWidth = handwritingState.penWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#202124';
@@ -1773,11 +1870,19 @@
           return;
         }
         e.preventDefault();
+        const pt = getPenCoords(e, canvas);
+
+        if (handwritingState.penMode === 'eraser') {
+          checkEraserCollision(pt);
+          handwritingState.isDrawing = true;
+          handwritingState.pointerId = e.pointerId;
+          return;
+        }
+
         handwritingState.isDrawing = true;
         handwritingState.currentStroke = [];
         handwritingState.pointerId = e.pointerId;
         handwritingState.pointerType = e.pointerType;
-        const pt = getPenCoords(e, canvas);
         handwritingState.currentStroke.push(pt);
         ctx.beginPath();
         ctx.moveTo(pt.x, pt.y);
@@ -1788,6 +1893,12 @@
         if (e.pointerType !== 'pen') return;
         e.preventDefault();
         const pt = getPenCoords(e, canvas);
+
+        if (handwritingState.penMode === 'eraser') {
+          checkEraserCollision(pt);
+          return;
+        }
+
         handwritingState.currentStroke.push(pt);
         ctx.lineTo(pt.x, pt.y);
         ctx.stroke();
@@ -1795,7 +1906,7 @@
 
       const stopPenStroke = (e) => {
         if (!handwritingState.isDrawing || handwritingState.pointerId !== e.pointerId) return;
-        if (handwritingState.currentStroke.length > 1) {
+        if (handwritingState.penMode === 'pen' && handwritingState.currentStroke.length > 1) {
           handwritingState.allStrokes.push(handwritingState.currentStroke);
         }
         handwritingState.isDrawing = false;
@@ -1838,15 +1949,26 @@
         const typingPreviewHtml = useFillMode
           ? ''
           : `<input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります">`;
+        const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
+        const activeEraser = handwritingState.penMode === 'eraser' ? 'active' : '';
         body.innerHTML = `
           <div class="pen-panel">
+            <div class="pen-settings" style="display:flex; justify-content:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; align-items:center;">
+              <button type="button" id="btn-pen-mode" class="answer-mode-btn ${activePen}" onclick="setPenMode('pen')">✏️ ペン</button>
+              <button type="button" id="btn-eraser-mode" class="answer-mode-btn ${activeEraser}" onclick="setPenMode('eraser')">🧽 ストローク消去</button>
+              <label style="color:#ccc; font-size:14px; display:flex; align-items:center; gap:5px; background:#222; padding:4px 8px; border-radius:20px;">
+                太さ: <input type="range" id="pen-width-range" min="1" max="10" value="${handwritingState.penWidth}" onchange="setPenWidth(this.value)">
+                <span id="pen-width-label" style="display:inline-block; width:16px; text-align:center;">${handwritingState.penWidth}</span>px
+              </label>
+              <button type="button" class="cancel-btn" onclick="undoPenStroke()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">↩️ 1つ戻す</button>
+            </div>
             ${typingPreviewHtml}
             <div class="pen-canvas-wrap">
-              <canvas id="pen-canvas" class="pen-canvas" width="1000" height="400"></canvas>
+              <canvas id="pen-canvas" class="pen-canvas" style="width:100%; max-width:1000px; height:400px; touch-action:none;"></canvas>
             </div>
             <div class="pen-panel-controls">
               <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="recognizePenStrokes()">文字起こし</button>
-              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="clearPenCanvas()">クリア</button>
+              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="clearPenCanvas()">全クリア</button>
               ${submitBtnHtml}
             </div>
             <div id="pen-status" class="pen-status">スタイラスのみ入力可（パームリジェクション有効）</div>
