@@ -218,9 +218,9 @@ const sendResponse = (responseObject) => {
 };
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('English Handwriting Recognizer')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+  return ContentService
+    .createTextOutput("OK: GAS endpoint is running")
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
