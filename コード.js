@@ -260,30 +260,55 @@ function doPost(e) {
 function doOptions(e) { return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT); }
 
 function recognizeSentence(allStrokes) {
-  const url = "https://www.google.com.hk/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8";
-  const payload = {
-    options: "enable_pre_space",
-    requests: [{
-      writing_guide: { writing_area_width: 1000, writing_area_height: 400 },
-      ink: allStrokes,
-      language: "en"
-    }]
-  };
-
-  try {
-    const response = UrlFetchApp.fetch(url, {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload)
-    });
-    const result = JSON.parse(response.getContentText());
-    if (result[0] === "SUCCESS" && result[1] && result[1][0] && result[1][0][1] && result[1][0][1][0]) {
-      return sendResponse({ status: "success", text: result[1][0][1][0] });
-    }
-    return sendResponse({ status: "error", message: "認識結果が取得できませんでした。" });
-  } catch (e) {
-    return sendResponse({ status: "error", message: "認識エラー" });
+  if (!Array.isArray(allStrokes) || allStrokes.length === 0) {
+    return sendResponse({ status: "error", message: "ストロークが空です。" });
   }
+
+  const endpoints = [
+    "https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8",
+    "https://www.google.com.hk/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8"
+  ];
+  const languages = ["en", "en-US"];
+  let lastError = "";
+
+  for (let li = 0; li < languages.length; li++) {
+    const lang = languages[li];
+    const payload = {
+      options: "enable_pre_space",
+      requests: [{
+        writing_guide: { writing_area_width: 1000, writing_area_height: 400 },
+        ink: allStrokes,
+        language: lang
+      }]
+    };
+
+    for (let ei = 0; ei < endpoints.length; ei++) {
+      const url = endpoints[ei];
+      try {
+        const response = UrlFetchApp.fetch(url, {
+          method: "post",
+          contentType: "application/json",
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true
+        });
+        const code = response.getResponseCode();
+        const body = response.getContentText();
+        if (code !== 200) {
+          lastError = "HTTP " + code + " @ " + url;
+          continue;
+        }
+        const result = JSON.parse(body);
+        if (result[0] === "SUCCESS" && result[1] && result[1][0] && result[1][0][1] && result[1][0][1][0]) {
+          return sendResponse({ status: "success", text: result[1][0][1][0] });
+        }
+        lastError = "認識候補なし (" + lang + " @ " + url + ")";
+      } catch (e) {
+        lastError = String(e);
+      }
+    }
+  }
+
+  return sendResponse({ status: "error", message: "認識エラー: " + lastError });
 }
 
 // ==========================================
