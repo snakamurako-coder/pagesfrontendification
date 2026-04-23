@@ -217,6 +217,12 @@ const sendResponse = (responseObject) => {
   return ContentService.createTextOutput(JSON.stringify(responseObject)).setMimeType(ContentService.MimeType.JSON);
 };
 
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('English Handwriting Recognizer')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+}
+
 function doPost(e) {
   try {
     const requestData = JSON.parse(e.postData.contents);
@@ -240,6 +246,7 @@ function doPost(e) {
     else if (action === "approve_external_request") return handleApproveExternalRequest(requestData);
     else if (action === "reject_external_request") return handleRejectExternalRequest(requestData);
     else if (action === "get_my_external_learning_requests") return handleGetMyExternalLearningRequests(requestData);
+    else if (action === "recognize_handwriting") return recognizeSentence(requestData.ink || []);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -251,6 +258,33 @@ function doPost(e) {
 }
 
 function doOptions(e) { return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT); }
+
+function recognizeSentence(allStrokes) {
+  const url = "https://www.google.com.hk/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8";
+  const payload = {
+    options: "enable_pre_space",
+    requests: [{
+      writing_guide: { writing_area_width: 1000, writing_area_height: 400 },
+      ink: allStrokes,
+      language: "en"
+    }]
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload)
+    });
+    const result = JSON.parse(response.getContentText());
+    if (result[0] === "SUCCESS" && result[1] && result[1][0] && result[1][0][1] && result[1][0][1][0]) {
+      return sendResponse({ status: "success", text: result[1][0][1][0] });
+    }
+    return sendResponse({ status: "error", message: "認識結果が取得できませんでした。" });
+  } catch (e) {
+    return sendResponse({ status: "error", message: "認識エラー" });
+  }
+}
 
 // ==========================================
 // ★ 特訓ルート（メニュー1～12）

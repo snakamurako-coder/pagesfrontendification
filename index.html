@@ -74,6 +74,23 @@
     .key-action { background: #2196F3; flex: 2; box-shadow: 0 4px #0d47a1; }
     .key-action:active { box-shadow: 0 0 #0d47a1; }
     .key-action:disabled { background: #555; box-shadow: 0 4px #333; color:#888; cursor:not-allowed;}
+    .answer-input-mode-switch { display: flex; justify-content: center; gap: 8px; margin: 4px auto 10px; flex-wrap: wrap; }
+    .answer-mode-btn { border: 1px solid #555; border-radius: 20px; padding: 8px 14px; background: #2a2a2a; color: #ddd; cursor: pointer; font-size: 14px; }
+    .answer-mode-btn.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .pen-panel { width: 100%; max-width: 1000px; margin: 0 auto; }
+    .pen-canvas-wrap { overflow-x: auto; width: 100%; max-width: 1000px; margin: 0 auto 10px; }
+    .pen-canvas {
+      background: #fff;
+      border: 1px solid #555;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+      display: block;
+      margin: 0 auto;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .pen-panel-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .pen-status { font-size: 13px; color: #aaa; margin-top: 6px; min-height: 1.2em; }
 
     /* ★ 穴埋め用のCSS */
     .word-blank-container { font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; word-break: break-all; }
@@ -316,6 +333,15 @@
     let fillBlanksData = []; 
     let activeFillBlankIndex = 0;
     let voiceFailCount = 0;
+    let inputMethodMode = 'keyboard';
+    let handwritingState = {
+      isDrawing: false,
+      currentStroke: [],
+      allStrokes: [],
+      pointerId: null,
+      pointerType: '',
+      lastTapAt: 0
+    };
 
     const digitWords1to19 = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
     const digitWordsTens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
@@ -1693,6 +1719,226 @@
       updateKeyboardDisplay();
     }
 
+    function getPenTargetInput() {
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      const ansType = ansTypeEl ? ansTypeEl.value : '';
+      if (ansType === "typing") {
+        return document.getElementById('type-answer');
+      }
+      if (ansType === "fill_typing") {
+        return null;
+      }
+      return null;
+    }
+
+    function clearPenCanvas() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      handwritingState.currentStroke = [];
+      handwritingState.allStrokes = [];
+      handwritingState.isDrawing = false;
+      handwritingState.pointerId = null;
+      const status = document.getElementById('pen-status');
+      if (status) status.innerText = "";
+    }
+
+    function setPenStatus(msg) {
+      const status = document.getElementById('pen-status');
+      if (status) status.innerText = msg || "";
+    }
+
+    function getPenCoords(e, canvas) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        t: Date.now()
+      };
+    }
+
+    function initializePenCanvas() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas || canvas.dataset.ready === "1") return;
+      const ctx = canvas.getContext('2d');
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#202124';
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'pen') {
+          setPenStatus('スタイラスペンで入力してください（手・マウスは無効）');
+          return;
+        }
+        e.preventDefault();
+        handwritingState.isDrawing = true;
+        handwritingState.currentStroke = [];
+        handwritingState.pointerId = e.pointerId;
+        handwritingState.pointerType = e.pointerType;
+        const pt = getPenCoords(e, canvas);
+        handwritingState.currentStroke.push(pt);
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!handwritingState.isDrawing || handwritingState.pointerId !== e.pointerId) return;
+        if (e.pointerType !== 'pen') return;
+        e.preventDefault();
+        const pt = getPenCoords(e, canvas);
+        handwritingState.currentStroke.push(pt);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+      });
+
+      const stopPenStroke = (e) => {
+        if (!handwritingState.isDrawing || handwritingState.pointerId !== e.pointerId) return;
+        if (handwritingState.currentStroke.length > 1) {
+          handwritingState.allStrokes.push(handwritingState.currentStroke);
+        }
+        handwritingState.isDrawing = false;
+        handwritingState.currentStroke = [];
+        handwritingState.pointerId = null;
+      };
+      canvas.addEventListener('pointerup', stopPenStroke);
+      canvas.addEventListener('pointercancel', stopPenStroke);
+      canvas.addEventListener('pointerleave', stopPenStroke);
+      canvas.dataset.ready = "1";
+    }
+
+    function renderInputModeUi(targetMode) {
+      const area = document.getElementById('quiz-answer-area');
+      if (!area) return;
+      const panel = area.querySelector('#answer-input-mode-switch');
+      if (!panel) return;
+      panel.querySelectorAll('.answer-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === targetMode);
+      });
+    }
+
+    function buildTypingInputAreaMarkup(useFillMode) {
+      return `
+        <div id="answer-input-mode-switch" class="answer-input-mode-switch">
+          <button type="button" class="answer-mode-btn" data-mode="keyboard" onclick="switchInputMethod('keyboard')">⌨️ キーボード</button>
+          <button type="button" class="answer-mode-btn" data-mode="pen" onclick="switchInputMethod('pen')">✍️ スタイラス</button>
+        </div>
+        <div id="input-method-body"></div>
+      `;
+    }
+
+    function mountTypingMethodBody(useFillMode) {
+      const body = document.getElementById('input-method-body');
+      if (!body) return;
+      if (inputMethodMode === 'pen') {
+        const submitBtnHtml = useFillMode
+          ? `<button type="button" id="fill-submit-btn" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitFillAnswer()" disabled>これで回答</button>`
+          : `<button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitTypingFromPen()">けってい</button>`;
+        const typingPreviewHtml = useFillMode
+          ? ''
+          : `<input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります">`;
+        body.innerHTML = `
+          <div class="pen-panel">
+            ${typingPreviewHtml}
+            <div class="pen-canvas-wrap">
+              <canvas id="pen-canvas" class="pen-canvas" width="1000" height="400"></canvas>
+            </div>
+            <div class="pen-panel-controls">
+              <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="recognizePenStrokes()">文字起こし</button>
+              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="clearPenCanvas()">クリア</button>
+              ${submitBtnHtml}
+            </div>
+            <div id="pen-status" class="pen-status">スタイラスのみ入力可（パームリジェクション有効）</div>
+          </div>
+        `;
+        initializePenCanvas();
+      } else {
+        if (useFillMode) {
+          body.innerHTML = `<div id="keyboard-container"></div>`;
+          renderCustomKeyboard(true);
+        } else {
+          body.innerHTML = `<input type="text" id="type-answer" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div>`;
+          renderCustomKeyboard(false);
+        }
+      }
+      renderInputModeUi(inputMethodMode);
+    }
+
+    function submitTypingFromPen() {
+      const userA = (document.getElementById('type-answer') || {}).value || "";
+      const q = filteredQuestions[currentQuestionIndex];
+      const format = document.getElementById('setting-format').value;
+      const correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
+      checkAnswer(userA, correctA, q);
+    }
+
+    function switchInputMethod(mode) {
+      inputMethodMode = mode === 'pen' ? 'pen' : 'keyboard';
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      const ansType = ansTypeEl ? ansTypeEl.value : '';
+      mountTypingMethodBody(ansType === "fill_typing");
+      const answerArea = document.getElementById('quiz-answer-area');
+      if (answerArea) placeQuizFeedbackAboveKeyboard(answerArea);
+    }
+
+    function collectInkForApi() {
+      const apiInk = [];
+      handwritingState.allStrokes.forEach(stroke => {
+        if (!stroke || stroke.length < 2) return;
+        const xArr = [];
+        const yArr = [];
+        const tArr = [];
+        const startTime = stroke[0].t;
+        stroke.forEach(p => {
+          xArr.push(p.x);
+          yArr.push(p.y);
+          tArr.push(p.t - startTime);
+        });
+        apiInk.push([xArr, yArr, tArr]);
+      });
+      return apiInk;
+    }
+
+    function recognizePenStrokes() {
+      if (inputMethodMode !== 'pen') return;
+      const apiInk = collectInkForApi();
+      if (apiInk.length === 0) {
+        setPenStatus('先にスタイラスで文字を書いてください。');
+        return;
+      }
+      setPenStatus('Recognizing...');
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status !== "success") {
+          setPenStatus(d.message || "認識に失敗しました。");
+          return;
+        }
+        const text = String(d.text || "").trim();
+        if (!text) {
+          setPenStatus("認識結果なし。もう一度書いてください。");
+          return;
+        }
+        const target = getPenTargetInput();
+        if (target) {
+          target.value = text;
+        } else {
+          const chars = text.replace(/\s/g, '').split('');
+          chars.forEach(ch => {
+            if (/^[a-zA-Z]$/.test(ch)) handleFillInput(ch);
+          });
+        }
+        setPenStatus(`認識結果: ${text}`);
+      })
+      .catch(() => {
+        setPenStatus("通信エラー");
+      });
+    }
+
     function startVoiceInput() {
       if(!recognition) { alert("お使いのブラウザは音声入力に対応していません。SafariかChromeを使ってね！"); return; }
       const feedback = document.getElementById('voice-feedback'); const btn = document.getElementById('voice-btn'); const displayField = document.getElementById('voice-recognized-text');
@@ -1883,6 +2129,8 @@
 
       restoreQuizFeedbackLocation();
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
+      inputMethodMode = 'keyboard';
+      clearPenCanvas();
       
       if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {
         setupSortQuiz(q, answerType);
@@ -1896,8 +2144,8 @@
       } 
       else if (answerType === "typing") { 
         shiftMode = 0; isShiftHoldMode = false;
-        answerArea.innerHTML = `<input type="text" id="type-answer" class="large-input" readonly placeholder="キーボードで入力"><div id="keyboard-container"></div>`; 
-        renderCustomKeyboard(false);
+        answerArea.innerHTML = buildTypingInputAreaMarkup(false);
+        mountTypingMethodBody(false);
         placeQuizFeedbackAboveKeyboard(answerArea);
       }
       else if (answerType === "voice") {
@@ -1941,8 +2189,8 @@
 
       if (ansType === "fill_typing") {
         shiftMode = 0; isShiftHoldMode = false;
-        answerArea.innerHTML = `<div id="keyboard-container"></div>`; 
-        renderCustomKeyboard(true);
+        answerArea.innerHTML = buildTypingInputAreaMarkup(true);
+        mountTypingMethodBody(true);
         placeQuizFeedbackAboveKeyboard(answerArea);
       } else if (ansType === "fill_4choice") {
         answerArea.innerHTML = `
@@ -2203,6 +2451,7 @@
       const ansType = document.getElementById('setting-answer-type').value;
 
       if (ansType === "typing" && answerInput) {
+        if (inputMethodMode === 'pen') return;
         if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key))) { e.preventDefault(); }
         if (e.key === 'Enter') { const enterBtn = Array.from(document.querySelectorAll('.key-action')).find(btn => btn.innerText === "けってい"); if (enterBtn && !enterBtn.disabled) enterBtn.click(); } 
         else if (e.key === 'Backspace') { answerInput.value = answerInput.value.slice(0, -1); } 
@@ -2210,6 +2459,7 @@
         else if (e.key.length === 1 && /^[\x20-\x7E¥]$/.test(e.key)) { answerInput.value += e.key; }
       }
       else if (ansType === "fill_typing") {
+        if (inputMethodMode === 'pen') return;
         if (['Enter', 'Backspace', ' ', 'Shift'].includes(e.key) || (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key))) { e.preventDefault(); }
         if (e.key === 'Enter') { const enterBtn = document.getElementById('fill-submit-btn'); if (enterBtn && !enterBtn.disabled) enterBtn.click(); }
         else if (e.key === 'Backspace') { handleFillBackspace(); }
