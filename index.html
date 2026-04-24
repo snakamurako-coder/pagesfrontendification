@@ -2560,12 +2560,28 @@
       }
     }
 
-    /** カスタムキーボード使用時は、正答・○× をキーボードより上（入力の直下）に表示 */
+    /** 正誤表示は常に「入力欄の直下」優先で配置する（手書き/キーボード両対応） */
     function placeQuizFeedbackAboveKeyboard(answerAreaEl) {
       const fb = document.getElementById('quiz-feedback');
-      const kbd = document.getElementById('keyboard-container');
-      if (!fb || !kbd || !answerAreaEl || !answerAreaEl.contains(kbd)) return;
-      answerAreaEl.insertBefore(fb, kbd);
+      if (!fb || !answerAreaEl) return;
+
+      const typeInput = answerAreaEl.querySelector('#type-answer');
+      if (typeInput) {
+        const hostRow = typeInput.closest('div');
+        const hostParent = hostRow && hostRow.parentNode ? hostRow.parentNode : typeInput.parentNode;
+        if (hostParent) {
+          hostParent.insertBefore(fb, hostRow ? hostRow.nextSibling : typeInput.nextSibling);
+          return;
+        }
+      }
+
+      const kbd = answerAreaEl.querySelector('#keyboard-container');
+      if (kbd) {
+        answerAreaEl.insertBefore(fb, kbd);
+        return;
+      }
+
+      answerAreaEl.appendChild(fb);
     }
 
     function showQuestion() {
