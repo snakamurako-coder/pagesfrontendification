@@ -1745,10 +1745,21 @@
       return null;
     }
 
+    function composeWithAutoSpace(baseText, appendText) {
+      const base = String(baseText || "");
+      const add = String(appendText || "");
+      if (!add) return base;
+      if (!base) return add;
+      const last = base.slice(-1);
+      const first = add.charAt(0);
+      if (last !== ' ' && first !== ' ') return base + ' ' + add;
+      return base + add;
+    }
+
     function appendTypeAnswerText(text) {
       const target = getPenTargetInput();
       if (!target) return;
-      target.value += text;
+      target.value = composeWithAutoSpace(target.value, text);
       target.classList.remove('type-answer-temp');
       handwritingState.pendingTempText = "";
     }
@@ -1756,9 +1767,10 @@
     function setTypeAnswerTemporary(text) {
       const target = getPenTargetInput();
       if (!target) return;
-      target.value += text;
+      const before = target.value;
+      target.value = composeWithAutoSpace(before, text);
       target.classList.add('type-answer-temp');
-      handwritingState.pendingTempText = text;
+      handwritingState.pendingTempText = target.value.slice(before.length);
     }
 
     function confirmTemporaryTypingInput() {
@@ -1829,6 +1841,27 @@
       clearPenCanvas();
       renderPenConfirmBox();
       setPenStatus('手書きをやり直してください。');
+    }
+
+    function clearTypingInput() {
+      const target = getPenTargetInput();
+      if (!target) return;
+      target.value = "";
+      target.classList.remove('type-answer-temp');
+      handwritingState.pendingTempText = "";
+      handwritingState.pendingCandidates = [];
+      renderPenConfirmBox();
+    }
+
+    function resetHandwritingInputState() {
+      handwritingState.pendingCandidates = [];
+      handwritingState.pendingTempText = "";
+      handwritingState.currentStroke = [];
+      handwritingState.allStrokes = [];
+      handwritingState.isDrawing = false;
+      handwritingState.pointerId = null;
+      clearTypingInput();
+      clearPenCanvas();
     }
 
     function setPenMode(mode) {
@@ -2069,7 +2102,14 @@
           : `<button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitTypingFromPen()">答えを送信</button>`;
         const typingPreviewHtml = useFillMode
           ? ''
-          : `<input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります">`;
+          : `
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+              <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
+              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
+              <input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります" style="margin:0;flex:1;min-width:260px;">
+              <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
+            </div>
+          `;
         const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
         const activeEraser = handwritingState.penMode === 'eraser' ? 'active' : '';
         body.innerHTML = `
@@ -2084,18 +2124,15 @@
                 <span id="pen-width-label" style="display:inline-block; width:16px; text-align:center;">${handwritingState.penWidth}</span>px
               </label>
               <button type="button" class="cancel-btn" onclick="undoPenStroke()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">↩️ 1つ戻す</button>
-              <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">全部消す</button>
+              <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">手書きを全部消す</button>
+              <button type="button" class="cancel-btn" onclick="clearTypingInput()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">テキスト入力を全部消す</button>
             </div>
             ${typingPreviewHtml}
+            <div id="pen-confirm-box" class="pen-confirm-box" style="display:none;"></div>
             <div class="pen-canvas-wrap">
               <canvas id="pen-canvas" class="pen-canvas" style="width:100%; max-width:1000px; height:400px; touch-action:none;"></canvas>
             </div>
-            <div class="pen-panel-controls">
-              <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="recognizePenStrokes()">文字起こし</button>
-              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
-              ${submitBtnHtml}
-            </div>
-            <div id="pen-confirm-box" class="pen-confirm-box" style="display:none;"></div>
+            ${useFillMode ? `<div class="pen-panel-controls">${submitBtnHtml}</div>` : ``}
             <div id="pen-status" class="pen-status">手書きペンのみ入力可（パームリジェクション有効）</div>
           </div>
         `;
@@ -2382,9 +2419,7 @@
 
       restoreQuizFeedbackLocation();
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
-      handwritingState.pendingCandidates = [];
-      handwritingState.pendingTempText = "";
-      clearPenCanvas();
+      resetHandwritingInputState();
       
       if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {
         setupSortQuiz(q, answerType);
@@ -2652,8 +2687,8 @@
       }
     }
 
-    function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); currentQuestionIndex++; showQuestion(); }
-    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); openSettingsScreen(); }
+    function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); resetHandwritingInputState(); currentQuestionIndex++; showQuestion(); }
+    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); resetHandwritingInputState(); openSettingsScreen(); }
     
     function finishQuiz() {
       switchSection('section-result'); 
