@@ -282,7 +282,6 @@
         <input type="checkbox" id="answer-sound-enabled" checked onchange="syncAnswerSoundFromCheckbox(this)"> せいかいは「ピンポン」、まちがいは「ブッブー」
       </label>
     </div>
-
     <button onclick="prepareQuiz()" class="submit-btn" style="width:80%; max-width:350px;">🚀 スタート！</button><br>
     <button class="cancel-btn" style="margin-top:20px;" onclick="switchSection('section-materials')">もどる</button>
   </div>
@@ -366,6 +365,7 @@
       strokesBackupBeforeClear: null,
       pointerId: null,
       pointerType: '',
+      activePenRect: null,
       lastTapAt: 0,
       penWidth: parseInt(localStorage.getItem('pen_width') || '4', 10),
       penMode: localStorage.getItem('pen_mode') || 'pen',
@@ -841,11 +841,15 @@
     const LS_KBD_SCALE = 'vk_scale_pct';
     const LS_KBD_FONT = 'vk_key_font_px';
     const LS_ANSWER_SOUND = 'answer_sound_enabled';
+    const LS_IPAD_STYLUS_OPT = 'ipad_stylus_opt_enabled';
+    const LS_PEN_ADVANCED_VISIBLE = 'pen_advanced_visible';
 
     function initKeyboardAndSoundSettings() {
       if (localStorage.getItem(LS_KBD_SCALE) === null) localStorage.setItem(LS_KBD_SCALE, '100');
       if (localStorage.getItem(LS_KBD_FONT) === null) localStorage.setItem(LS_KBD_FONT, '18');
       if (localStorage.getItem(LS_ANSWER_SOUND) === null) localStorage.setItem(LS_ANSWER_SOUND, '1');
+      if (localStorage.getItem(LS_IPAD_STYLUS_OPT) === null) localStorage.setItem(LS_IPAD_STYLUS_OPT, '0');
+      if (localStorage.getItem(LS_PEN_ADVANCED_VISIBLE) === null) localStorage.setItem(LS_PEN_ADVANCED_VISIBLE, '0');
       const sc = document.getElementById('kbd-scale-range');
       const ft = document.getElementById('kbd-font-range');
       if (sc) sc.value = localStorage.getItem(LS_KBD_SCALE);
@@ -857,8 +861,10 @@
       const on = localStorage.getItem(LS_ANSWER_SOUND) !== '0';
       const snd = document.getElementById('answer-sound-enabled');
       const qsnd = document.getElementById('quiz-answer-sound-enabled');
+      const ipadStylus = document.getElementById('ipad-stylus-opt-enabled');
       if (snd) snd.checked = on;
       if (qsnd) qsnd.checked = on;
+      if (ipadStylus) ipadStylus.checked = localStorage.getItem(LS_IPAD_STYLUS_OPT) === '1';
       applyKeyboardSettingsFromControls('settings');
     }
 
@@ -869,6 +875,36 @@
       const q = document.getElementById('quiz-answer-sound-enabled');
       if (a && el !== a) a.checked = el.checked;
       if (q && el !== q) q.checked = el.checked;
+    }
+
+    function syncIpadStylusSettingsFromCheckbox(el) {
+      if (!el) return;
+      const checked = !!el.checked;
+      localStorage.setItem(LS_IPAD_STYLUS_OPT, checked ? '1' : '0');
+      const panelCheckbox = document.getElementById('pen-ipad-stylus-opt');
+      if (panelCheckbox && panelCheckbox !== el) panelCheckbox.checked = checked;
+    }
+
+    function isIpadStylusOptimizationEnabled() {
+      return localStorage.getItem(LS_IPAD_STYLUS_OPT) === '1';
+    }
+
+    function isPenAdvancedVisible() {
+      return localStorage.getItem(LS_PEN_ADVANCED_VISIBLE) === '1';
+    }
+
+    function syncPenAdvancedVisibility() {
+      const shown = isPenAdvancedVisible();
+      const panel = document.getElementById('pen-advanced-controls');
+      const btn = document.getElementById('pen-advanced-toggle-btn');
+      if (panel) panel.style.display = shown ? 'flex' : 'none';
+      if (btn) btn.innerText = shown ? '詳細設定ボタンを非表示' : '詳細設定ボタンを表示';
+    }
+
+    function togglePenAdvancedSettings() {
+      const next = isPenAdvancedVisible() ? '0' : '1';
+      localStorage.setItem(LS_PEN_ADVANCED_VISIBLE, next);
+      syncPenAdvancedVisibility();
     }
 
     function applyKeyboardSettingsFromControls(from) {
@@ -2129,7 +2165,7 @@
     }
 
     function getPenCoords(e, canvas) {
-      const rect = canvas.getBoundingClientRect();
+      const rect = handwritingState.activePenRect || canvas.getBoundingClientRect();
       return {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
@@ -2161,6 +2197,11 @@
           return;
         }
         e.preventDefault();
+        const useIpadOpt = isIpadStylusOptimizationEnabled();
+        handwritingState.activePenRect = useIpadOpt ? canvas.getBoundingClientRect() : null;
+        if (useIpadOpt && canvas.setPointerCapture) {
+          try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+        }
         const pt = getPenCoords(e, canvas);
 
         if (handwritingState.penMode === 'eraser') {
@@ -2201,9 +2242,13 @@
           handwritingState.allStrokes.push(handwritingState.currentStroke);
           handwritingState.strokesBackupBeforeClear = null;
         }
+        if (canvas.releasePointerCapture) {
+          try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
         handwritingState.isDrawing = false;
         handwritingState.currentStroke = [];
         handwritingState.pointerId = null;
+        handwritingState.activePenRect = null;
       };
       canvas.addEventListener('pointerup', stopPenStroke);
       canvas.addEventListener('pointercancel', stopPenStroke);
@@ -2249,10 +2294,6 @@
               <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
               <input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります" style="margin:0;flex:1;min-width:260px;">
               <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
-              <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
-                <input type="range" id="pen-guide-spread" class="pen-guide-hslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
-                <span id="pen-guide-spread-label" style="min-width:22px;">${handwritingState.guideLineSpread}</span>
-              </label>
             </div>
           `;
         const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
@@ -2265,21 +2306,29 @@
                 <button type="button" id="btn-pen-mode" class="${activePen}" onclick="setPenMode('pen')">手書き</button>
                 <button type="button" id="btn-eraser-mode" class="${activeEraser}" onclick="setPenMode('eraser')">線消しゴム</button>
               </div>
-              <label style="color:#ccc; font-size:14px; display:flex; align-items:center; gap:5px; background:#222; padding:4px 8px; border-radius:20px;">
-                太さ: <input type="range" id="pen-width-range" min="1" max="10" value="${handwritingState.penWidth}" onchange="setPenWidth(this.value)">
-                <span id="pen-width-label" style="display:inline-block; width:16px; text-align:center;">${handwritingState.penWidth}</span>px
-              </label>
-              <label style="color:#ccc; font-size:13px; display:flex; align-items:center; gap:6px; background:#222; padding:4px 10px; border-radius:20px; cursor:pointer;">
-                <input type="checkbox" id="pen-guide-show" ${handwritingState.showGuideLines ? 'checked' : ''} onchange="setPenGuideShow(this.checked)"> 目印の線を表示する
-              </label>
+              <button type="button" id="pen-advanced-toggle-btn" class="cancel-btn" onclick="togglePenAdvancedSettings()" style="padding:4px 10px; font-size:14px; background:#1E88E5; color:#fff; border-radius:20px; border:1px solid #1565C0;">詳細設定ボタンを表示</button>
               <button type="button" class="cancel-btn" onclick="undoPenStroke()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">↩️ 1つ戻す</button>
               <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">手書きを全部消す</button>
               <button type="button" class="cancel-btn" onclick="clearTypingInput()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">テキスト入力を全部消す</button>
             </div>
-            <div class="pen-canvas-width-row">
+            <div id="pen-advanced-controls" class="pen-canvas-width-row" style="display:none; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px;">
+              <label style="color:#ccc; font-size:14px; display:flex; align-items:center; gap:5px; background:#222; padding:4px 8px; border-radius:20px;">
+                太さ: <input type="range" id="pen-width-range" min="1" max="10" value="${handwritingState.penWidth}" onchange="setPenWidth(this.value)">
+                <span id="pen-width-label" style="display:inline-block; width:16px; text-align:center;">${handwritingState.penWidth}</span>px
+              </label>
               <label style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">手書きの幅
                 <input type="range" id="pen-canvas-width-range" min="400" max="1200" step="20" value="${wMax}" oninput="setPenCanvasMaxWidth(this.value)" style="width:min(240px,50vw);">
                 <span id="pen-canvas-width-label">${wMax}</span> px
+              </label>
+              <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
+                <input type="range" id="pen-guide-spread" class="pen-guide-hslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
+                <span id="pen-guide-spread-label" style="min-width:22px;">${handwritingState.guideLineSpread}</span>
+              </label>
+              <label style="color:#ccc; font-size:13px; display:flex; align-items:center; gap:6px; background:#222; padding:4px 10px; border-radius:20px; cursor:pointer;">
+                <input type="checkbox" id="pen-guide-show" ${handwritingState.showGuideLines ? 'checked' : ''} onchange="setPenGuideShow(this.checked)"> 目印の線を表示する
+              </label>
+              <label style="color:#ccc; font-size:13px; display:flex; align-items:center; gap:6px; background:#222; padding:4px 10px; border-radius:20px; cursor:pointer;">
+                <input type="checkbox" id="pen-ipad-stylus-opt" ${isIpadStylusOptimizationEnabled() ? 'checked' : ''} onchange="syncIpadStylusSettingsFromCheckbox(this)"> iPad用のスタイラスペン設定にする
               </label>
             </div>
             ${typingPreviewHtml}
@@ -2287,17 +2336,13 @@
             <div class="pen-canvas-wrap" id="pen-canvas-wrap" style="max-width:${wMax}px;margin:0 auto;">
               <canvas id="pen-canvas" class="pen-canvas" oncontextmenu="event.preventDefault();return false" style="width:100%;height:min(50vh, 520px);max-height:85vh;touch-action:none;"></canvas>
             </div>
-            ${useFillMode ? `<div class="pen-panel-controls" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;justify-content:center;">${submitBtnHtml}
-              <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
-                <input type="range" id="pen-guide-spread" class="pen-guide-hslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
-                <span id="pen-guide-spread-label" style="min-width:22px;">${handwritingState.guideLineSpread}</span>
-              </label>
-            </div>` : ``}
+            ${useFillMode ? `<div class="pen-panel-controls" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;justify-content:center;">${submitBtnHtml}</div>` : ``}
             <div id="pen-status" class="pen-status">手書きペンのみ入力可（パームリジェクション有効）</div>
           </div>
         `;
         initializePenCanvas();
         renderPenConfirmBox();
+        syncPenAdvancedVisibility();
       } else {
         if (useFillMode) {
           body.innerHTML = `<div id="keyboard-container"></div>`;
