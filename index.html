@@ -77,11 +77,10 @@
     .answer-input-mode-switch { display: flex; justify-content: center; gap: 8px; margin: 4px auto 10px; flex-wrap: wrap; }
     .answer-mode-btn { border: 1px solid #555; border-radius: 20px; padding: 8px 14px; background: #2a2a2a; color: #ddd; cursor: pointer; font-size: 14px; }
     .answer-mode-btn.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
-    .pen-panel { width: 100%; max-width: 1000px; margin: 0 auto; }
-    .pen-canvas-with-side { display: flex; flex-direction: row; align-items: stretch; justify-content: center; gap: 10px; max-width: 1000px; margin: 0 auto 10px; width: 100%; }
-    .pen-guide-vslider-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto; color: #aaa; font-size: 12px; padding: 4px 2px; }
-    .pen-guide-vslider { writing-mode: vertical-rl; height: min(320px, 50vh); width: 28px; cursor: pointer; }
-    .pen-canvas-wrap { overflow-x: auto; flex: 1 1 auto; min-width: 0; }
+    .pen-panel { width: 100%; max-width: 1200px; margin: 0 auto; }
+    .pen-canvas-wrap { overflow-x: auto; width: 100%; max-width: 1200px; margin: 0 auto 10px; }
+    .pen-guide-hslider { width: min(200px, 32vw); min-width: 80px; cursor: pointer; vertical-align: middle; }
+    .pen-canvas-size-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 auto 8px; max-width: 1000px; color: #ccc; font-size: 13px; }
     .pen-canvas {
       background: #fff;
       border: 1px solid #555;
@@ -99,7 +98,7 @@
     .pen-toggle-switch button { border:none; background:transparent; color:#ccc; padding:6px 12px; border-radius:999px; cursor:pointer; font-size:13px; }
     .pen-toggle-switch button.active { background:#1a73e8; color:#fff; }
     .type-answer-temp { color:#d93025; font-weight:bold; }
-    .pen-confirm-box { margin:10px auto 0; max-width:1000px; background:#1f1f1f; border:1px solid #444; border-radius:8px; padding:10px; text-align:left; }
+    .pen-confirm-box { margin:10px auto 0; max-width:1200px; background:#1f1f1f; border:1px solid #444; border-radius:8px; padding:10px; text-align:left; }
     .pen-candidates { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .pen-candidate-btn { border:1px solid #666; border-radius:16px; background:#2a2a2a; color:#fff; padding:6px 12px; cursor:pointer; }
 
@@ -346,6 +345,7 @@
     const LS_INPUT_MODE = 'input_method_mode';
     const LS_PEN_GUIDE_SPREAD = 'pen_guide_line_spread';
     const LS_PEN_GUIDE_SHOW = 'pen_guide_lines_show';
+    const LS_PEN_CANVAS_HEIGHT = 'pen_canvas_height_px';
     let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
     let handwritingState = {
       isDrawing: false,
@@ -362,6 +362,10 @@
         return isNaN(v) ? 50 : Math.max(0, Math.min(100, v));
       })(),
       showGuideLines: localStorage.getItem(LS_PEN_GUIDE_SHOW) !== '0',
+      canvasHeightPx: (() => {
+        const v = parseInt(localStorage.getItem(LS_PEN_CANVAS_HEIGHT) || '520', 10);
+        return isNaN(v) ? 520 : Math.max(280, Math.min(900, v));
+      })(),
       pendingCandidates: [],
       pendingTempText: ""
     };
@@ -1925,6 +1929,58 @@
       redrawAllStrokes();
     }
 
+    function scalePenStrokes(oldW, oldH, newW, newH) {
+      if (!oldW || !oldH) return;
+      if (oldW === newW && oldH === newH) return;
+      const sx = newW / oldW, sy = newH / oldH;
+      const mapStroke = (st) => { st.forEach(p => { p.x *= sx; p.y *= sy; }); };
+      handwritingState.allStrokes.forEach(mapStroke);
+      if (handwritingState.strokesBackupBeforeClear) {
+        handwritingState.strokesBackupBeforeClear.forEach(mapStroke);
+      }
+      if (handwritingState.currentStroke && handwritingState.currentStroke.length) {
+        mapStroke(handwritingState.currentStroke);
+      }
+    }
+
+    function relayoutPenCanvas() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas || canvas.dataset.ready !== '1') return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = handwritingState.penWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#202124';
+      canvas.dataset.logW = String(w);
+      canvas.dataset.logH = String(h);
+      redrawAllStrokes();
+    }
+
+    function setPenCanvasHeight(val) {
+      const px = Math.max(280, Math.min(900, parseInt(val, 10) || 520));
+      handwritingState.canvasHeightPx = px;
+      localStorage.setItem(LS_PEN_CANVAS_HEIGHT, String(px));
+      const hLabel = document.getElementById('pen-canvas-height-label');
+      if (hLabel) hLabel.textContent = px;
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas) return;
+      const oldW = parseFloat(canvas.dataset.logW) || 0;
+      const oldH = parseFloat(canvas.dataset.logH) || 0;
+      canvas.style.height = px + 'px';
+      if (canvas.dataset.ready === '1' && oldW > 0 && oldH > 0) {
+        const rect = canvas.getBoundingClientRect();
+        scalePenStrokes(oldW, oldH, rect.width, rect.height);
+      }
+      relayoutPenCanvas();
+    }
+
     function undoPenStroke() {
       if (handwritingState.strokesBackupBeforeClear != null) {
         const bak = handwritingState.strokesBackupBeforeClear;
@@ -1965,7 +2021,8 @@
       const w = canvas.width / dpr;
       const h = canvas.height / dpr;
       const s = typeof handwritingState.guideLineSpread === 'number' ? handwritingState.guideLineSpread : 50;
-      const span = 0.45 + (s / 100) * 0.25;
+      /* 最下位（0）付近で狭い間隔、最上位（100）で広い帯。従来の最低幅 0.45 相当はスライダー約 55 付近 */
+      const span = 0.14 + (s / 100) * 0.56;
       const mid = 0.5;
       const y0 = h * (mid - span / 2);
       const y3 = h * (mid + span / 2);
@@ -2136,6 +2193,9 @@
       canvas.addEventListener('pointercancel', stopPenStroke);
       canvas.addEventListener('pointerleave', stopPenStroke);
       canvas.dataset.ready = "1";
+      const r0 = canvas.getBoundingClientRect();
+      canvas.dataset.logW = String(r0.width);
+      canvas.dataset.logH = String(r0.height);
     }
 
     function renderInputModeUi(targetMode) {
@@ -2164,7 +2224,7 @@
       if (inputMethodMode === 'pen') {
         const submitBtnHtml = useFillMode
           ? `<button type="button" id="fill-submit-btn" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitFillAnswer()" disabled>これで回答</button>`
-          : `<button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitTypingFromPen()">答えを送信</button>`;
+          : '';
         const typingPreviewHtml = useFillMode
           ? ''
           : `
@@ -2173,10 +2233,15 @@
               <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
               <input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります" style="margin:0;flex:1;min-width:260px;">
               <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
+              <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
+                <input type="range" id="pen-guide-spread" class="pen-guide-hslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
+                <span id="pen-guide-spread-label" style="min-width:22px;">${handwritingState.guideLineSpread}</span>
+              </label>
             </div>
           `;
         const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
         const activeEraser = handwritingState.penMode === 'eraser' ? 'active' : '';
+        const hPx = handwritingState.canvasHeightPx;
         body.innerHTML = `
           <div class="pen-panel">
             <div class="pen-settings pen-tool-row">
@@ -2195,19 +2260,23 @@
               <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">手書きを全部消す</button>
               <button type="button" class="cancel-btn" onclick="clearTypingInput()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">テキスト入力を全部消す</button>
             </div>
+            <div class="pen-canvas-size-row">
+              <label style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">手書きの高さ
+                <input type="range" id="pen-canvas-height-range" min="280" max="900" value="${hPx}" oninput="setPenCanvasHeight(this.value)" style="width:min(240px,50vw);">
+                <span id="pen-canvas-height-label">${hPx}</span> px
+              </label>
+            </div>
             ${typingPreviewHtml}
             <div id="pen-confirm-box" class="pen-confirm-box" style="display:none;"></div>
-            <div class="pen-canvas-with-side">
-              <div class="pen-guide-vslider-wrap">
-                <span style="font-size:11px; color:#999;">目印</span>
-                <input type="range" id="pen-guide-spread" class="pen-guide-vslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
-                <span id="pen-guide-spread-label" style="font-size:12px; color:#bbb;">${handwritingState.guideLineSpread}</span>
-              </div>
-              <div class="pen-canvas-wrap">
-                <canvas id="pen-canvas" class="pen-canvas" style="width:100%; max-width:1000px; height:400px; touch-action:none;"></canvas>
-              </div>
+            <div class="pen-canvas-wrap">
+              <canvas id="pen-canvas" class="pen-canvas" style="width:100%; max-width:1200px; max-height:min(85vh, 900px); height:${hPx}px; touch-action:none;"></canvas>
             </div>
-            ${useFillMode ? `<div class="pen-panel-controls">${submitBtnHtml}</div>` : ``}
+            ${useFillMode ? `<div class="pen-panel-controls" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;justify-content:center;">${submitBtnHtml}
+              <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
+                <input type="range" id="pen-guide-spread" class="pen-guide-hslider" min="0" max="100" value="${handwritingState.guideLineSpread}" oninput="setPenGuideSpread(this.value)" title="4本の目印の線の間隔">
+                <span id="pen-guide-spread-label" style="min-width:22px;">${handwritingState.guideLineSpread}</span>
+              </label>
+            </div>` : ``}
             <div id="pen-status" class="pen-status">手書きペンのみ入力可（パームリジェクション有効）</div>
           </div>
         `;
@@ -2509,6 +2578,7 @@
       else if (answerType === "typing") { 
         shiftMode = 0; isShiftHoldMode = false;
         answerArea.innerHTML = buildTypingInputAreaMarkup(false);
+        if (inputMethodMode === 'pen') setPenMode('pen');
         mountTypingMethodBody(false);
         placeQuizFeedbackAboveKeyboard(answerArea);
       }
@@ -2554,6 +2624,7 @@
       if (ansType === "fill_typing") {
         shiftMode = 0; isShiftHoldMode = false;
         answerArea.innerHTML = buildTypingInputAreaMarkup(true);
+        if (inputMethodMode === 'pen') setPenMode('pen');
         mountTypingMethodBody(true);
         placeQuizFeedbackAboveKeyboard(answerArea);
       } else if (ansType === "fill_4choice") {
