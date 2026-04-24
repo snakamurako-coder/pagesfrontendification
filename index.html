@@ -91,6 +91,14 @@
     }
     .pen-panel-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .pen-status { font-size: 13px; color: #aaa; margin-top: 6px; min-height: 1.2em; }
+    .pen-tool-row { display:flex; justify-content:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
+    .pen-toggle-switch { display:inline-flex; background:#222; border:1px solid #555; border-radius:999px; padding:2px; }
+    .pen-toggle-switch button { border:none; background:transparent; color:#ccc; padding:6px 12px; border-radius:999px; cursor:pointer; font-size:13px; }
+    .pen-toggle-switch button.active { background:#1a73e8; color:#fff; }
+    .type-answer-temp { color:#d93025; font-weight:bold; }
+    .pen-confirm-box { margin:10px auto 0; max-width:1000px; background:#1f1f1f; border:1px solid #444; border-radius:8px; padding:10px; text-align:left; }
+    .pen-candidates { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .pen-candidate-btn { border:1px solid #666; border-radius:16px; background:#2a2a2a; color:#fff; padding:6px 12px; cursor:pointer; }
 
     /* ★ 穴埋め用のCSS */
     .word-blank-container { font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; word-break: break-all; }
@@ -333,7 +341,8 @@
     let fillBlanksData = []; 
     let activeFillBlankIndex = 0;
     let voiceFailCount = 0;
-    let inputMethodMode = 'keyboard';
+    const LS_INPUT_MODE = 'input_method_mode';
+    let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
     let handwritingState = {
       isDrawing: false,
       currentStroke: [],
@@ -342,7 +351,9 @@
       pointerType: '',
       lastTapAt: 0,
       penWidth: parseInt(localStorage.getItem('pen_width') || '4', 10),
-      penMode: localStorage.getItem('pen_mode') || 'pen'
+      penMode: localStorage.getItem('pen_mode') || 'pen',
+      pendingCandidates: [],
+      pendingTempText: ""
     };
 
     const digitWords1to19 = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
@@ -790,6 +801,7 @@
 
     window.onload = () => { 
         const saved = localStorage.getItem('app_kid_user'); 
+        if (inputMethodMode !== 'pen' && inputMethodMode !== 'keyboard') inputMethodMode = 'keyboard';
         initKeyboardAndSoundSettings();
         if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); prefetchMaterials(); }
         else fetchUsers(); 
@@ -1733,6 +1745,92 @@
       return null;
     }
 
+    function appendTypeAnswerText(text) {
+      const target = getPenTargetInput();
+      if (!target) return;
+      target.value += text;
+      target.classList.remove('type-answer-temp');
+      handwritingState.pendingTempText = "";
+    }
+
+    function setTypeAnswerTemporary(text) {
+      const target = getPenTargetInput();
+      if (!target) return;
+      target.value += text;
+      target.classList.add('type-answer-temp');
+      handwritingState.pendingTempText = text;
+    }
+
+    function confirmTemporaryTypingInput() {
+      const target = getPenTargetInput();
+      if (!target || !handwritingState.pendingTempText) return;
+      target.classList.remove('type-answer-temp');
+      handwritingState.pendingTempText = "";
+      clearPenCanvas();
+      renderPenConfirmBox();
+    }
+
+    function removeTemporaryTypingInput() {
+      const target = getPenTargetInput();
+      if (!target || !handwritingState.pendingTempText) return;
+      if (target.value.endsWith(handwritingState.pendingTempText)) {
+        target.value = target.value.slice(0, -handwritingState.pendingTempText.length);
+      }
+      target.classList.remove('type-answer-temp');
+      handwritingState.pendingTempText = "";
+    }
+
+    function renderPenConfirmBox() {
+      const wrap = document.getElementById('pen-confirm-box');
+      if (!wrap) return;
+      const hasTemp = !!handwritingState.pendingTempText;
+      const cands = handwritingState.pendingCandidates || [];
+      if (!hasTemp && cands.length === 0) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.style.display = 'block';
+      if (hasTemp) {
+        wrap.innerHTML = `
+          <div style="font-size:14px;color:#ddd;">うまく変換されましたか？</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:8px 14px;font-size:14px;" onclick="confirmTemporaryTypingInput()">はい</button>
+            <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:8px 14px;font-size:14px;" onclick="showAlternativeCandidates()">いいえ</button>
+          </div>
+        `;
+        return;
+      }
+      const htmlCand = cands.map(c => `<button type="button" class="pen-candidate-btn" onclick="chooseAlternativeCandidate('${String(c).replace(/'/g, "\\'")}')">${escapeHtml(String(c))}</button>`).join('');
+      wrap.innerHTML = `
+        <div style="font-size:14px;color:#ddd;">次の候補にありますか？</div>
+        <div class="pen-candidates">${htmlCand || '<span style="color:#999;">候補なし</span>'}</div>
+        <div style="margin-top:8px;">
+          <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:8px 14px;font-size:14px;" onclick="retryPenInput()">入力をやり直す</button>
+        </div>
+      `;
+    }
+
+    function showAlternativeCandidates() {
+      removeTemporaryTypingInput();
+      renderPenConfirmBox();
+    }
+
+    function chooseAlternativeCandidate(text) {
+      appendTypeAnswerText(text);
+      handwritingState.pendingCandidates = [];
+      clearPenCanvas();
+      renderPenConfirmBox();
+    }
+
+    function retryPenInput() {
+      handwritingState.pendingCandidates = [];
+      removeTemporaryTypingInput();
+      clearPenCanvas();
+      renderPenConfirmBox();
+      setPenStatus('手書きをやり直してください。');
+    }
+
     function setPenMode(mode) {
       handwritingState.penMode = mode;
       localStorage.setItem('pen_mode', mode);
@@ -1768,6 +1866,7 @@
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      drawEnglishGuideLines();
       
       handwritingState.allStrokes.forEach(stroke => {
         if (stroke.length < 2) return;
@@ -1778,6 +1877,26 @@
         }
         ctx.stroke();
       });
+    }
+
+    function drawEnglishGuideLines() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      const ys = [h * 0.18, h * 0.38, h * 0.62, h * 0.82];
+      ctx.save();
+      ys.forEach((y, idx) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.lineWidth = idx === 2 ? 2.2 : 1;
+        ctx.strokeStyle = idx === 2 ? 'rgba(120,120,120,0.55)' : 'rgba(160,160,160,0.3)';
+        ctx.stroke();
+      });
+      ctx.restore();
     }
 
     function distSqToSegment(p1, p2, pt) {
@@ -1825,6 +1944,7 @@
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      drawEnglishGuideLines();
       handwritingState.currentStroke = [];
       handwritingState.allStrokes = [];
       handwritingState.isDrawing = false;
@@ -1863,10 +1983,11 @@
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#202124';
+      drawEnglishGuideLines();
 
       canvas.addEventListener('pointerdown', (e) => {
         if (e.pointerType !== 'pen') {
-          setPenStatus('スタイラスペンで入力してください（手・マウスは無効）');
+          setPenStatus('手書きペンで入力してください（手・マウスは無効）');
           return;
         }
         e.preventDefault();
@@ -1933,7 +2054,7 @@
       return `
         <div id="answer-input-mode-switch" class="answer-input-mode-switch">
           <button type="button" class="answer-mode-btn" data-mode="keyboard" onclick="switchInputMethod('keyboard')">⌨️ キーボード</button>
-          <button type="button" class="answer-mode-btn" data-mode="pen" onclick="switchInputMethod('pen')">✍️ スタイラス</button>
+          <button type="button" class="answer-mode-btn" data-mode="pen" onclick="switchInputMethod('pen')">✍️ 手書き</button>
         </div>
         <div id="input-method-body"></div>
       `;
@@ -1945,7 +2066,7 @@
       if (inputMethodMode === 'pen') {
         const submitBtnHtml = useFillMode
           ? `<button type="button" id="fill-submit-btn" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitFillAnswer()" disabled>これで回答</button>`
-          : `<button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitTypingFromPen()">けってい</button>`;
+          : `<button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitTypingFromPen()">答えを送信</button>`;
         const typingPreviewHtml = useFillMode
           ? ''
           : `<input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります">`;
@@ -1953,14 +2074,17 @@
         const activeEraser = handwritingState.penMode === 'eraser' ? 'active' : '';
         body.innerHTML = `
           <div class="pen-panel">
-            <div class="pen-settings" style="display:flex; justify-content:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; align-items:center;">
-              <button type="button" id="btn-pen-mode" class="answer-mode-btn ${activePen}" onclick="setPenMode('pen')">✏️ ペン</button>
-              <button type="button" id="btn-eraser-mode" class="answer-mode-btn ${activeEraser}" onclick="setPenMode('eraser')">🧽 ストローク消去</button>
+            <div class="pen-settings pen-tool-row">
+              <div class="pen-toggle-switch">
+                <button type="button" id="btn-pen-mode" class="${activePen}" onclick="setPenMode('pen')">手書き</button>
+                <button type="button" id="btn-eraser-mode" class="${activeEraser}" onclick="setPenMode('eraser')">線消しゴム</button>
+              </div>
               <label style="color:#ccc; font-size:14px; display:flex; align-items:center; gap:5px; background:#222; padding:4px 8px; border-radius:20px;">
                 太さ: <input type="range" id="pen-width-range" min="1" max="10" value="${handwritingState.penWidth}" onchange="setPenWidth(this.value)">
                 <span id="pen-width-label" style="display:inline-block; width:16px; text-align:center;">${handwritingState.penWidth}</span>px
               </label>
               <button type="button" class="cancel-btn" onclick="undoPenStroke()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">↩️ 1つ戻す</button>
+              <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">全部消す</button>
             </div>
             ${typingPreviewHtml}
             <div class="pen-canvas-wrap">
@@ -1968,13 +2092,15 @@
             </div>
             <div class="pen-panel-controls">
               <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="recognizePenStrokes()">文字起こし</button>
-              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="clearPenCanvas()">全クリア</button>
+              <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
               ${submitBtnHtml}
             </div>
-            <div id="pen-status" class="pen-status">スタイラスのみ入力可（パームリジェクション有効）</div>
+            <div id="pen-confirm-box" class="pen-confirm-box" style="display:none;"></div>
+            <div id="pen-status" class="pen-status">手書きペンのみ入力可（パームリジェクション有効）</div>
           </div>
         `;
         initializePenCanvas();
+        renderPenConfirmBox();
       } else {
         if (useFillMode) {
           body.innerHTML = `<div id="keyboard-container"></div>`;
@@ -1997,6 +2123,7 @@
 
     function switchInputMethod(mode) {
       inputMethodMode = mode === 'pen' ? 'pen' : 'keyboard';
+      localStorage.setItem(LS_INPUT_MODE, inputMethodMode);
       const ansTypeEl = document.getElementById('setting-answer-type');
       const ansType = ansTypeEl ? ansTypeEl.value : '';
       mountTypingMethodBody(ansType === "fill_typing");
@@ -2026,7 +2153,7 @@
       if (inputMethodMode !== 'pen') return;
       const apiInk = collectInkForApi();
       if (apiInk.length === 0) {
-        setPenStatus('先にスタイラスで文字を書いてください。');
+        setPenStatus('先に手書きで文字を書いてください。');
         return;
       }
       setPenStatus('Recognizing...');
@@ -2045,16 +2172,20 @@
           setPenStatus("認識結果なし。もう一度書いてください。");
           return;
         }
+        const candidates = Array.isArray(d.candidates) ? d.candidates.map(v => String(v || '').trim()).filter(v => v) : [text];
+        handwritingState.pendingCandidates = candidates.filter(v => v !== text);
         const target = getPenTargetInput();
         if (target) {
-          target.value = text;
+          removeTemporaryTypingInput();
+          setTypeAnswerTemporary(text);
+          renderPenConfirmBox();
         } else {
           const chars = text.replace(/\s/g, '').split('');
           chars.forEach(ch => {
             if (/^[a-zA-Z]$/.test(ch)) handleFillInput(ch);
           });
         }
-        setPenStatus(`認識結果: ${text}`);
+        setPenStatus(`仮入力: ${text}`);
       })
       .catch(() => {
         setPenStatus("通信エラー");
@@ -2251,7 +2382,8 @@
 
       restoreQuizFeedbackLocation();
       const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
-      inputMethodMode = 'keyboard';
+      handwritingState.pendingCandidates = [];
+      handwritingState.pendingTempText = "";
       clearPenCanvas();
       
       if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {

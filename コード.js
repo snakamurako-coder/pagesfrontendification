@@ -299,7 +299,10 @@ function recognizeSentence(allStrokes) {
         }
         const result = JSON.parse(body);
         if (result[0] === "SUCCESS" && result[1] && result[1][0] && result[1][0][1] && result[1][0][1][0]) {
-          return sendResponse({ status: "success", text: result[1][0][1][0] });
+          const candidates = result[1][0][1]
+            .filter(v => typeof v === "string" && v.trim() !== "")
+            .slice(0, 10);
+          return sendResponse({ status: "success", text: result[1][0][1][0], candidates: candidates });
         }
         lastError = "認識候補なし (" + lang + " @ " + url + ")";
       } catch (e) {
