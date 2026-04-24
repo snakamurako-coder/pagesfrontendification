@@ -80,7 +80,19 @@
     .pen-panel { width: 100%; max-width: 1200px; margin: 0 auto; }
     .pen-canvas-wrap { overflow-x: auto; width: 100%; max-width: 1200px; margin: 0 auto 10px; }
     .pen-guide-hslider { width: min(200px, 32vw); min-width: 80px; cursor: pointer; vertical-align: middle; }
-    .pen-canvas-size-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 auto 8px; max-width: 1000px; color: #ccc; font-size: 13px; }
+    .pen-canvas-width-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 auto 8px; width: 100%; color: #ccc; font-size: 13px; }
+    /* 手書きモード時はクイズ画面内のテキスト選択・タップのコールアウトでペン入力が途切れないよう抑制 */
+    #section-quiz.pen-mode-active, #section-quiz.pen-mode-active * {
+      -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; -webkit-touch-callout: none;
+    }
+    #section-quiz.pen-mode-active * { -webkit-tap-highlight-color: transparent; }
+    #section-quiz.pen-mode-active .pen-canvas { -webkit-user-drag: none; }
+    #section-quiz.pen-mode-active button,
+    #section-quiz.pen-mode-active .answer-mode-btn,
+    #section-quiz.pen-mode-active .cancel-btn,
+    #section-quiz.pen-mode-active .submit-btn,
+    #section-quiz.pen-mode-active label { touch-action: manipulation; }
+    #section-quiz.pen-mode-active input[readonly] { -webkit-user-select: none; user-select: none; caret-color: transparent; }
     .pen-canvas {
       background: #fff;
       border: 1px solid #555;
@@ -345,7 +357,7 @@
     const LS_INPUT_MODE = 'input_method_mode';
     const LS_PEN_GUIDE_SPREAD = 'pen_guide_line_spread';
     const LS_PEN_GUIDE_SHOW = 'pen_guide_lines_show';
-    const LS_PEN_CANVAS_HEIGHT = 'pen_canvas_height_px';
+    const LS_PEN_CANVAS_MAX_WIDTH = 'pen_canvas_max_width_px';
     let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
     let handwritingState = {
       isDrawing: false,
@@ -362,9 +374,12 @@
         return isNaN(v) ? 50 : Math.max(0, Math.min(100, v));
       })(),
       showGuideLines: localStorage.getItem(LS_PEN_GUIDE_SHOW) !== '0',
-      canvasHeightPx: (() => {
-        const v = parseInt(localStorage.getItem(LS_PEN_CANVAS_HEIGHT) || '520', 10);
-        return isNaN(v) ? 520 : Math.max(280, Math.min(900, v));
+      canvasMaxWidthPx: (() => {
+        const w = parseInt(localStorage.getItem(LS_PEN_CANVAS_MAX_WIDTH) || '1000', 10);
+        if (!isNaN(w)) return Math.max(400, Math.min(1200, w));
+        const legacyH = parseInt(localStorage.getItem('pen_canvas_height_px') || '', 10);
+        if (!isNaN(legacyH)) return Math.max(400, Math.min(1200, Math.round(legacyH * 1.2)));
+        return 1000;
       })(),
       pendingCandidates: [],
       pendingTempText: ""
@@ -1963,17 +1978,18 @@
       redrawAllStrokes();
     }
 
-    function setPenCanvasHeight(val) {
-      const px = Math.max(280, Math.min(900, parseInt(val, 10) || 520));
-      handwritingState.canvasHeightPx = px;
-      localStorage.setItem(LS_PEN_CANVAS_HEIGHT, String(px));
-      const hLabel = document.getElementById('pen-canvas-height-label');
-      if (hLabel) hLabel.textContent = px;
+    function setPenCanvasMaxWidth(val) {
+      const px = Math.max(400, Math.min(1200, parseInt(val, 10) || 1000));
+      handwritingState.canvasMaxWidthPx = px;
+      localStorage.setItem(LS_PEN_CANVAS_MAX_WIDTH, String(px));
+      const wLabel = document.getElementById('pen-canvas-width-label');
+      if (wLabel) wLabel.textContent = px;
+      const wrap = document.getElementById('pen-canvas-wrap');
+      if (wrap) wrap.style.maxWidth = px + 'px';
       const canvas = document.getElementById('pen-canvas');
       if (!canvas) return;
       const oldW = parseFloat(canvas.dataset.logW) || 0;
       const oldH = parseFloat(canvas.dataset.logH) || 0;
-      canvas.style.height = px + 'px';
       if (canvas.dataset.ready === '1' && oldW > 0 && oldH > 0) {
         const rect = canvas.getBoundingClientRect();
         scalePenStrokes(oldW, oldH, rect.width, rect.height);
@@ -2241,7 +2257,7 @@
           `;
         const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
         const activeEraser = handwritingState.penMode === 'eraser' ? 'active' : '';
-        const hPx = handwritingState.canvasHeightPx;
+        const wMax = handwritingState.canvasMaxWidthPx;
         body.innerHTML = `
           <div class="pen-panel">
             <div class="pen-settings pen-tool-row">
@@ -2260,16 +2276,16 @@
               <button type="button" class="cancel-btn" onclick="clearPenCanvas()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">手書きを全部消す</button>
               <button type="button" class="cancel-btn" onclick="clearTypingInput()" style="padding:4px 10px; font-size:14px; background:#444; color:#fff; border-radius:20px; border:1px solid #555;">テキスト入力を全部消す</button>
             </div>
-            <div class="pen-canvas-size-row">
-              <label style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">手書きの高さ
-                <input type="range" id="pen-canvas-height-range" min="280" max="900" value="${hPx}" oninput="setPenCanvasHeight(this.value)" style="width:min(240px,50vw);">
-                <span id="pen-canvas-height-label">${hPx}</span> px
+            <div class="pen-canvas-width-row">
+              <label style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">手書きの幅
+                <input type="range" id="pen-canvas-width-range" min="400" max="1200" step="20" value="${wMax}" oninput="setPenCanvasMaxWidth(this.value)" style="width:min(240px,50vw);">
+                <span id="pen-canvas-width-label">${wMax}</span> px
               </label>
             </div>
             ${typingPreviewHtml}
             <div id="pen-confirm-box" class="pen-confirm-box" style="display:none;"></div>
-            <div class="pen-canvas-wrap">
-              <canvas id="pen-canvas" class="pen-canvas" style="width:100%; max-width:1200px; max-height:min(85vh, 900px); height:${hPx}px; touch-action:none;"></canvas>
+            <div class="pen-canvas-wrap" id="pen-canvas-wrap" style="max-width:${wMax}px;margin:0 auto;">
+              <canvas id="pen-canvas" class="pen-canvas" oncontextmenu="event.preventDefault();return false" style="width:100%;height:min(50vh, 520px);max-height:85vh;touch-action:none;"></canvas>
             </div>
             ${useFillMode ? `<div class="pen-panel-controls" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;justify-content:center;">${submitBtnHtml}
               <label style="color:#ccc;font-size:13px;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">目印の間隔
@@ -2292,6 +2308,15 @@
         }
       }
       renderInputModeUi(inputMethodMode);
+      syncQuizAnswerAreaPenModeClass();
+    }
+
+    function syncQuizAnswerAreaPenModeClass() {
+      const a = document.getElementById('quiz-answer-area');
+      const sec = document.getElementById('section-quiz');
+      const isPen = inputMethodMode === 'pen';
+      if (a) a.classList.toggle('pen-mode-active', isPen);
+      if (sec) sec.classList.toggle('pen-mode-active', isPen);
     }
 
     function submitTypingFromPen() {
@@ -2562,7 +2587,11 @@
       }
 
       restoreQuizFeedbackLocation();
-      const answerArea = document.getElementById('quiz-answer-area'); answerArea.innerHTML = ""; questionStartTime = Date.now();
+      const answerArea = document.getElementById('quiz-answer-area');
+      answerArea.classList.remove('pen-mode-active');
+      const quizSec = document.getElementById('section-quiz');
+      if (quizSec) quizSec.classList.remove('pen-mode-active');
+      answerArea.innerHTML = ""; questionStartTime = Date.now();
       resetHandwritingInputState();
       
       if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {
@@ -2834,9 +2863,11 @@
     }
 
     function nextQuestion() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); resetHandwritingInputState(); currentQuestionIndex++; showQuestion(); }
-    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); resetHandwritingInputState(); openSettingsScreen(); }
+    function quitQuiz() { clearTimeout(autoNextTimer); window.speechSynthesis.cancel(); resetHandwritingInputState(); document.getElementById('section-quiz')?.classList.remove('pen-mode-active'); document.getElementById('quiz-answer-area')?.classList.remove('pen-mode-active'); openSettingsScreen(); }
     
     function finishQuiz() {
+      document.getElementById('section-quiz')?.classList.remove('pen-mode-active');
+      document.getElementById('quiz-answer-area')?.classList.remove('pen-mode-active');
       switchSection('section-result'); 
       document.getElementById('result-content').innerHTML = "<p>おくっています...</p>"; 
       document.getElementById('result-retry-btn').style.display = "none"; document.getElementById('result-settings-btn').style.display = "none"; document.getElementById('result-home-btn').style.display = "none";
