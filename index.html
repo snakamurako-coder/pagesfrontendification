@@ -897,6 +897,7 @@
       localStorage.setItem(LS_IPAD_STYLUS_OPT, checked ? '1' : '0');
       const panelCheckbox = document.getElementById('pen-ipad-stylus-opt');
       if (panelCheckbox && panelCheckbox !== el) panelCheckbox.checked = checked;
+      refreshPenStatusHint();
     }
 
     function isIpadStylusOptimizationEnabled() {
@@ -2327,6 +2328,32 @@
       if (status) status.innerText = msg || "";
     }
 
+    function refreshPenStatusHint() {
+      const status = document.getElementById('pen-status');
+      if (!status) return;
+      if (status.innerText && status.innerText !== '手書き入力の準備OK') return;
+      status.innerText = isIpadStylusOptimizationEnabled()
+        ? "iPad書きやすさ優先モード（誤タッチ防止を弱めています）"
+        : "手書きペンのみ入力可（パームリジェクション有効）";
+    }
+
+    function shouldAcceptPenPointer(e) {
+      if (!e) return false;
+      if (e.pointerType === 'pen') return true;
+      if (!isIpadStylusOptimizationEnabled()) return false;
+      if (e.pointerType !== 'touch') return false;
+      if (e.isPrimary === false) return false;
+      const w = Number(e.width) || 0;
+      const h = Number(e.height) || 0;
+      const area = w * h;
+      const pressure = Number(e.pressure) || 0;
+      // iPad書き味優先: 細い接触面・圧力あり・サイズ不明は許容
+      if (area === 0) return true;
+      if (area <= 260) return true;
+      if (pressure >= 0.15) return true;
+      return false;
+    }
+
     function getPenCoords(e, canvas) {
       const rect = handwritingState.activePenRect || canvas.getBoundingClientRect();
       return {
@@ -2355,8 +2382,8 @@
       drawEnglishGuideLines();
 
       canvas.addEventListener('pointerdown', (e) => {
-        if (e.pointerType !== 'pen') {
-          setPenStatus('手書きペンで入力してください（手・マウスは無効）');
+        if (!shouldAcceptPenPointer(e)) {
+          setPenStatus(isIpadStylusOptimizationEnabled() ? 'iPad書きやすさ優先モード: 大きい接触の誤タッチは無効です' : '手書きペンで入力してください（手・マウスは無効）');
           return;
         }
         e.preventDefault();
@@ -2385,7 +2412,7 @@
 
       canvas.addEventListener('pointermove', (e) => {
         if (!handwritingState.isDrawing || handwritingState.pointerId !== e.pointerId) return;
-        if (e.pointerType !== 'pen') return;
+        if (!shouldAcceptPenPointer(e)) return;
         e.preventDefault();
         const pt = getPenCoords(e, canvas);
 
@@ -2426,6 +2453,8 @@
       const r0 = canvas.getBoundingClientRect();
       canvas.dataset.logW = String(r0.width);
       canvas.dataset.logH = String(r0.height);
+      setPenStatus('手書き入力の準備OK');
+      refreshPenStatusHint();
     }
 
     function renderInputModeUi(targetMode) {
