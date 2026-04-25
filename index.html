@@ -358,6 +358,7 @@
     const LS_PEN_GUIDE_SHOW = 'pen_guide_lines_show';
     const LS_PEN_CANVAS_MAX_WIDTH = 'pen_canvas_max_width_px';
     let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
+    let isPenRecognitionInFlight = false;
     let handwritingState = {
       isDrawing: false,
       currentStroke: [],
@@ -2377,7 +2378,8 @@
       inputMethodMode = mode === 'pen' ? 'pen' : 'keyboard';
       localStorage.setItem(LS_INPUT_MODE, inputMethodMode);
       const ansTypeEl = document.getElementById('setting-answer-type');
-      const ansType = ansTypeEl ? ansTypeEl.value : '';
+      const ansType = ansTypeEl ? String(ansTypeEl.value || '').trim() : '';
+      if (ansType !== "typing" && ansType !== "fill_typing") return;
       mountTypingMethodBody(ansType === "fill_typing");
       const answerArea = document.getElementById('quiz-answer-area');
       if (answerArea) placeQuizFeedbackAboveKeyboard(answerArea);
@@ -2385,13 +2387,22 @@
 
     function collectInkForApi() {
       const apiInk = [];
+      const MAX_POINTS_PER_STROKE = 180;
       handwritingState.allStrokes.forEach(stroke => {
         if (!stroke || stroke.length < 2) return;
+        let sampled = stroke;
+        if (stroke.length > MAX_POINTS_PER_STROKE) {
+          const step = Math.ceil(stroke.length / MAX_POINTS_PER_STROKE);
+          sampled = stroke.filter((_, idx) => idx % step === 0);
+          if (sampled[sampled.length - 1] !== stroke[stroke.length - 1]) {
+            sampled.push(stroke[stroke.length - 1]);
+          }
+        }
         const xArr = [];
         const yArr = [];
         const tArr = [];
-        const startTime = stroke[0].t;
-        stroke.forEach(p => {
+        const startTime = sampled[0].t;
+        sampled.forEach(p => {
           xArr.push(p.x);
           yArr.push(p.y);
           tArr.push(p.t - startTime);
@@ -2403,11 +2414,19 @@
 
     function recognizePenStrokes() {
       if (inputMethodMode !== 'pen') return;
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      const ansType = ansTypeEl ? String(ansTypeEl.value || '').trim() : '';
+      if (ansType !== "typing" && ansType !== "fill_typing") return;
+      if (isPenRecognitionInFlight) {
+        setPenStatus('文字起こし中です。少し待ってください。');
+        return;
+      }
       const apiInk = collectInkForApi();
       if (apiInk.length === 0) {
         setPenStatus('先に手書きで文字を書いてください。');
         return;
       }
+      isPenRecognitionInFlight = true;
       setPenStatus('Recognizing...');
       fetch(GAS_API_URL, {
         method: 'POST',
@@ -2441,6 +2460,9 @@
       })
       .catch(() => {
         setPenStatus("通信エラー");
+      })
+      .finally(() => {
+        isPenRecognitionInFlight = false;
       });
     }
 
@@ -2593,7 +2615,7 @@
       
       const q = filteredQuestions[currentQuestionIndex]; 
       const format = document.getElementById('setting-format').value; 
-      const answerType = document.getElementById('setting-answer-type').value;
+      const answerType = String(document.getElementById('setting-answer-type').value || '').trim();
       const isWord = currentModeName.includes("単語");
 
       const kbdPanel = document.getElementById('quiz-keyboard-settings-panel');
