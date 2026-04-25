@@ -113,6 +113,18 @@
     .pen-confirm-box { margin:10px auto 0; max-width:1200px; background:#1f1f1f; border:1px solid #444; border-radius:8px; padding:10px; text-align:left; }
     .pen-candidates { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .pen-candidate-btn { border:1px solid #666; border-radius:16px; background:#2a2a2a; color:#fff; padding:6px 12px; cursor:pointer; }
+    .pen-recognize-btn { position: relative; min-width: 110px; }
+    .pen-recognize-btn.is-busy {
+      background: #1565C0 !important;
+      opacity: 0.95;
+      animation: pen-recognize-pulse 1s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes pen-recognize-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
 
     /* ★ 穴埋め用のCSS */
     .word-blank-container { font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; word-break: break-all; }
@@ -2488,7 +2500,7 @@
           ? ''
           : `
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-              <button type="button" class="submit-btn btn-blue" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
+              <button type="button" id="pen-recognize-btn" class="submit-btn btn-blue pen-recognize-btn" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
               <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
               <input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります" style="margin:0;flex:1;min-width:260px;">
               <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
@@ -2563,6 +2575,7 @@
     }
 
     function submitTypingFromPen() {
+      if (handwritingState.pendingTempText) confirmTemporaryTypingInput();
       const userA = (document.getElementById('type-answer') || {}).value || "";
       const q = filteredQuestions[currentQuestionIndex];
       const format = document.getElementById('setting-format').value;
@@ -2608,6 +2621,15 @@
       return apiInk;
     }
 
+    function setPenRecognizeButtonState(isBusy) {
+      const btn = document.getElementById('pen-recognize-btn');
+      if (!btn) return;
+      btn.classList.toggle('is-busy', !!isBusy);
+      btn.disabled = !!isBusy;
+      btn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      btn.innerText = isBusy ? '⏳ 文字起こし中...' : '文字起こし';
+    }
+
     function recognizePenStrokes() {
       if (inputMethodMode !== 'pen') return;
       const ansTypeEl = document.getElementById('setting-answer-type');
@@ -2623,6 +2645,7 @@
         return;
       }
       isPenRecognitionInFlight = true;
+      setPenRecognizeButtonState(true);
       setPenStatus('Recognizing...');
       fetch(GAS_API_URL, {
         method: 'POST',
@@ -2659,6 +2682,7 @@
       })
       .finally(() => {
         isPenRecognitionInFlight = false;
+        setPenRecognizeButtonState(false);
       });
     }
 
