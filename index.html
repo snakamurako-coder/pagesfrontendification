@@ -172,6 +172,14 @@
   <div id="section-home" class="section">
     <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto;"><h2 id="welcome-message" style="margin: 0;"></h2><button onclick="preparePinReset()" style="background:none; border:none; color:#2196F3; text-decoration:underline; cursor:pointer;">PINのへんこう</button></div>
     <div style="background: #222; padding: 20px; border-radius: 15px; max-width: 350px; margin: 20px auto;"><p style="margin:0; font-size:18px;">げんざいのポイント</p><div style="color: gold; font-size: 40px; font-weight: bold;"><span id="user-points">0</span> <span style="font-size:20px;">Pt</span></div></div>
+    <div id="home-quiz-resume-panel" style="display:none; max-width:400px; margin:12px auto 0; background:#1E2A38; border:1px solid #2F4660; border-radius:12px; padding:12px;">
+      <div style="font-weight:bold; color:#9ED0FF; margin-bottom:6px;">🛟 途中の学習があります</div>
+      <div id="home-quiz-resume-text" style="font-size:13px; color:#cfd8dc; line-height:1.5;"></div>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button type="button" class="submit-btn btn-blue" style="flex:1; min-width:130px; margin:0;" onclick="resumeQuizFromDraft()">▶ 学習を復帰する</button>
+        <button type="button" class="cancel-btn" style="flex:1; min-width:130px; margin:0;" onclick="discardQuizRecoveryDraft()">✖ 復帰データを消す</button>
+      </div>
+    </div>
     
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
       <button class="menu-btn btn-red" onclick="loadMaterials(this)">自由に学習する</button>
@@ -292,6 +300,9 @@
       <h3 id="quiz-progress" style="color: #aaa; margin:0; font-size:16px;">第 1 問</h3>
       <button class="cancel-btn" id="quiz-skip-btn" onclick="skipQuestion()" style="background:#444; color:#fff; border-radius:8px; padding:8px 12px; font-size:14px; margin:0;">⏭️ あきらめる</button>
     </div>
+    <div style="max-width:420px; margin:0 auto 10px; text-align:right;">
+      <button type="button" class="cancel-btn" style="margin:0; font-size:12px; padding:6px 10px;" onclick="resumeQuizFromDraft()">🛟 復帰ボタン</button>
+    </div>
     <div id="quiz-score-bar" style="margin:0 0 12px; padding:10px 12px; background:#1e1e1e; border:1px solid #444; border-radius:10px; font-size:15px; color:#ccc; text-align:center; line-height:1.5;"></div>
     <div id="quiz-q-text">もんだい文</div>
     
@@ -354,11 +365,13 @@
     let activeFillBlankIndex = 0;
     let voiceFailCount = 0;
     const LS_INPUT_MODE = 'input_method_mode';
+    const LS_QUIZ_RECOVERY_DRAFT = 'quiz_recovery_draft_v1';
     const LS_PEN_GUIDE_SPREAD = 'pen_guide_line_spread';
     const LS_PEN_GUIDE_SHOW = 'pen_guide_lines_show';
     const LS_PEN_CANVAS_MAX_WIDTH = 'pen_canvas_max_width_px';
     let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
     let isPenRecognitionInFlight = false;
+    let resumePromptShownToken = "";
     let handwritingState = {
       isDrawing: false,
       currentStroke: [],
@@ -1088,6 +1101,152 @@
 
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
 
+    function getQuizRecoveryDraft() {
+      try {
+        const raw = localStorage.getItem(LS_QUIZ_RECOVERY_DRAFT);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function isRecoveryDraftValidForUser(draft, userId) {
+      if (!draft || !userId) return false;
+      if (String(draft.userId) !== String(userId)) return false;
+      if (!Array.isArray(draft.filteredQuestions) || draft.filteredQuestions.length === 0) return false;
+      if (!Array.isArray(draft.currentQuestions) || draft.currentQuestions.length === 0) return false;
+      if (!Array.isArray(draft.quizResults)) return false;
+      if (typeof draft.currentQuestionIndex !== 'number') return false;
+      if (draft.currentQuestionIndex < 0 || draft.currentQuestionIndex > draft.filteredQuestions.length) return false;
+      return true;
+    }
+
+    function saveQuizRecoveryDraft(nextQuestionIndex) {
+      try {
+        const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
+        if (!user || !user.id) return;
+        if (!Array.isArray(filteredQuestions) || filteredQuestions.length === 0) return;
+        const idx = typeof nextQuestionIndex === 'number' ? nextQuestionIndex : currentQuestionIndex;
+        const draft = {
+          version: 1,
+          savedAt: Date.now(),
+          userId: user.id,
+          currentModeId,
+          currentModeName,
+          currentUnitName,
+          currentQuestionIndex: idx,
+          quizResults: Array.isArray(quizResults) ? quizResults : [],
+          currentQuestions: Array.isArray(currentQuestions) ? currentQuestions : [],
+          filteredQuestions: Array.isArray(filteredQuestions) ? filteredQuestions : [],
+          currentIsReviewMode: !!currentIsReviewMode,
+          isTrainingMode: !!isTrainingMode,
+          currentTrainingStepIndex,
+          currentTrainingMenuId,
+          inputMethodMode,
+          settings: {
+            format: String((document.getElementById('setting-format') || {}).value || ''),
+            answerType: String((document.getElementById('setting-answer-type') || {}).value || ''),
+            order: String((document.getElementById('setting-order') || {}).value || 'normal'),
+            playMode: String((document.getElementById('setting-play-mode') || {}).value || 'normal'),
+            blankCount: String((document.getElementById('setting-blank-count') || {}).value || '')
+          }
+        };
+        localStorage.setItem(LS_QUIZ_RECOVERY_DRAFT, JSON.stringify(draft));
+        renderHomeResumePanel();
+      } catch (_) {}
+    }
+
+    function clearQuizRecoveryDraft() {
+      localStorage.removeItem(LS_QUIZ_RECOVERY_DRAFT);
+      renderHomeResumePanel();
+    }
+
+    function discardQuizRecoveryDraft() {
+      if (!confirm("保存された途中の学習データを消します。よろしいですか？")) return;
+      clearQuizRecoveryDraft();
+      alert("復帰データを消しました。");
+    }
+
+    function renderHomeResumePanel() {
+      const panel = document.getElementById('home-quiz-resume-panel');
+      const textEl = document.getElementById('home-quiz-resume-text');
+      if (!panel || !textEl) return;
+      const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
+      const draft = getQuizRecoveryDraft();
+      if (!user || !isRecoveryDraftValidForUser(draft, user.id)) {
+        panel.style.display = 'none';
+        textEl.innerText = "";
+        return;
+      }
+      const total = draft.filteredQuestions.length;
+      const done = Math.max(0, Math.min(total, draft.currentQuestionIndex));
+      const savedAt = new Date(draft.savedAt || Date.now());
+      const stamp = isNaN(savedAt.getTime()) ? "さきほど" : savedAt.toLocaleString('ja-JP');
+      textEl.innerText = `${formatUnitSheetDisplayLabel(draft.currentUnitName || "")} / ${done}問目まで保存（全${total}問）。最終保存: ${stamp}`;
+      panel.style.display = 'block';
+    }
+
+    function resumeQuizFromDraft(opts = {}) {
+      const askConfirm = opts && opts.askConfirm === false ? false : true;
+      const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
+      const draft = getQuizRecoveryDraft();
+      if (!user || !isRecoveryDraftValidForUser(draft, user.id)) {
+        alert("復帰できる学習データがありません。");
+        renderHomeResumePanel();
+        return false;
+      }
+      if (askConfirm && !confirm("途中の学習がありました。再開しますか？")) return false;
+
+      currentModeId = draft.currentModeId || currentModeId;
+      currentModeName = draft.currentModeName || currentModeName;
+      currentUnitName = draft.currentUnitName || currentUnitName;
+      currentQuestions = Array.isArray(draft.currentQuestions) ? draft.currentQuestions : [];
+      filteredQuestions = Array.isArray(draft.filteredQuestions) ? draft.filteredQuestions : [];
+      quizResults = Array.isArray(draft.quizResults) ? draft.quizResults : [];
+      currentQuestionIndex = Math.max(0, Math.min(filteredQuestions.length, Number(draft.currentQuestionIndex) || 0));
+      currentIsReviewMode = !!draft.currentIsReviewMode;
+      isTrainingMode = !!draft.isTrainingMode;
+      currentTrainingStepIndex = draft.currentTrainingStepIndex == null ? null : draft.currentTrainingStepIndex;
+      currentTrainingMenuId = draft.currentTrainingMenuId || currentTrainingMenuId;
+      if (draft.inputMethodMode === 'pen' || draft.inputMethodMode === 'keyboard') {
+        inputMethodMode = draft.inputMethodMode;
+      }
+
+      const safeFormat = String((draft.settings && draft.settings.format) || 'ja_to_en');
+      const safeAnsType = String((draft.settings && draft.settings.answerType) || 'typing');
+      const safeOrder = String((draft.settings && draft.settings.order) || 'normal');
+      const safePlayMode = String((draft.settings && draft.settings.playMode) || 'normal');
+      const safeBlank = String((draft.settings && draft.settings.blankCount) || '1');
+
+      const formatEl = document.getElementById('setting-format');
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      const orderEl = document.getElementById('setting-order');
+      const playEl = document.getElementById('setting-play-mode');
+      const blankEl = document.getElementById('setting-blank-count');
+      if (formatEl) formatEl.innerHTML = `<option value="${escapeHtml(safeFormat)}">${escapeHtml(safeFormat)}</option>`;
+      if (ansTypeEl) ansTypeEl.innerHTML = `<option value="${escapeHtml(safeAnsType)}">${escapeHtml(safeAnsType)}</option>`;
+      if (orderEl) orderEl.value = safeOrder;
+      if (playEl) playEl.value = safePlayMode;
+      if (blankEl) blankEl.value = safeBlank;
+
+      switchSection('section-quiz');
+      showQuestion();
+      return true;
+    }
+
+    function promptQuizResumeIfNeeded(user) {
+      if (!user || !user.id) return;
+      const draft = getQuizRecoveryDraft();
+      if (!isRecoveryDraftValidForUser(draft, user.id)) return;
+      const token = `${user.id}_${draft.savedAt || 0}_${draft.currentQuestionIndex || 0}`;
+      if (resumePromptShownToken === token) return;
+      resumePromptShownToken = token;
+      if (confirm("途中の学習がありました。再開しますか？")) {
+        resumeQuizFromDraft({ askConfirm: false });
+      }
+    }
+
     function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
@@ -1106,6 +1265,8 @@
       switchSection('section-home'); 
       document.getElementById('header-user-info').innerText = `ID: ${user.id} / ${user.name}`; document.getElementById('global-header').style.display = 'block';
       document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; 
+      renderHomeResumePanel();
+      promptQuizResumeIfNeeded(user);
     }
 
     function toggleBtnLoading(btn, isLoading, originalText = "") { if(!btn) return ""; if(isLoading) { const text = btn.innerHTML; btn.innerHTML = "⏳ よみこみ中..."; btn.classList.add("btn-loading"); return text; } else { btn.innerHTML = originalText; btn.classList.remove("btn-loading"); } }
@@ -2201,7 +2362,7 @@
         e.preventDefault();
         const useIpadOpt = isIpadStylusOptimizationEnabled();
         handwritingState.activePenRect = useIpadOpt ? canvas.getBoundingClientRect() : null;
-        if (useIpadOpt && canvas.setPointerCapture) {
+        if (canvas.setPointerCapture) {
           try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
         }
         const pt = getPenCoords(e, canvas);
@@ -2254,7 +2415,13 @@
       };
       canvas.addEventListener('pointerup', stopPenStroke);
       canvas.addEventListener('pointercancel', stopPenStroke);
-      canvas.addEventListener('pointerleave', stopPenStroke);
+      canvas.addEventListener('pointerleave', (e) => {
+        if (!handwritingState.isDrawing || handwritingState.pointerId !== e.pointerId) return;
+        // iPad では高速筆記時に pointerleave が先に飛ぶことがあるため、
+        // ペンがまだ接地中（buttons !== 0）は描画を継続する。
+        if (e.buttons !== 0) return;
+        stopPenStroke(e);
+      });
       canvas.dataset.ready = "1";
       const r0 = canvas.getBoundingClientRect();
       canvas.dataset.logW = String(r0.width);
@@ -2569,7 +2736,7 @@
         if (filteredQuestions.length === 0) { alert("ニガテな問題はありません！通常モードでスタートします。"); currentIsReviewMode = false; document.getElementById('setting-play-mode').value = 'normal'; filteredQuestions = [...currentQuestions]; }
       }
       if (order === 'random') filteredQuestions.sort(() => Math.random() - 0.5);
-      currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); showQuestion();
+      currentQuestionIndex = 0; quizResults = []; switchSection('section-quiz'); saveQuizRecoveryDraft(0); showQuestion();
     }
 
     /** 正誤表示を「つぎへ」ボタンの直前の定位置へ戻す（answerArea を空にする前に必須） */
@@ -2677,6 +2844,7 @@
       if (quizSec) quizSec.classList.remove('pen-mode-active');
       answerArea.innerHTML = ""; questionStartTime = Date.now();
       resetHandwritingInputState();
+      saveQuizRecoveryDraft(currentQuestionIndex);
       
       if (format === "ja_to_en_sort" && (answerType === "sort_all" || answerType === "sort_dummy" || answerType === "sort_missing")) {
         setupSortQuiz(q, answerType);
@@ -2887,6 +3055,7 @@
         const basePoint = computeQuizBasePoint(format, ansType, isWord);
 
         quizResults.push({ questionId: q["通し番号"], isCorrect: isCorrect, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
+        saveQuizRecoveryDraft(currentQuestionIndex + 1);
         const feedback = document.getElementById('quiz-feedback');
 
         document.getElementById('quiz-word-blank-area').style.display = "none";
@@ -2929,8 +3098,10 @@
           const isWord = currentModeName.includes("単語");
           const basePoint = computeQuizBasePoint(format, ansType, isWord);
           quizResults.push({ questionId: q["通し番号"], isCorrect: false, timeSec: Math.round((Date.now() - questionStartTime) / 1000), basePoint: basePoint, maxDeduction: maxDeduction });
+          saveQuizRecoveryDraft(currentQuestionIndex + 1);
         } catch (_) {
           quizResults.push({ questionId: q["通し番号"] || 0, isCorrect: false, timeSec: 0, basePoint: 0, maxDeduction: 0 });
+          saveQuizRecoveryDraft(currentQuestionIndex + 1);
         }
         updateSessionScoreDisplay();
         advanceScheduled = true;
@@ -2983,6 +3154,7 @@
             user.trainingProgressJson = d.trainingProgressJson;
           }
           localStorage.setItem('app_kid_user', JSON.stringify(user));
+          clearQuizRecoveryDraft();
           
           if (!isTrainingMode) {
               document.getElementById('result-retry-btn').style.display = "block"; 
@@ -2990,6 +3162,9 @@
           }
           document.getElementById('result-home-btn').style.display = "block";
         }
+      }).catch(() => {
+        document.getElementById('result-content').innerHTML = `<h2 style="color:#F44336;">通信エラー</h2><p>結果の送信に失敗しました。<br>「ホームにもどる」で復帰データを使って再開できます。</p>`;
+        document.getElementById('result-home-btn').style.display = "block";
       });
     }
 
