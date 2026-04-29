@@ -1086,6 +1086,10 @@
       if (isNaN(pct) || pct < 0 || pct > 100) return s;
       return m[1] + "（補正" + pct + "％）";
     }
+    function normalizeUnitNameForCompare(name) {
+      const s = String(name || "").trim().replace(/\s+/g, "");
+      return s.replace(/_(\d+)$/, "");
+    }
 
     function buildFeedbackContentHtml(userA, resolvedCorrect, isCorrect, isSkip, maxDeduction, fillMode, answerType, pointsPlusHtml) {
       const correctDisp = String(resolvedCorrect != null ? resolvedCorrect : "");
@@ -1490,7 +1494,6 @@
         document.getElementById('route-container').innerHTML = "<p>問題データを準備中...</p>";
         isTrainingMode = true;
         currentTrainingStepIndex = route.stepIndex;
-        currentUnitName = route.unitName;
 
         let mappedFormat = "en_to_ja";
         let mappedAnsType = "4choice";
@@ -1511,11 +1514,24 @@
         prefetchMaterials().then(() => {
             let foundModeId = null;
             let foundModeName = "";
+            let resolvedUnitName = "";
+            const routeUnitRaw = String(route.unitName || "");
+            const routeUnitNorm = normalizeUnitNameForCompare(routeUnitRaw);
             for (let m of materialsData) {
-                if (m.units.includes(route.unitName)) {
-                    foundModeId = m.modeId;
-                    foundModeName = m.modeName;
-                    break;
+                const units = Array.isArray(m.units) ? m.units : [];
+                const exact = units.find(u => String(u) === routeUnitRaw);
+                if (exact) {
+                  foundModeId = m.modeId;
+                  foundModeName = m.modeName;
+                  resolvedUnitName = String(exact);
+                  break;
+                }
+                const fuzzy = units.find(u => normalizeUnitNameForCompare(u) === routeUnitNorm);
+                if (fuzzy) {
+                  foundModeId = m.modeId;
+                  foundModeName = m.modeName;
+                  resolvedUnitName = String(fuzzy);
+                  break;
                 }
             }
             if(!foundModeId) {
@@ -1523,9 +1539,10 @@
                 fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
                 return;
             }
+            currentUnitName = resolvedUnitName || route.unitName;
             currentModeName = foundModeName;
 
-            const cacheKey = `app_cached_questions_${foundModeId}_${route.unitName}`;
+            const cacheKey = `app_cached_questions_${foundModeId}_${currentUnitName}`;
             const cached = localStorage.getItem(cacheKey);
 
             const processData = (d) => {
@@ -1560,7 +1577,7 @@
                 } catch(e) {}
             }
 
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: foundModeId, unitName: route.unitName }) })
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: foundModeId, unitName: currentUnitName }) })
             .then(r=>r.json()).then(d=>{ 
                 if (d.status === "success") localStorage.setItem(cacheKey, JSON.stringify(d));
                 processData(d);
