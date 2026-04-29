@@ -42,10 +42,21 @@ function setupSystem() {
     
     logMessage += "✅ サンプル教材を作成しました。\n";
   }
+  let kanjiFolder = null;
   if (!kanjiMaterialsFolderId) {
-    const kanjiFolder = parentFolder.createFolder("教材");
+    kanjiFolder = parentFolder.createFolder("教材");
     props.setProperty('KANJI_MATERIALS_FOLDER_ID', kanjiFolder.getId());
     logMessage += "✅ 教材フォルダ（漢字用）を作成しました。\n";
+  } else {
+    try { kanjiFolder = DriveApp.getFolderById(kanjiMaterialsFolderId); } catch (_) {}
+  }
+  if (kanjiFolder) {
+    const info = ensureKanjiSampleBook_(kanjiFolder);
+    if (info.created) logMessage += "✅ 漢字学習サンプルブックを作成しました。\n";
+    if (info.sheetId && !props.getProperty('KANJI_SHEET_ID')) {
+      props.setProperty('KANJI_SHEET_ID', info.sheetId);
+      logMessage += "✅ KANJI_SHEET_ID をサンプルブックに設定しました。\n";
+    }
   }
 
   let adminSs;
@@ -229,6 +240,60 @@ function setupSystem() {
   return logMessage;
 }
 
+function ensureKanjiSampleBook_(kanjiFolder) {
+  const out = { created: false, sheetId: "" };
+  const sampleName = "漢字学習サンプル";
+  let sampleFile = null;
+  const files = kanjiFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
+  while (files.hasNext()) {
+    const f = files.next();
+    if (String(f.getName()) === sampleName) {
+      sampleFile = f;
+      break;
+    }
+  }
+  let ss;
+  if (!sampleFile) {
+    ss = SpreadsheetApp.create(sampleName);
+    sampleFile = DriveApp.getFileById(ss.getId());
+    sampleFile.moveTo(kanjiFolder);
+    out.created = true;
+  } else {
+    ss = SpreadsheetApp.openById(sampleFile.getId());
+  }
+  out.sheetId = ss.getId();
+
+  let sheet = ss.getSheetByName("小１");
+  if (!sheet) {
+    sheet = ss.getSheets()[0] || ss.insertSheet("小１");
+    sheet.setName("小１");
+  }
+  const header = ["セット", "漢字", "漢字の読みA", "Aの例文1", "Aの例文2", "漢字の読みB", "Bの例文1", "Bの例文2", "漢字の読みC", "Cの例文1", "Cの例文2", "漢字の読みD", "Dの例文1", "Dの例文2"];
+  const data = sheet.getDataRange().getValues();
+  const headNow = (data[0] || []).map(v => String(v || "").trim());
+  const sameHeader = headNow.length >= header.length && header.every((h, i) => headNow[i] === h);
+  if (!sameHeader) {
+    sheet.clear();
+    sheet.getRange(1, 1, 1, header.length).setValues([header]);
+  }
+  const hasRows = sheet.getLastRow() > 1;
+  if (!hasRows) {
+    const rows = [
+      [1, "一", "いち", "日本一の山", "一番好きなこと", "ひと", "一言はなす。", "消しゴムが一つある。", "いっ", "りんごが一個ある。", "", "", "", ""],
+      [1, "右", "みぎ", "右手をあげる。", "右足から歩く。", "ゆう", "左右を見る。", "座右のめい。", "", "", "", "", "", ""],
+      [1, "雨", "あめ", "雨がふる。", "大雨になる。", "う", "雨天で休み。", "雨天けっ行。", "あま", "雨雲がでる。", "雨水がたまる。", "", "", ""],
+      [1, "円", "えん", "百円だま。", "千円さつ。", "まる", "円い月が出る。", "円く円をかく。", "", "", "", "", "", ""],
+      [1, "王", "おう", "王様になる。", "森の女王。", "", "", "", "", "", "", "", "", ""],
+      [1, "音", "おと", "足音が聞こえる。", "雨音がする。", "おん", "音楽をきく。", "漢字の音よみ。", "ね", "虫の音をきく。", "本音を言う。", "", "", ""],
+      [1, "下", "した", "木の下で休む。", "下書きをする。", "か", "地下にもぐる。", "上下にゆれる。", "げ", "下山する。", "下水どう。", "さ", "頭を下げる。", "ねだんが下がる。"],
+      [1, "火", "ひ", "花火を見る。", "火花がちる。", "か", "火よう日。", "火山がふん火する。", "", "", "", "", "", ""],
+      [1, "花", "はな", "お花見にいく。", "花がさく。", "か", "花だんの花。", "生け花をする。", "", "", "", "", "", ""]
+    ];
+    sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
+  }
+  return out;
+}
+
 const sendResponse = (responseObject) => {
   return ContentService.createTextOutput(JSON.stringify(responseObject)).setMimeType(ContentService.MimeType.JSON);
 };
@@ -265,6 +330,8 @@ function doPost(e) {
     else if (action === "recognize_handwriting") return recognizeSentence(requestData.ink || []);
     else if (action === "get_kanji_init_data") return handleGetKanjiInitData(requestData);
     else if (action === "get_kanji_data_from_sheet") return handleGetKanjiDataFromSheet(requestData);
+    else if (action === "get_kanji_quiz_sets") return handleGetKanjiQuizSets(requestData);
+    else if (action === "get_kanji_quiz_questions") return handleGetKanjiQuizQuestions(requestData);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -933,5 +1000,100 @@ function handleGetKanjiDataFromSheet(req) {
     return sendResponse({ status: "success", data: kanjiMap });
   } catch (e) {
     return sendResponse({ status: "error", message: "漢字データ取得に失敗しました: " + e.message });
+  }
+}
+
+function parseKanjiQuizSheet_(sheet) {
+  const values = sheet.getDataRange().getValues();
+  if (!values || values.length < 2) return { groups: [] };
+  const headers = values[0].map(v => String(v || "").trim());
+  const idxSet = headers.indexOf("セット");
+  const idxKanji = headers.indexOf("漢字");
+  if (idxSet < 0 || idxKanji < 0) {
+    throw new Error("漢字クイズシートの見出しに「セット」「漢字」が必要です。");
+  }
+
+  const readingDefs = [];
+  for (let i = 0; i < headers.length; i++) {
+    const h = headers[i];
+    const m = h.match(/^漢字の読み([A-ZＡ-Ｚ])$/);
+    if (!m) continue;
+    const label = m[1].toUpperCase();
+    const exIdx = [];
+    for (let j = 0; j < headers.length; j++) {
+      const ex = headers[j];
+      if (ex.indexOf(label + "の例文") === 0) exIdx.push(j);
+    }
+    readingDefs.push({ label, readingIdx: i, exampleIdx: exIdx });
+  }
+
+  const groupsMap = {};
+  const order = [];
+  for (let r = 1; r < values.length; r++) {
+    const row = values[r];
+    const setRaw = String(row[idxSet] || "").trim();
+    const kanji = String(row[idxKanji] || "").trim();
+    if (!setRaw || !kanji) continue;
+    const setId = setRaw;
+    if (!groupsMap[setId]) {
+      groupsMap[setId] = { setId, items: [] };
+      order.push(setId);
+    }
+    const readings = [];
+    readingDefs.forEach(def => {
+      const reading = String(row[def.readingIdx] || "").trim();
+      if (!reading) return;
+      const examples = def.exampleIdx
+        .map(i => String(row[i] || "").trim())
+        .filter(Boolean);
+      readings.push({ label: def.label, reading, examples });
+    });
+    groupsMap[setId].items.push({
+      rowIndex: r + 1,
+      kanji,
+      readings
+    });
+  }
+  const groups = order.map(setId => groupsMap[setId]).filter(g => g.items.length > 0);
+  return { groups };
+}
+
+function handleGetKanjiQuizSets(req) {
+  const modeId = String(req.modeId || "").trim();
+  const unitName = String(req.unitName || "").trim();
+  if (!modeId || !unitName) return sendResponse({ status: "error", message: "modeId と unitName が必要です。" });
+  try {
+    const sheet = SpreadsheetApp.openById(modeId).getSheetByName(unitName);
+    if (!sheet) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+    const parsed = parseKanjiQuizSheet_(sheet);
+    const sets = parsed.groups.map(g => ({
+      setId: g.setId,
+      count: g.items.length,
+      kanjiList: g.items.map(it => it.kanji)
+    }));
+    return sendResponse({ status: "success", sets });
+  } catch (e) {
+    return sendResponse({ status: "error", message: "漢字セット取得に失敗しました: " + e.message });
+  }
+}
+
+function handleGetKanjiQuizQuestions(req) {
+  const modeId = String(req.modeId || "").trim();
+  const unitName = String(req.unitName || "").trim();
+  const setId = String(req.setId || "").trim();
+  if (!modeId || !unitName || !setId) return sendResponse({ status: "error", message: "modeId / unitName / setId が必要です。" });
+  try {
+    const sheet = SpreadsheetApp.openById(modeId).getSheetByName(unitName);
+    if (!sheet) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+    const parsed = parseKanjiQuizSheet_(sheet);
+    const group = parsed.groups.find(g => String(g.setId) === setId);
+    if (!group) return sendResponse({ status: "error", message: "指定セットが見つかりません。" });
+    return sendResponse({
+      status: "success",
+      setId,
+      questions: group.items
+    });
+  } catch (e) {
+    return sendResponse({ status: "error", message: "漢字問題取得に失敗しました: " + e.message });
   }
 }
