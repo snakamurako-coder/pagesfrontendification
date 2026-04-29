@@ -201,6 +201,7 @@
       <hr style="border-color:#444; width: 90%; max-width:350px; margin: 15px 0;">
       <button class="menu-btn btn-orange" onclick="loadRewards(this)">🎁 けいひんを もらう</button>
       <button class="menu-btn btn-green" onclick="loadInventory(this)">🎒 もちもの（使う）</button>
+      <button class="menu-btn btn-gray" onclick="clearAppCacheAndReload()" style="margin-top: 10px; width:auto; padding: 10px 20px; font-size:16px;">🔄 データを最新に更新</button>
       <button class="menu-btn btn-gray" onclick="logout()" style="margin-top: 20px; width:auto; padding: 10px 20px; font-size:16px;">ログアウト</button>
     </div>
     <div id="home-stopwatch" style="margin: 22px auto 0; max-width: 360px; background:#1f1f1f; border:1px solid #333; border-radius:12px; padding:14px;">
@@ -366,6 +367,32 @@
     let currentQuestions = []; let filteredQuestions = []; let currentQuestionIndex = 0; 
     let quizResults = []; let questionStartTime = 0; let currentIsReviewMode = false;
     let userInventoryData = []; let showAllInventory = false;
+    function getUserIdForPref() {
+      try {
+        const user = JSON.parse(localStorage.getItem('app_kid_user'));
+        return user && user.id ? user.id : 'guest';
+      } catch(e) { return 'guest'; }
+    }
+    function getUserPref(key, defaultVal) {
+      const uid = getUserIdForPref();
+      const val = localStorage.getItem(`${uid}_${key}`);
+      if (val !== null) return val;
+      const oldVal = localStorage.getItem(key);
+      return oldVal !== null ? oldVal : defaultVal;
+    }
+    function setUserPref(key, val) {
+      const uid = getUserIdForPref();
+      localStorage.setItem(`${uid}_${key}`, val);
+    }
+    function clearAppCacheAndReload() {
+      if (!confirm("最新の学習データと設定を読み込み直します。\\nよろしいですか？（画面が再読み込みされます）")) return;
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('app_cached_')) {
+          localStorage.removeItem(k);
+        }
+      });
+      location.reload();
+    }
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; let externalMenus = [];
     let stopwatches = {
       home: { timerId: null, startAt: 0, elapsed: 0 },
@@ -381,7 +408,7 @@
     const LS_PEN_GUIDE_SPREAD = 'pen_guide_line_spread';
     const LS_PEN_GUIDE_SHOW = 'pen_guide_lines_show';
     const LS_PEN_CANVAS_MAX_WIDTH = 'pen_canvas_max_width_px';
-    let inputMethodMode = localStorage.getItem(LS_INPUT_MODE) || 'keyboard';
+    let inputMethodMode = getUserPref(LS_INPUT_MODE, 'keyboard');
     let isPenRecognitionInFlight = false;
     let resumePromptShownToken = "";
     let handwritingState = {
@@ -393,17 +420,17 @@
       pointerType: '',
       activePenRect: null,
       lastTapAt: 0,
-      penWidth: parseInt(localStorage.getItem('pen_width') || '4', 10),
-      penMode: localStorage.getItem('pen_mode') || 'pen',
+      penWidth: parseInt(getUserPref('pen_width', '4'), 10),
+      penMode: getUserPref('pen_mode', 'pen'),
       guideLineSpread: (() => {
-        const v = parseInt(localStorage.getItem(LS_PEN_GUIDE_SPREAD) || '50', 10);
+        const v = parseInt(getUserPref(LS_PEN_GUIDE_SPREAD, '50'), 10);
         return isNaN(v) ? 50 : Math.max(0, Math.min(100, v));
       })(),
-      showGuideLines: localStorage.getItem(LS_PEN_GUIDE_SHOW) !== '0',
+      showGuideLines: getUserPref(LS_PEN_GUIDE_SHOW, '1') !== '0',
       canvasMaxWidthPx: (() => {
-        const w = parseInt(localStorage.getItem(LS_PEN_CANVAS_MAX_WIDTH) || '1000', 10);
+        const w = parseInt(getUserPref(LS_PEN_CANVAS_MAX_WIDTH, '1000'), 10);
         if (!isNaN(w)) return Math.max(400, Math.min(1200, w));
-        const legacyH = parseInt(localStorage.getItem('pen_canvas_height_px') || '', 10);
+        const legacyH = parseInt(getUserPref('pen_canvas_height_px', ''), 10);
         if (!isNaN(legacyH)) return Math.max(400, Math.min(1200, Math.round(legacyH * 1.2)));
         return 1000;
       })(),
@@ -862,7 +889,24 @@
         else fetchUsers(); 
     };
 
-    function fetchAppSettings() { return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") appSettings = d.settings; return d; }); }
+    function fetchAppSettings() { 
+      const cacheKey = 'app_cached_settings';
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const d = JSON.parse(cached);
+          appSettings = d.settings;
+          return Promise.resolve(d);
+        } catch(e) {}
+      }
+      return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_app_settings" }) }).then(r=>r.json()).then(d=>{ 
+        if(d.status==="success") {
+          appSettings = d.settings; 
+          localStorage.setItem(cacheKey, JSON.stringify(d));
+        }
+        return d; 
+      }); 
+    }
 
     const LS_KBD_SCALE = 'vk_scale_pct';
     const LS_KBD_FONT = 'vk_key_font_px';
@@ -871,32 +915,32 @@
     const LS_PEN_ADVANCED_VISIBLE = 'pen_advanced_visible';
 
     function initKeyboardAndSoundSettings() {
-      if (localStorage.getItem(LS_KBD_SCALE) === null) localStorage.setItem(LS_KBD_SCALE, '100');
-      if (localStorage.getItem(LS_KBD_FONT) === null) localStorage.setItem(LS_KBD_FONT, '18');
-      if (localStorage.getItem(LS_ANSWER_SOUND) === null) localStorage.setItem(LS_ANSWER_SOUND, '1');
-      if (localStorage.getItem(LS_IPAD_STYLUS_OPT) === null) localStorage.setItem(LS_IPAD_STYLUS_OPT, '0');
-      if (localStorage.getItem(LS_PEN_ADVANCED_VISIBLE) === null) localStorage.setItem(LS_PEN_ADVANCED_VISIBLE, '0');
+      if (getUserPref(LS_KBD_SCALE, null) === null) setUserPref(LS_KBD_SCALE, '100');
+      if (getUserPref(LS_KBD_FONT, null) === null) setUserPref(LS_KBD_FONT, '18');
+      if (getUserPref(LS_ANSWER_SOUND, null) === null) setUserPref(LS_ANSWER_SOUND, '1');
+      if (getUserPref(LS_IPAD_STYLUS_OPT, null) === null) setUserPref(LS_IPAD_STYLUS_OPT, '0');
+      if (getUserPref(LS_PEN_ADVANCED_VISIBLE, null) === null) setUserPref(LS_PEN_ADVANCED_VISIBLE, '0');
       const sc = document.getElementById('kbd-scale-range');
       const ft = document.getElementById('kbd-font-range');
-      if (sc) sc.value = localStorage.getItem(LS_KBD_SCALE);
-      if (ft) ft.value = localStorage.getItem(LS_KBD_FONT);
+      if (sc) sc.value = getUserPref(LS_KBD_SCALE, '100');
+      if (ft) ft.value = getUserPref(LS_KBD_FONT, '18');
       const qsc = document.getElementById('quiz-kbd-scale-range');
       const qft = document.getElementById('quiz-kbd-font-range');
-      if (qsc) qsc.value = localStorage.getItem(LS_KBD_SCALE);
-      if (qft) qft.value = localStorage.getItem(LS_KBD_FONT);
-      const on = localStorage.getItem(LS_ANSWER_SOUND) !== '0';
+      if (qsc) qsc.value = getUserPref(LS_KBD_SCALE, '100');
+      if (qft) qft.value = getUserPref(LS_KBD_FONT, '18');
+      const on = getUserPref(LS_ANSWER_SOUND, '1') !== '0';
       const snd = document.getElementById('answer-sound-enabled');
       const qsnd = document.getElementById('quiz-answer-sound-enabled');
       const ipadStylus = document.getElementById('ipad-stylus-opt-enabled');
       if (snd) snd.checked = on;
       if (qsnd) qsnd.checked = on;
-      if (ipadStylus) ipadStylus.checked = localStorage.getItem(LS_IPAD_STYLUS_OPT) === '1';
+      if (ipadStylus) ipadStylus.checked = getUserPref(LS_IPAD_STYLUS_OPT, '0') === '1';
       applyKeyboardSettingsFromControls('settings');
     }
 
     function syncAnswerSoundFromCheckbox(el) {
       if (!el) return;
-      localStorage.setItem(LS_ANSWER_SOUND, el.checked ? '1' : '0');
+      setUserPref(LS_ANSWER_SOUND, el.checked ? '1' : '0');
       const a = document.getElementById('answer-sound-enabled');
       const q = document.getElementById('quiz-answer-sound-enabled');
       if (a && el !== a) a.checked = el.checked;
@@ -906,18 +950,18 @@
     function syncIpadStylusSettingsFromCheckbox(el) {
       if (!el) return;
       const checked = !!el.checked;
-      localStorage.setItem(LS_IPAD_STYLUS_OPT, checked ? '1' : '0');
+      setUserPref(LS_IPAD_STYLUS_OPT, checked ? '1' : '0');
       const panelCheckbox = document.getElementById('pen-ipad-stylus-opt');
       if (panelCheckbox && panelCheckbox !== el) panelCheckbox.checked = checked;
       refreshPenStatusHint();
     }
 
     function isIpadStylusOptimizationEnabled() {
-      return localStorage.getItem(LS_IPAD_STYLUS_OPT) === '1';
+      return getUserPref(LS_IPAD_STYLUS_OPT, '0') === '1';
     }
 
     function isPenAdvancedVisible() {
-      return localStorage.getItem(LS_PEN_ADVANCED_VISIBLE) === '1';
+      return getUserPref(LS_PEN_ADVANCED_VISIBLE, '0') === '1';
     }
 
     function syncPenAdvancedVisibility() {
@@ -930,13 +974,13 @@
 
     function togglePenAdvancedSettings() {
       const next = isPenAdvancedVisible() ? '0' : '1';
-      localStorage.setItem(LS_PEN_ADVANCED_VISIBLE, next);
+      setUserPref(LS_PEN_ADVANCED_VISIBLE, next);
       syncPenAdvancedVisibility();
     }
 
     function applyKeyboardSettingsFromControls(from) {
-      let scalePct = parseInt(localStorage.getItem(LS_KBD_SCALE) || '100', 10);
-      let fontPx = parseInt(localStorage.getItem(LS_KBD_FONT) || '18', 10);
+      let scalePct = parseInt(getUserPref(LS_KBD_SCALE, '100'), 10);
+      let fontPx = parseInt(getUserPref(LS_KBD_FONT, '18'), 10);
       if (from === 'settings' || !from) {
         const sc = document.getElementById('kbd-scale-range');
         const ft = document.getElementById('kbd-font-range');
@@ -951,8 +995,8 @@
       }
       if (isNaN(scalePct)) scalePct = 100;
       if (isNaN(fontPx)) fontPx = 18;
-      localStorage.setItem(LS_KBD_SCALE, String(scalePct));
-      localStorage.setItem(LS_KBD_FONT, String(fontPx));
+      setUserPref(LS_KBD_SCALE, String(scalePct));
+      setUserPref(LS_KBD_FONT, String(fontPx));
       const scale = scalePct / 100;
       const padPx = Math.max(8, Math.round(fontPx * 0.72));
       document.documentElement.style.setProperty('--vk-font-px', String(fontPx));
@@ -996,7 +1040,7 @@
 
     let answerAudioCtx = null;
     function playAnswerSound(isCorrect) {
-      if (localStorage.getItem(LS_ANSWER_SOUND) === '0') return;
+      if (getUserPref(LS_ANSWER_SOUND, '1') === '0') return;
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
@@ -1108,8 +1152,22 @@
     
     function prefetchMaterials() {
         if (materialsData.length > 0) return Promise.resolve();
+        const cacheKey = 'app_cached_materials';
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const d = JSON.parse(cached);
+            materialsData = d.materials;
+            return Promise.resolve();
+          } catch(e) {}
+        }
         return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
-        .then(r=>r.json()).then(d => { if(d.status==="success") { materialsData = d.materials; } });
+        .then(r=>r.json()).then(d => { 
+          if(d.status==="success") { 
+            materialsData = d.materials; 
+            localStorage.setItem(cacheKey, JSON.stringify(d));
+          } 
+        });
     }
 
     function switchSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('message').innerText=""; }
@@ -1291,8 +1349,10 @@
         const routeContainer = document.getElementById('route-container');
         if (routeContainer) routeContainer.innerHTML = "<p>ルートを確認中...</p>";
         
-        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId, trainingMenuId: currentTrainingMenuId }) })
-        .then(r=>r.json()).then(d=>{
+        const cacheKey = `app_cached_training_route_${currentTrainingMenuId}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        const processData = (d) => {
             if(d.status === "success") {
                 dailyRouteData = d.route;
                 currentProgressData = d.progress;
@@ -1300,6 +1360,22 @@
             } else if (routeContainer) {
                 routeContainer.innerHTML = "<p>ルートの取得に失敗しました。</p>";
             }
+        };
+
+        if (cached) {
+           try {
+               const d = JSON.parse(cached);
+               processData(d);
+               return;
+           } catch(e) {}
+        }
+
+        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_training_route", userId: userId, trainingMenuId: currentTrainingMenuId }) })
+        .then(r=>r.json()).then(d=>{
+            if(d.status === "success") {
+               localStorage.setItem(cacheKey, JSON.stringify(d));
+            }
+            processData(d);
         }).catch(e => {
             if (routeContainer) routeContainer.innerHTML = "<p>通信エラーが発生しました。</p>";
         });
@@ -1449,8 +1525,10 @@
             }
             currentModeName = foundModeName;
 
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: foundModeId, unitName: route.unitName }) })
-            .then(r=>r.json()).then(d=>{ 
+            const cacheKey = `app_cached_questions_${foundModeId}_${route.unitName}`;
+            const cached = localStorage.getItem(cacheKey);
+
+            const processData = (d) => {
                 if(d.status==="success"){ 
                     currentQuestions = d.questions;
                     
@@ -1472,6 +1550,20 @@
                     alert("取得失敗: " + d.message);
                     fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
                 }
+            };
+
+            if (cached) {
+                try {
+                    const d = JSON.parse(cached);
+                    processData(d);
+                    return;
+                } catch(e) {}
+            }
+
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: foundModeId, unitName: route.unitName }) })
+            .then(r=>r.json()).then(d=>{ 
+                if (d.status === "success") localStorage.setItem(cacheKey, JSON.stringify(d));
+                processData(d);
             }).catch(e => {
                 alert("通信エラーが発生しました。");
                 fetchTrainingRoute(JSON.parse(localStorage.getItem('app_kid_user')).id);
@@ -1810,15 +1902,35 @@
     function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
     function loadQuestionsForSettings(btn, mId, mName, uName) { 
       const origText = toggleBtnLoading(btn, true); 
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) })
-      .then(r=>r.json()).then(d=>{ 
+      const cacheKey = `app_cached_questions_${mId}_${uName}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      const processData = (d) => {
         toggleBtnLoading(btn, false, origText); 
         if(d.status==="success"){ 
           currentQuestions = d.questions; currentModeId = mId; currentModeName = mName; currentUnitName = uName; 
           // 特訓モードフラグをリセットしておく（いつもの学習から入った場合）
           isTrainingMode = false;
           openSettingsScreen(); 
-        } 
+        } else {
+          alert("取得失敗: " + (d.message || "エラー"));
+        }
+      };
+
+      if (cached) {
+        try {
+          const d = JSON.parse(cached);
+          processData(d);
+          return;
+        } catch(e) {}
+      }
+
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_questions", modeId: mId, unitName: uName }) })
+      .then(r=>r.json()).then(d=>{ 
+        if(d.status === "success") {
+          localStorage.setItem(cacheKey, JSON.stringify(d));
+        }
+        processData(d);
       }).catch(e => toggleBtnLoading(btn, false, origText)); 
     }
 
@@ -1903,8 +2015,8 @@
     function renderCustomKeyboard(isFillMode = false, sortMissingMode = false) {
       const container = document.getElementById('keyboard-container'); if(!container) return; container.innerHTML = "";
       window.__sortMissingModeActive = !!sortMissingMode;
-      const scalePct = parseInt(localStorage.getItem(LS_KBD_SCALE) || '100', 10);
-      const fontPx = parseInt(localStorage.getItem(LS_KBD_FONT) || '18', 10);
+      const scalePct = parseInt(getUserPref(LS_KBD_SCALE, '100'), 10);
+      const fontPx = parseInt(getUserPref(LS_KBD_FONT, '18'), 10);
       const padPx = Math.max(8, Math.round(fontPx * 0.72));
       const wrap = document.createElement('div');
       wrap.className = 'keyboard-scale-wrap';
@@ -2121,7 +2233,7 @@
 
     function setPenMode(mode) {
       handwritingState.penMode = mode;
-      localStorage.setItem('pen_mode', mode);
+      setUserPref('pen_mode', mode);
       const btnPen = document.getElementById('btn-pen-mode');
       const btnEraser = document.getElementById('btn-eraser-mode');
       if (btnPen) btnPen.classList.toggle('active', mode === 'pen');
@@ -2131,7 +2243,7 @@
     function setPenWidth(width) {
       const w = parseInt(width, 10);
       handwritingState.penWidth = w;
-      localStorage.setItem('pen_width', w);
+      setUserPref('pen_width', w);
       const label = document.getElementById('pen-width-label');
       if (label) label.innerText = w;
       const canvas = document.getElementById('pen-canvas');
@@ -2144,7 +2256,7 @@
     function setPenGuideSpread(val) {
       const n = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
       handwritingState.guideLineSpread = n;
-      localStorage.setItem(LS_PEN_GUIDE_SPREAD, String(n));
+      setUserPref(LS_PEN_GUIDE_SPREAD, String(n));
       const label = document.getElementById('pen-guide-spread-label');
       if (label) label.textContent = n;
       redrawAllStrokes();
@@ -2152,7 +2264,7 @@
 
     function setPenGuideShow(checked) {
       handwritingState.showGuideLines = !!checked;
-      localStorage.setItem(LS_PEN_GUIDE_SHOW, checked ? '1' : '0');
+      setUserPref(LS_PEN_GUIDE_SHOW, checked ? '1' : '0');
       redrawAllStrokes();
     }
 
@@ -2193,7 +2305,7 @@
     function setPenCanvasMaxWidth(val) {
       const px = Math.max(400, Math.min(1200, parseInt(val, 10) || 1000));
       handwritingState.canvasMaxWidthPx = px;
-      localStorage.setItem(LS_PEN_CANVAS_MAX_WIDTH, String(px));
+      setUserPref(LS_PEN_CANVAS_MAX_WIDTH, String(px));
       const wLabel = document.getElementById('pen-canvas-width-label');
       if (wLabel) wLabel.textContent = px;
       const wrap = document.getElementById('pen-canvas-wrap');
@@ -2585,7 +2697,7 @@
 
     function switchInputMethod(mode) {
       inputMethodMode = mode === 'pen' ? 'pen' : 'keyboard';
-      localStorage.setItem(LS_INPUT_MODE, inputMethodMode);
+      setUserPref(LS_INPUT_MODE, inputMethodMode);
       const ansTypeEl = document.getElementById('setting-answer-type');
       const ansType = ansTypeEl ? String(ansTypeEl.value || '').trim() : '';
       if (ansType !== "typing" && ansType !== "fill_typing") return;
