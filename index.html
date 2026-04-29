@@ -194,7 +194,8 @@
     </div>
     
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
-      <button class="menu-btn btn-red" onclick="loadMaterials(this)">自由に学習する</button>
+      <button class="menu-btn btn-red" onclick="loadEnglishMaterials(this)">英語の自由学習</button>
+      <button class="menu-btn btn-purple" onclick="openKanjiLearningMenu()">漢字の自由学習</button>
       <button class="menu-btn btn-purple" onclick="openTrainingMenu()">🎯 特訓メニューへ</button>
       <button class="menu-btn btn-blue" onclick="loadExternalLearning(this)">📚 アプリ以外の勉強を記録</button>
       <button type="button" class="menu-btn btn-gray" style="margin-top:8px; font-size:15px; padding:12px 16px;" onclick="openExternalAdminApproval()">🔐 おうちの人：外部学習の承認</button>
@@ -215,6 +216,23 @@
         <button type="button" class="submit-btn btn-gray" style="flex:1; min-width:120px;" onclick="resetStopwatch('home')">リセット</button>
       </div>
     </div>
+  </div>
+  <div id="section-kanji-learning" class="section">
+    <h1>漢字の自由学習</h1>
+    <p style="text-align:center;color:#aaa;max-width:420px;margin:0 auto 12px;font-size:14px;">やりたい学習をえらんでね</p>
+    <div style="display:flex; flex-direction:column; align-items:center; margin-top:20px;">
+      <button class="menu-btn btn-red" onclick="loadKanjiMaterials(this)">漢字クイズに挑戦</button>
+      <button class="menu-btn btn-blue" onclick="openKanjiPractice()">漢字練習をする</button>
+    </div>
+    <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
+  </div>
+  <div id="section-kanji-practice" class="section">
+    <h1>漢字練習</h1>
+    <p style="text-align:center;color:#aaa;max-width:420px;margin:0 auto 12px;font-size:14px;">下の画面で練習できます</p>
+    <div style="width:100%;max-width:420px;margin:0 auto;">
+      <iframe id="kanji-practice-frame" src="about:blank" title="漢字練習" style="width:100%;height:80vh;min-height:620px;border:1px solid #444;border-radius:10px;background:#111;"></iframe>
+    </div>
+    <button class="cancel-btn" style="margin-top:16px;" onclick="openKanjiLearningMenu()">漢字学習メニューにもどる</button>
   </div>
 
   <div id="section-training" class="section">
@@ -1916,7 +1934,56 @@
     }
 
     // （いつもの学習のロード関連）
-    function loadMaterials(btn) { const origText = toggleBtnLoading(btn, true); document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>"; fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{ toggleBtnLoading(btn, false, origText); if(d.status==="success"){ switchSection('section-materials'); const c = document.getElementById('materials-container'); c.innerHTML = ""; d.materials.forEach(m => { const t = document.createElement('h2'); t.innerText = `📁 ${m.modeName}`; c.appendChild(t); m.units.forEach(u => { const b = document.createElement('button'); b.className="menu-btn btn-gray"; b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`; b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); }; c.appendChild(b); }); }); } }).catch(e => toggleBtnLoading(btn, false, origText)); }
+    function openKanjiLearningMenu() {
+      switchSection('section-kanji-learning');
+    }
+    function loadEnglishMaterials(btn) {
+      loadMaterialsByFilter(btn, "english");
+    }
+    function loadKanjiMaterials(btn) {
+      loadMaterialsByFilter(btn, "kanji");
+    }
+    function openKanjiPractice() {
+      const frame = document.getElementById('kanji-practice-frame');
+      if (frame) {
+        const next = "KPindex.html";
+        if (!frame.src || frame.src.indexOf(next) < 0) frame.src = next;
+      }
+      switchSection('section-kanji-practice');
+    }
+    function loadMaterialsByFilter(btn, category) {
+      const origText = toggleBtnLoading(btn, true);
+      document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{
+        toggleBtnLoading(btn, false, origText);
+        if(d.status!=="success") return;
+        switchSection('section-materials');
+        const c = document.getElementById('materials-container');
+        c.innerHTML = "";
+        const all = Array.isArray(d.materials) ? d.materials : [];
+        const list = all.filter(m => {
+          const name = String(m.modeName || "");
+          const isKanji = /漢字|かんじ|kanji/i.test(name);
+          return category === "kanji" ? isKanji : !isKanji;
+        });
+        if (list.length === 0) {
+          c.innerHTML = "<p>表示できる教材がありません。</p>";
+          return;
+        }
+        list.forEach(m => {
+          const t = document.createElement('h2');
+          t.innerText = `📁 ${m.modeName}`;
+          c.appendChild(t);
+          m.units.forEach(u => {
+            const b = document.createElement('button');
+            b.className="menu-btn btn-gray";
+            b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`;
+            b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u); };
+            c.appendChild(b);
+          });
+        });
+      }).catch(e => toggleBtnLoading(btn, false, origText));
+    }
     function loadQuestionsForSettings(btn, mId, mName, uName) { 
       const origText = toggleBtnLoading(btn, true); 
       const cacheKey = `app_cached_questions_${mId}_${uName}`;

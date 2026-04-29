@@ -247,6 +247,8 @@ function doPost(e) {
     else if (action === "reject_external_request") return handleRejectExternalRequest(requestData);
     else if (action === "get_my_external_learning_requests") return handleGetMyExternalLearningRequests(requestData);
     else if (action === "recognize_handwriting") return recognizeSentence(requestData.ink || []);
+    else if (action === "get_kanji_init_data") return handleGetKanjiInitData(requestData);
+    else if (action === "get_kanji_data_from_sheet") return handleGetKanjiDataFromSheet(requestData);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -760,4 +762,56 @@ function handleConsumeReward(req) { SpreadsheetApp.openById(PropertiesService.ge
 function resetProperties() {
   PropertiesService.getScriptProperties().deleteAllProperties();
   console.log("古い設定をすべて消去しました！");
+}
+
+function handleGetKanjiInitData(req) {
+  const prop = PropertiesService.getScriptProperties();
+  const sheetId = prop.getProperty('KANJI_SHEET_ID');
+  if (!sheetId) return sendResponse({ status: "error", message: "KANJI_SHEET_ID が未設定です" });
+  try {
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sheets = ss.getSheets().map(s => s.getName());
+    return sendResponse({ status: "success", bookName: ss.getName(), sheets: sheets });
+  } catch (e) {
+    return sendResponse({ status: "error", message: "漢字データにアクセスできません: " + e.message });
+  }
+}
+
+function handleGetKanjiDataFromSheet(req) {
+  const sheetName = String(req.sheetName || "");
+  if (!sheetName) return sendResponse({ status: "error", message: "sheetName が未指定です" });
+  const prop = PropertiesService.getScriptProperties();
+  const sheetId = prop.getProperty('KANJI_SHEET_ID');
+  if (!sheetId) return sendResponse({ status: "error", message: "KANJI_SHEET_ID が未設定です" });
+  try {
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return sendResponse({ status: "success", data: {} });
+    const values = sheet.getDataRange().getValues();
+    const kanjiMap = {};
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const kanji = row[0];
+      if (!kanji || String(kanji).trim().length !== 1) continue;
+      const paths = [];
+      for (let j = 2; j < row.length; j++) {
+        const cellValue = row[j];
+        if (!cellValue) continue;
+        const strVal = String(cellValue).trim();
+        if (!strVal) continue;
+        if (strVal.indexOf('|') >= 0) {
+          strVal.split('|').forEach(p => {
+            const cleaned = String(p || "").trim();
+            if (cleaned && (cleaned.charAt(0) === 'M' || cleaned.charAt(0) === 'm')) paths.push(cleaned);
+          });
+        } else if (strVal.charAt(0) === 'M' || strVal.charAt(0) === 'm') {
+          paths.push(strVal);
+        }
+      }
+      if (paths.length > 0) kanjiMap[String(kanji).trim()] = paths;
+    }
+    return sendResponse({ status: "success", data: kanjiMap });
+  } catch (e) {
+    return sendResponse({ status: "error", message: "漢字データ取得に失敗しました: " + e.message });
+  }
 }
