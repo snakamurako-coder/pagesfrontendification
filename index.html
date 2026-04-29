@@ -248,7 +248,7 @@
   <div id="section-rewards" class="section"><h1>🎁 けいひん こうかんじょ</h1><div id="rewards-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
   <div id="section-inventory" class="section"><h1>🎒 もちもの</h1><p>おうちの人に画面を見せてボタンをおしてね。</p><div style="margin-bottom: 15px;"><button id="toggle-inventory-btn" class="menu-btn btn-gray" onclick="toggleInventoryView()" style="width: auto; padding: 10px 20px; font-size: 16px;">すべて表示する</button></div><div id="inventory-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
   
-  <div id="section-materials" class="section"><h1>なにを勉強する？</h1><div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">もどる</button></div>
+  <div id="section-materials" class="section"><h1 id="materials-title">なにを勉強する？</h1><div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div><button class="cancel-btn" style="margin-top:20px;" onclick="backFromMaterials()">もどる</button></div>
   
   <div id="section-external" class="section">
     <h1>📚 アプリ以外の勉強</h1>
@@ -412,6 +412,7 @@
       location.reload();
     }
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; let externalMenus = [];
+    let currentMaterialsCategory = "english";
     let stopwatches = {
       home: { timerId: null, startAt: 0, elapsed: 0 },
       external: { timerId: null, startAt: 0, elapsed: 0 }
@@ -1938,10 +1939,19 @@
       switchSection('section-kanji-learning');
     }
     function loadEnglishMaterials(btn) {
+      currentMaterialsCategory = "english";
       loadMaterialsByFilter(btn, "english");
     }
     function loadKanjiMaterials(btn) {
+      currentMaterialsCategory = "kanji";
       loadMaterialsByFilter(btn, "kanji");
+    }
+    function backFromMaterials() {
+      if (currentMaterialsCategory === "kanji") {
+        openKanjiLearningMenu();
+        return;
+      }
+      showHome(JSON.parse(localStorage.getItem('app_kid_user')));
     }
     function openKanjiPractice() {
       const frame = document.getElementById('kanji-practice-frame');
@@ -1958,6 +1968,8 @@
         toggleBtnLoading(btn, false, origText);
         if(d.status!=="success") return;
         switchSection('section-materials');
+        const title = document.getElementById('materials-title');
+        if (title) title.innerText = category === "kanji" ? "漢字クイズに挑戦" : "英語の自由学習";
         const c = document.getElementById('materials-container');
         c.innerHTML = "";
         const all = Array.isArray(d.materials) ? d.materials : [];
