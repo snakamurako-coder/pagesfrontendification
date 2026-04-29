@@ -27,12 +27,12 @@
     .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* ã?¢ã?¼ã??ã?«æ±?ç?¨ */
+    /* ãƒ¢ãƒ¼ãƒ€ãƒ«æ±ç”¨ */
     .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
     .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
     .modal-content h3 { margin: 0 0 15px 0; color: #1a73e8; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; font-size: 16px; }
 
-    /* è¨­å®?ç?¨ */
+    /* è¨­å®šç”¨ */
     .slider-group { margin-bottom: 12px; }
     .slider-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }
     .slider-group input[type=range] { width: 100%; cursor: pointer; margin: 0; }
@@ -41,7 +41,7 @@
     .preview-canvas { width: 100%; height: 100%; background: transparent; }
     .preview-label { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #999; font-weight: bold; }
 
-    /* ã?¦ã?£ã?¶ã?¼ã??ç?¨ */
+    /* ã‚¦ã‚£ã‚¶ãƒ¼ãƒ‰ç”¨ */
     #wizard-canvas { background-color: #fff; border: 2px dashed #aaa; border-radius: 4px; cursor: crosshair; margin: 10px auto; display: block; }
     .wiz-btn-group { display: flex; gap: 5px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; }
     .wiz-btn { flex: 1 1 30%; padding: 8px 5px; font-size: 12px; background: #fff; color: #333; border: 2px solid #ccc; font-weight: bold; }
@@ -54,149 +54,149 @@
 </head>
 <body>
 
-  <div id="loading-overlay"><div class="loader"></div><span>æº?å??ä¸­...</span></div>
+  <div id="loading-overlay"><div class="loader"></div><span>æº–å‚™ä¸­...</span></div>
 
-  <h2>æ¼¢å­?æ?¸ãé ?ã??ã?ªã?«</h2>
+  <h2>æ¼¢å­—æ›¸ãé †ãƒ‰ãƒªãƒ«</h2>
 
   <div id="kanji-selector-area">
     <div class="selector-row">
       <select id="sheet-selector" onchange="loadKanjiData()"></select>
-      <button onclick="syncData()" style="margin:0; background:#34a853; padding:6px 12px; font-size:12px;">æ?´æ?°</button>
+      <button onclick="syncData()" style="margin:0; background:#34a853; padding:6px 12px; font-size:12px;">æ›´æ–°</button>
     </div>
     <div class="selector-row">
       <select id="target-kanji" onchange="initTargetKanji()"></select>
-      <button onclick="switchMode('demo')" style="margin:0; background:#f4b400; padding:6px 12px; font-size:12px;">ã?æ??æ?¬</button>
+      <button onclick="switchMode('demo')" style="margin:0; background:#f4b400; padding:6px 12px; font-size:12px;">ãŠæ‰‹æœ¬</button>
     </div>
     <div class="selector-row">
       <select id="active-profile-select" onchange="switchProfile(this.value)" style="flex: 1.5; font-size:12px; padding: 6px;"></select>
-      <button onclick="toggleWizard(true)" style="margin:0; background:#e91e63; padding:6px 10px; font-size:12px; flex:1;">ğ??¯ èª¿æ?´</button>
-      <button onclick="toggleSettings(true)" style="margin:0; background:#7b1fa2; padding:6px 10px; font-size:12px; flex:1;">ğ??? è¨­å®?</button>
+      <button onclick="toggleWizard(true)" style="margin:0; background:#e91e63; padding:6px 10px; font-size:12px; flex:1;">ğŸ¯ èª¿æ•´</button>
+      <button onclick="toggleSettings(true)" style="margin:0; background:#7b1fa2; padding:6px 10px; font-size:12px; flex:1;">ğŸ–‹ è¨­å®š</button>
     </div>
   </div>
 
-  <div id="mode-msg" style="font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight: bold;">æ­£ç¢ºã«æ?¸ã?ã¦ãã ã?ã?</div>
+  <div id="mode-msg" style="font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight: bold;">æ­£ç¢ºã«æ›¸ã„ã¦ãã ã•ã„</div>
 
   <canvas id="canvas"></canvas>
 
   <div class="controls" style="margin-top:10px;">
     <label style="font-size:12px; font-weight:bold; color:#1a73e8; display:flex; align-items:center; cursor:pointer; background:#e8f0fe; padding:5px 10px; border-radius:15px;">
-      <input type="checkbox" id="cb-strict-mode" style="margin-right:5px; transform: scale(1.2);"> â?? å?³å¯?æ?¡ç?¹ (ã¨ã?ã?»ã¯ã­ã?»ã¯ã??ã?å?¤å®?)
+      <input type="checkbox" id="cb-strict-mode" style="margin-right:5px; transform: scale(1.2);"> â˜‘ å³å¯†æ¡ç‚¹ (ã¨ã‚ãƒ»ã¯ã­ãƒ»ã¯ã‚‰ã„åˆ¤å®š)
     </label>
-    <button style="background:#ff9800; padding:5px 10px; font-size:12px; border-radius:15px; box-shadow:none;" onclick="removeLastEffect()">ç?´å?ç?»ã®é£¾ã??ã??æ¶?ã?</button>
+    <button style="background:#ff9800; padding:5px 10px; font-size:12px; border-radius:15px; box-shadow:none;" onclick="removeLastEffect()">ç›´å‰ç”»ã®é£¾ã‚Šã‚’æ¶ˆã™</button>
   </div>
 
   <div id="score-controls" class="controls">
-    <button onclick="evaluateKanji(false)">æ?¡ç?¹ã?ã??</button>
-    <button style="background:#8e8e93;" onclick="clearCanvas()">ã?¯ã?ªã?¢</button>
+    <button onclick="evaluateKanji(false)">æ¡ç‚¹ã™ã‚‹</button>
+    <button style="background:#8e8e93;" onclick="clearCanvas()">ã‚¯ãƒªã‚¢</button>
   </div>
   
   <div id="trace-controls" class="controls hidden">
-    <button style="background:#e53935;" onclick="evaluateKanji(true)">ãªã?ã??ã??æ?¡ç?¹</button>
-    <button style="background:#8e8e93;" onclick="clearCanvas()">æ?¸ãç?´ã?</button>
-    <button style="background:#333;" onclick="switchMode('score')">æ?»ã??</button>
+    <button style="background:#e53935;" onclick="evaluateKanji(true)">ãªãã‚Šã‚’æ¡ç‚¹</button>
+    <button style="background:#8e8e93;" onclick="clearCanvas()">æ›¸ãç›´ã™</button>
+    <button style="background:#333;" onclick="switchMode('score')">æˆ»ã‚‹</button>
   </div>
 
   <div id="demo-controls" class="controls hidden">
-    <button style="background:#1a73e8;" onclick="playAnimation()">å?ç??</button>
-    <button style="background:#e53935;" onclick="switchMode('trace')">ãªã?ã??ç·´ç¿?</button>
-    <button style="background:#333;" onclick="switchMode('score')">æ?»ã??</button>
+    <button style="background:#1a73e8;" onclick="playAnimation()">å†ç”Ÿ</button>
+    <button style="background:#e53935;" onclick="switchMode('trace')">ãªãã‚Šç·´ç¿’</button>
+    <button style="background:#333;" onclick="switchMode('score')">æˆ»ã‚‹</button>
   </div>
 
   <div id="result-box">
-    <div id="score" class="score">- ç?¹</div>
-    <div id="msg" class="msg">æ?¸ã?ã¦ã??æ?¡ç?¹ã?ã??ã?ã??æ?¼ã?ã¦ãã ã?ã?</div>
+    <div id="score" class="score">- ç‚¹</div>
+    <div id="msg" class="msg">æ›¸ã„ã¦ã€Œæ¡ç‚¹ã™ã‚‹ã€ã‚’æŠ¼ã—ã¦ãã ã•ã„</div>
   </div>
 
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="modal-content">
-      <h3>ğ??? ã??ã?³ã?»ã?¨ã??ã?§ã?¯ã??è¡¨ç¾è¨­å®?</h3>
+      <h3>ğŸ–‹ ãƒšãƒ³ãƒ»ã‚¨ãƒ•ã‚§ã‚¯ãƒˆè¡¨ç¾è¨­å®š</h3>
       <div class="slider-group">
-        <label>å?ºæ?¬ã®å¤ªã? <span id="val-baseWidth"></span></label>
+        <label>åŸºæœ¬ã®å¤ªã• <span id="val-baseWidth"></span></label>
         <input type="range" id="sl-baseWidth" min="4" max="18" step="0.5" oninput="updateParam('baseWidth', this.value)">
       </div>
       <div style="background:#fff3e0; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #ff9800;">
-        <label style="font-size:11px; color:#ef6c00; display:block; margin-bottom:5px;">ã?ã¨ã?ã??ã?¤ã?³ã?¯æº?ã¾ã??</label>
+        <label style="font-size:11px; color:#ef6c00; display:block; margin-bottom:5px;">ã€ã¨ã‚ã€‘ã‚¤ãƒ³ã‚¯æºœã¾ã‚Š</label>
         <div class="slider-group">
-          <label>é??å§?ä½ç½® <span id="val-tomeStart"></span></label>
+          <label>é–‹å§‹ä½ç½® <span id="val-tomeStart"></span></label>
           <input type="range" id="sl-tomeStart" min="0.5" max="0.95" step="0.05" oninput="updateParam('tomeStart', this.value)">
         </div>
         <div class="slider-group">
-          <label>è?¨å¼µç?? <span id="val-tomeScale"></span></label>
+          <label>è†¨å¼µç‡ <span id="val-tomeScale"></span></label>
           <input type="range" id="sl-tomeScale" min="1.0" max="2.0" step="0.1" oninput="updateParam('tomeScale', this.value)">
         </div>
       </div>
       <div style="background:#e8f5e9; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #4caf50;">
-        <label style="font-size:11px; color:#2e7d32; display:block; margin-bottom:5px;">ã?ã¯ã­ã??è·³ã­ä¸?ã?</label>
+        <label style="font-size:11px; color:#2e7d32; display:block; margin-bottom:5px;">ã€ã¯ã­ã€‘è·³ã­ä¸Šã’</label>
         <div class="slider-group">
-          <label>é??å§?ä½ç½® <span id="val-haneStart"></span></label>
+          <label>é–‹å§‹ä½ç½® <span id="val-haneStart"></span></label>
           <input type="range" id="sl-haneStart" min="0.5" max="0.95" step="0.05" oninput="updateParam('haneStart', this.value)">
         </div>
         <div class="slider-group">
-          <label>å??ç«¯ã®é?­ã? <span id="val-haneSharp"></span></label>
+          <label>å…ˆç«¯ã®é‹­ã• <span id="val-haneSharp"></span></label>
           <input type="range" id="sl-haneSharp" min="0.5" max="1.0" step="0.05" oninput="updateParam('haneSharp', this.value)">
         </div>
       </div>
       <div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left: 4px solid #2196f3;">
-        <label style="font-size:11px; color:#1565c0; display:block; margin-bottom:5px;">ã?ã¯ã??ã?ã??</label>
+        <label style="font-size:11px; color:#1565c0; display:block; margin-bottom:5px;">ã€ã¯ã‚‰ã„ã€‘</label>
         <div class="slider-group">
-          <label>é??å§?ä½ç½® <span id="val-haraiStart"></span></label>
+          <label>é–‹å§‹ä½ç½® <span id="val-haraiStart"></span></label>
           <input type="range" id="sl-haraiStart" min="0.3" max="0.9" step="0.05" oninput="updateParam('haraiStart', this.value)">
         </div>
         <div class="slider-group">
-          <label>å??ç«¯ã®é?­ã? <span id="val-haraiSharp"></span></label>
+          <label>å…ˆç«¯ã®é‹­ã• <span id="val-haraiSharp"></span></label>
           <input type="range" id="sl-haraiSharp" min="0.5" max="1.0" step="0.05" oninput="updateParam('haraiSharp', this.value)">
         </div>
       </div>
       <div id="preview-grid">
         <div class="preview-box"><span class="preview-label">æ°¸</span><canvas id="pre-æ°¸" class="preview-canvas"></canvas></div>
         <div class="preview-box"><span class="preview-label">æ ¡</span><canvas id="pre-æ ¡" class="preview-canvas"></canvas></div>
-        <div class="preview-box"><span class="preview-label">æ?¨</span><canvas id="pre-æ?¨" class="preview-canvas"></canvas></div>
-        <div class="preview-box"><span class="preview-label">æ??</span><canvas id="pre-æ??" class="preview-canvas"></canvas></div>
+        <div class="preview-box"><span class="preview-label">æœ¨</span><canvas id="pre-æœ¨" class="preview-canvas"></canvas></div>
+        <div class="preview-box"><span class="preview-label">æ–‡</span><canvas id="pre-æ–‡" class="preview-canvas"></canvas></div>
       </div>
       <div class="controls" style="margin-top:20px;">
-        <button onclick="resetParams()" style="background:#8e8e93; font-size:13px;">ã?ªã?»ã??ã??</button>
-        <button onclick="toggleSettings(false)">å®?äº?</button>
+        <button onclick="resetParams()" style="background:#8e8e93; font-size:13px;">ãƒªã‚»ãƒƒãƒˆ</button>
+        <button onclick="toggleSettings(false)">å®Œäº†</button>
       </div>
     </div>
   </div>
 
   <div id="wizard-modal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 350px;">
-      <h3>ğ??¯ è?ªå??ã?­ã?£ã?ªã??ã?¬ã?¼ã?·ã?§ã?³</h3>
-      <p style="font-size:11px; color:#555; margin-top:0;">æ??å­?ã??ãªã?ã£ã¦ã??ä»?ã®ç?»ã¯ã©ã??ã§ã?ã?ï¼?ã?ã¨ã?·ã?¹ã??ã? ã«æ??ã?ã¦ãã ã?ã?ã??ã?ãªã?ã®ã??ã?³ã®å?¤å®?å?ºæº?ã??å­¦ç¿?ã?ã¾ã?ã??</p>
+      <h3>ğŸ¯ è‡ªå‹•ã‚­ãƒ£ãƒªãƒ–ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³</h3>
+      <p style="font-size:11px; color:#555; margin-top:0;">æ–‡å­—ã‚’ãªãã£ã¦ã€Œä»Šã®ç”»ã¯ã©ã‚Œã§ã™ã‹ï¼Ÿã€ã¨ã‚·ã‚¹ãƒ†ãƒ ã«æ•™ãˆã¦ãã ã•ã„ã€‚ã‚ãªãŸã®ãƒšãƒ³ã®åˆ¤å®šåŸºæº–ã‚’å­¦ç¿’ã—ã¾ã™ã€‚</p>
       
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-        <span style="font-size:12px; font-weight:bold;">ä¸?æ?·ã:</span>
+        <span style="font-size:12px; font-weight:bold;">ä¸‹æ•·ã:</span>
         <select id="wiz-kanji-select" onchange="drawWizGuide()"></select>
       </div>
 
       <canvas id="wizard-canvas"></canvas>
 
       <div id="wiz-prompt-area" class="hidden">
-        <div style="text-align:center; font-weight:bold; font-size:13px; margin-bottom:6px; color:#e91e63;">ã?ã¾æ?¸ã?ã?ç?»ã®æ?å?³ã¯ï¼?</div>
+        <div style="text-align:center; font-weight:bold; font-size:13px; margin-bottom:6px; color:#e91e63;">ã„ã¾æ›¸ã„ãŸç”»ã®æ„å›³ã¯ï¼Ÿ</div>
         <div class="wiz-btn-group">
-          <button class="wiz-btn" onclick="submitWizData('tome')">ã¨ã?</button>
+          <button class="wiz-btn" onclick="submitWizData('tome')">ã¨ã‚</button>
           <button class="wiz-btn" onclick="submitWizData('hane')">ã¯ã­</button>
-          <button class="wiz-btn" onclick="submitWizData('harai')">ã¯ã??ã?</button>
-          <button class="wiz-btn-ignore" onclick="submitWizData('ignore')">ã?ã?ã??ã§ã??ãªã?ï¼?ç?¡è¦?ã?»æ¶?å?»ï¼?</button>
+          <button class="wiz-btn" onclick="submitWizData('harai')">ã¯ã‚‰ã„</button>
+          <button class="wiz-btn-ignore" onclick="submitWizData('ignore')">ã„ãšã‚Œã§ã‚‚ãªã„ï¼ˆç„¡è¦–ãƒ»æ¶ˆå»ï¼‰</button>
         </div>
       </div>
 
       <div class="wiz-stats" style="margin-top:10px;">
-        <div style="font-weight:bold; margin-bottom:3px;">ğ??? å­¦ç¿?ã??ã?¼ã?¿è¨?é?²æ?°</div>
-        <div id="wiz-counts">ã¨ã?: 0 / ã¯ã­: 0 / ã¯ã??ã?: 0</div>
+        <div style="font-weight:bold; margin-bottom:3px;">ğŸ“Š å­¦ç¿’ãƒ‡ãƒ¼ã‚¿è¨˜éŒ²æ•°</div>
+        <div id="wiz-counts">ã¨ã‚: 0 / ã¯ã­: 0 / ã¯ã‚‰ã„: 0</div>
         <hr style="border:0; border-top:1px solid #ddd; margin:8px 0;">
-        <div style="font-weight:bold; margin-bottom:3px;">â??ï¸ è¨?ç®?ã?ã??ã?ã?ãã?å?¤</div>
-        <div id="wiz-thresholds" style="font-family:monospace; color:#1a73e8; font-size:11px;">æ?ªè¨?ç®?</div>
+        <div style="font-weight:bold; margin-bottom:3px;">âš™ï¸ è¨ˆç®—ã•ã‚ŒãŸã—ãã„å€¤</div>
+        <div id="wiz-thresholds" style="font-family:monospace; color:#1a73e8; font-size:11px;">æœªè¨ˆç®—</div>
       </div>
 
       <hr style="border:0; border-top:2px solid #eee; margin:15px 0;">
-      <div style="font-size:12px; font-weight:bold; margin-bottom:8px;">ğ??¾ ã??ã?­ã??ã?£ã?¼ã?«ä¿å­?å??</div>
+      <div style="font-size:12px; font-weight:bold; margin-bottom:8px;">ğŸ’¾ ãƒ—ãƒ­ãƒ•ã‚£ãƒ¼ãƒ«ä¿å­˜å…ˆ</div>
       <div id="profile-slots-area"></div>
 
       <div class="controls" style="margin-top:15px;">
-        <button onclick="resetWizard()" style="background:#f44336; font-size:12px;">è¨?é?²ã?ªã?»ã??ã??</button>
-        <button onclick="toggleWizard(false)" style="background:#8e8e93; font-size:12px;">ã?­ã?£ã?³ã?»ã?«</button>
+        <button onclick="resetWizard()" style="background:#f44336; font-size:12px;">è¨˜éŒ²ãƒªã‚»ãƒƒãƒˆ</button>
+        <button onclick="toggleWizard(false)" style="background:#8e8e93; font-size:12px;">ã‚­ãƒ£ãƒ³ã‚»ãƒ«</button>
       </div>
     </div>
   </div>
@@ -211,7 +211,7 @@
   }
 
   // ==========================================
-  // 1. é«?è§£å?åº¦Canvasã?»ã??ã??ã?¢ã??ã??æ©?æ§?
+  // 1. é«˜è§£åƒåº¦Canvasã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—æ©Ÿæ§‹
   // ==========================================
   function setupHighDPICanvas(canvasId, logicalWidth, logicalHeight) {
     const canvas = document.getElementById(canvasId);
@@ -239,7 +239,7 @@
   const wctx = setupHighDPICanvas('wizard-canvas', WIZ_CANVAS_SIZE, WIZ_CANVAS_SIZE);
 
   // ==========================================
-  // 2. ã?°ã?­ã?¼ã?ã?«å¤?æ?°å®£è¨?
+  // 2. ã‚°ãƒ­ãƒ¼ãƒãƒ«å¤‰æ•°å®£è¨€
   // ==========================================
   let KANJI_DATA = {};
   const NUM_SAMPLES = 45; 
@@ -251,12 +251,12 @@
   const TEST_KANJI = {
     'æ°¸': ['M45.5,13.25c5.12,2.4,8.62,5.75,10.75,9','M31.75,37.25c1.88,0.75,4.12,1,6.07,0.55c3.62-0.83,9.41-2.51,13.04-3.35c3-0.7,5.16,0.8,5.16,4.05c0,14.5-0.26,45.45-0.26,50c0,12-7.02,2.84-8.52,1.7','M14.25,58.68c1.75,0.45,3.46,0.3,5-0.02c2.5-0.53,12.84-3.54,15.34-4.49c2.5-0.95,4.65,0.77,3.75,2.85C33.5,68.25,25.75,79.75,16,86.37','M81.22,36.52c-0.1,1.11-0.78,2.03-1.52,2.7c-4.83,4.38-13.96,9.73-21.46,11.92','M58,52.74c9.88,9.52,20.02,18.85,29.07,24.84c2.01,1.33,4.05,2.66,6.43,3.56'],
     'æ ¡': ['M11.53,40.68c1.1,0.32,2.6,0.45,4.53,0.32c5.4-0.35,16.57-3,23.14-4.04c1.25-0.2,2.3-0.18,3.07,0','M28.99,17.25c1.07,1.07,1.76,3.25,1.76,5.25c0,0.77-0.03,48.09-0.18,65.25c-0.03,3.03-0.05,5.16-0.07,6','M30.25,40.75c0,1.25-0.49,2.66-0.96,3.77C25.28,53.91,20.88,62.25,15,70','M33.75,51.25c2.75,1.5,6,5.25,7.25,7.75','M66.39,15.5c0.99,0.99,1.38,1.88,1.38,3.62c0,4.25-0.02,7.62-0.08,10.41','M48.12,31.71c2.3,0.29,3.9,0.44,6.09,0.2c10.28-1.16,20.32-2.66,32.45-3.53c2.35-0.17,4.03-0.01,5.33,0.32','M59.24,38.93c0.2,0.53,0.06,2.27-0.4,3.14C57,45.5,53.75,49.5,50,52.5','M79.27,38.5c4.34,3.07,8.73,8.68,10.9,12.41','M79.15,49.18c0.35,1.32,0.17,2.62-0.54,4.18C72.25,67.25,58.75,83.25,44,91.25','M55.95,55.88c6.3,3.37,21.64,22.12,31.45,30.33c2.64,2.21,5.07,4.15,8.6,4.44'],
-    'æ?¨': ['M19.5,39.86c2.45,0.57,5.23,0.8,8.04,0.57C40.75,39.38,63,36.5,79.78,36.15c2.8-0.06,4.54,0.1,7.34,0.5','M51.75,10.5c1.19,1.19,2,3,2,5c0,8.65,0,55.15-0.14,74.75c-0.03,4.19-0.07,7.15-0.11,8.25','M50.75,39.5c0,1.12-0.61,2.44-1.42,3.95C41.75,57.5,26.7,73.93,15.75,80.25','M54.5,39c4.62,6,23,25.75,31.76,34.61c2.27,2.29,4.61,4.39,7.49,5.64'],
-    'æ??': ['M51.62,12.75c1.06,1.06,1.73,2.5,1.73,4.01c0,4.32-0.11,7.61-0.11,12.15','M16.88,32.72c2.7,0.66,5.71,0.86,8.6,0.54c15.77-1.76,40.15-5.01,56.42-6.1c3.67-0.25,6.15,0.05,8.88,0.69','M69.89,32.5c0.36,2.12,0.06,3.82-0.93,6.27C61.62,57,43.75,80.25,18.75,93.75','M31,43.75c6,0,27.27,26.79,49.26,42.1c4.13,2.87,7.49,4.77,11.49,6.04']
+    'æœ¨': ['M19.5,39.86c2.45,0.57,5.23,0.8,8.04,0.57C40.75,39.38,63,36.5,79.78,36.15c2.8-0.06,4.54,0.1,7.34,0.5','M51.75,10.5c1.19,1.19,2,3,2,5c0,8.65,0,55.15-0.14,74.75c-0.03,4.19-0.07,7.15-0.11,8.25','M50.75,39.5c0,1.12-0.61,2.44-1.42,3.95C41.75,57.5,26.7,73.93,15.75,80.25','M54.5,39c4.62,6,23,25.75,31.76,34.61c2.27,2.29,4.61,4.39,7.49,5.64'],
+    'æ–‡': ['M51.62,12.75c1.06,1.06,1.73,2.5,1.73,4.01c0,4.32-0.11,7.61-0.11,12.15','M16.88,32.72c2.7,0.66,5.71,0.86,8.6,0.54c15.77-1.76,40.15-5.01,56.42-6.1c3.67-0.25,6.15,0.05,8.88,0.69','M69.89,32.5c0.36,2.12,0.06,3.82-0.93,6.27C61.62,57,43.75,80.25,18.75,93.75','M31,43.75c6,0,27.27,26.79,49.26,42.1c4.13,2.87,7.49,4.77,11.49,6.04']
   };
 
   // ==========================================
-  // 3. ã?¹ã??ã?¬ã?¼ã?¸ã¨ã??ã?­ã??ã?¡ã?¤ã?«ç®¡ç?
+  // 3. ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ã¨ãƒ—ãƒ­ãƒ•ã‚¡ã‚¤ãƒ«ç®¡ç†
   // ==========================================
   const SafeStorage = {
     get: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
@@ -265,18 +265,18 @@
     clearData: function() { try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith('kanjiData_')) localStorage.removeItem(k); } } catch(e) {} }
   };
 
-  // è¡¨ç¾ã??ã?©ã?¡ã?¼ã?¿
+  // è¡¨ç¾ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿
   const DEFAULT_PARAMS = { baseWidth: 9.0, tomeStart: 0.88, tomeScale: 1.3, haneStart: 0.85, haneSharp: 0.95, haraiStart: 0.70, haraiSharp: 0.90 };
   let STROKE_PARAMS = { ...DEFAULT_PARAMS };
   const savedEff = SafeStorage.get('kanjiStrokeParamsV2');
   if (savedEff) { try { STROKE_PARAMS = { ...DEFAULT_PARAMS, ...JSON.parse(savedEff) }; } catch(e) {} }
 
-  // å?¤å®?ã?ãã?å?¤ã??ã?­ã??ã?¡ã?¤ã?«
+  // åˆ¤å®šã—ãã„å€¤ãƒ—ãƒ­ãƒ•ã‚¡ã‚¤ãƒ«
   const DEFAULT_THRESHOLDS = { minVelocity: 1.2, hookAngleDiff: 0.6 };
   let USER_PROFILES = [
-    { id: 0, name: "æ±?ç?¨ã??ã?³ (ã??ã??ã?©ã?«ã??)", thresholds: { ...DEFAULT_THRESHOLDS }, isEmpty: false },
-    { id: 1, name: "æ?ªç?»é?² 1", thresholds: null, isEmpty: true },
-    { id: 2, name: "æ?ªç?»é?² 2", thresholds: null, isEmpty: true }
+    { id: 0, name: "æ±ç”¨ãƒšãƒ³ (ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ)", thresholds: { ...DEFAULT_THRESHOLDS }, isEmpty: false },
+    { id: 1, name: "æœªç™»éŒ² 1", thresholds: null, isEmpty: true },
+    { id: 2, name: "æœªç™»éŒ² 2", thresholds: null, isEmpty: true }
   ];
   let ACTIVE_PROFILE_ID = 0;
 
@@ -296,19 +296,19 @@
 
   function updateProfileSelectUI() {
     const sel = document.getElementById('active-profile-select');
-    sel.innerHTML = USER_PROFILES.map(p => `<option value="${p.id}" ${p.id === ACTIVE_PROFILE_ID ? 'selected' : ''}>${p.isEmpty ? '(æ?ªç?»é?²)' : 'ğ??? ' + p.name}</option>`).join('');
+    sel.innerHTML = USER_PROFILES.map(p => `<option value="${p.id}" ${p.id === ACTIVE_PROFILE_ID ? 'selected' : ''}>${p.isEmpty ? '(æœªç™»éŒ²)' : 'ğŸ–‹ ' + p.name}</option>`).join('');
   }
 
   function switchProfile(id) {
     ACTIVE_PROFILE_ID = parseInt(id);
     const prof = USER_PROFILES[ACTIVE_PROFILE_ID];
-    if (prof.isEmpty) alert("ã?ã®ã?¹ã?­ã??ã??ã¯æ?ªç?»é?²ã§ã?ã??ã??ã??ã?³èª¿æ?´ã?ã?ã??è¨­å®?ã??è¨?é?²ã?ã¦ãã ã?ã?ã??");
+    if (prof.isEmpty) alert("ã“ã®ã‚¹ãƒ­ãƒƒãƒˆã¯æœªç™»éŒ²ã§ã™ã€‚ã€Œãƒšãƒ³èª¿æ•´ã€ã‹ã‚‰è¨­å®šã‚’è¨˜éŒ²ã—ã¦ãã ã•ã„ã€‚");
     SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));
     if (referenceStrokes.length > 0) redrawAllUserStrokes(); 
   }
 
   // ==========================================
-  // 4. è¡¨ç¾è¨­å®?UIã?­ã?¸ã??ã?¯
+  // 4. è¡¨ç¾è¨­å®šUIãƒ­ã‚¸ãƒƒã‚¯
   // ==========================================
   const previewContexts = {}; 
 
@@ -327,10 +327,10 @@
   }
 
   function updateParam(k, v) { STROKE_PARAMS[k] = parseFloat(v); document.getElementById(`val-${k}`).innerText = v; SafeStorage.set('kanjiStrokeParamsV2', JSON.stringify(STROKE_PARAMS)); updateAllPreviews(); }
-  function resetParams() { if(confirm("ã?¨ã??ã?§ã?¯ã??è¨­å®?ã??å?æ??å??ã?ã¾ã?ã?ï¼?")) { STROKE_PARAMS = { ...DEFAULT_PARAMS }; toggleSettings(true); } }
+  function resetParams() { if(confirm("ã‚¨ãƒ•ã‚§ã‚¯ãƒˆè¨­å®šã‚’åˆæœŸåŒ–ã—ã¾ã™ã‹ï¼Ÿ")) { STROKE_PARAMS = { ...DEFAULT_PARAMS }; toggleSettings(true); } }
 
   // ==========================================
-  // 5. ã?­ã?£ã?ªã??ã?¬ã?¼ã?·ã?§ã?³ã?»ã?¦ã?£ã?¶ã?¼ã??æ©?è?½
+  // 5. ã‚­ãƒ£ãƒªãƒ–ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ãƒ»ã‚¦ã‚£ã‚¶ãƒ¼ãƒ‰æ©Ÿèƒ½
   // ==========================================
   let wizDrawing = false, wizCurrentPoints = [], wizLastTime = 0, wizStats = null;
   let wizHistory = { tome: [], hane: [], harai: [] };
@@ -341,7 +341,7 @@
       const sel = document.getElementById('wiz-kanji-select');
       const loadedKeys = Object.keys(KANJI_DATA);
       const keysToUse = loadedKeys.length > 0 ? loadedKeys : Object.keys(TEST_KANJI);
-      sel.innerHTML = `<option value="">(ãªã?ã?»è?ªç?±æ?¸ã)</option>` + keysToUse.map(k => `<option value="${k}">${k}</option>`).join('');
+      sel.innerHTML = `<option value="">(ãªã—ãƒ»è‡ªç”±æ›¸ã)</option>` + keysToUse.map(k => `<option value="${k}">${k}</option>`).join('');
       
       wizHistory = { tome: [], hane: [], harai: [] };
       renderProfileSaveSlots(); updateWizUI();
@@ -427,13 +427,13 @@
   }
 
   function updateWizUI() {
-    document.getElementById('wiz-counts').innerText = `ã¨ã?: ${wizHistory.tome.length} / ã¯ã­: ${wizHistory.hane.length} / ã¯ã??ã?: ${wizHistory.harai.length}`;
+    document.getElementById('wiz-counts').innerText = `ã¨ã‚: ${wizHistory.tome.length} / ã¯ã­: ${wizHistory.hane.length} / ã¯ã‚‰ã„: ${wizHistory.harai.length}`;
     const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;
-    document.getElementById('wiz-thresholds').innerHTML = `v >= ${t.minVelocity} ã§ã??æ??ã?»è·³ã?<br>a >= ${t.hookAngleDiff} ã§ã??è·³ã­ã?`;
+    document.getElementById('wiz-thresholds').innerHTML = `v >= ${t.minVelocity} ã§ã€Œæ‰•ãƒ»è·³ã€<br>a >= ${t.hookAngleDiff} ã§ã€Œè·³ã­ã€`;
   }
 
   function resetWizard() {
-    if (confirm("å­¦ç¿?ã??ã?¼ã?¿ã??ã?¯ã?ªã?¢ã?ã¾ã?ã?ï¼?")) {
+    if (confirm("å­¦ç¿’ãƒ‡ãƒ¼ã‚¿ã‚’ã‚¯ãƒªã‚¢ã—ã¾ã™ã‹ï¼Ÿ")) {
       wizHistory = { tome: [], hane: [], harai: [] }; TEMPORARY_THRESHOLDS = { ...DEFAULT_THRESHOLDS };
       updateWizUI(); clearWizCanvas();
     }
@@ -443,47 +443,47 @@
     const area = document.getElementById('profile-slots-area');
     area.innerHTML = USER_PROFILES.map(p => `
       <div class="profile-slot">
-        <input type="text" id="prof-name-${p.id}" value="${p.isEmpty ? '' : p.name}" placeholder="ã??ã?³ã?»ç«¯æ?«å (æ?ªç?»é?²)">
-        <button style="background:${p.isEmpty ? '#4caf50' : '#f4b400'}; color:#fff;" onclick="saveProfileToSlot(${p.id})">${p.isEmpty ? 'ã?ã?ã«ä¿å­?' : 'ä¸?æ?¸ãä¿å­?'}</button>
+        <input type="text" id="prof-name-${p.id}" value="${p.isEmpty ? '' : p.name}" placeholder="ãƒšãƒ³ãƒ»ç«¯æœ«å (æœªç™»éŒ²)">
+        <button style="background:${p.isEmpty ? '#4caf50' : '#f4b400'}; color:#fff;" onclick="saveProfileToSlot(${p.id})">${p.isEmpty ? 'ã“ã“ã«ä¿å­˜' : 'ä¸Šæ›¸ãä¿å­˜'}</button>
       </div>`).join('');
   }
 
   function saveProfileToSlot(id) {
     const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;
-    const nameInput = document.getElementById(`prof-name-${id}`).value.trim() || `ã??ã?³è¨­å®? ${id+1}`;
-    if (!USER_PROFILES[id].isEmpty) if (!confirm(`ã??${USER_PROFILES[id].name}ã?ã«ä¸?æ?¸ãä¿å­?ã?ã¾ã?ã?ï¼?\n(ä»¥å?ã®å?¤å®?è¨­å®?ã¯æ¶?å?»ã?ã??ã¾ã?)`)) return;
+    const nameInput = document.getElementById(`prof-name-${id}`).value.trim() || `ãƒšãƒ³è¨­å®š ${id+1}`;
+    if (!USER_PROFILES[id].isEmpty) if (!confirm(`ã€Œ${USER_PROFILES[id].name}ã€ã«ä¸Šæ›¸ãä¿å­˜ã—ã¾ã™ã‹ï¼Ÿ\n(ä»¥å‰ã®åˆ¤å®šè¨­å®šã¯æ¶ˆå»ã•ã‚Œã¾ã™)`)) return;
     
     USER_PROFILES[id] = { id: id, name: nameInput, thresholds: { ...t }, isEmpty: false };
     ACTIVE_PROFILE_ID = id;
     SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));
-    alert(`ã??${nameInput}ã?ã¨ã?ã¦ä¿å­?ã?ã?ç¾å?¨ã®ã??ã?³ã«è¨­å®?ã?ã¾ã?ã?ã??`);
+    alert(`ã€Œ${nameInput}ã€ã¨ã—ã¦ä¿å­˜ã—ã€ç¾åœ¨ã®ãƒšãƒ³ã«è¨­å®šã—ã¾ã—ãŸã€‚`);
     renderProfileSaveSlots(); updateProfileSelectUI();
   }
 
   // ==========================================
-  // 6. ã?¢ã??ã?ªã?±ã?¼ã?·ã?§ã?³å?æ??å?? (å®?å?¨å¯¾ç­?æ¸?)
+  // 6. ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³åˆæœŸåŒ– (å®‰å…¨å¯¾ç­–æ¸ˆ)
   // ==========================================
-  function showLoading(show, msg = "ã?­ã?¼ã??ä¸­...") {
+  function showLoading(show, msg = "ãƒ­ãƒ¼ãƒ‰ä¸­...") {
     const overlay = document.getElementById('loading-overlay');
     if (overlay) { overlay.style.display = show ? 'flex' : 'none'; if(show) overlay.querySelector('span').textContent = msg; }
   }
 
   window.onload = () => {
     updateProfileSelectUI();
-    showLoading(true, "å?æ??å??ä¸­...");
+    showLoading(true, "åˆæœŸåŒ–ä¸­...");
     postKanjiApi("get_kanji_init_data")
       .then(initData => {
-        if (!initData || initData.status !== "success") throw new Error((initData && initData.message) || "å?æ??å??ã«å¤±æ??ã?ã¾ã?ã?");
-        showLoading(false); // ã?¨ã?©ã?¼ã?èµ·ãã??å?ã«çµ¶å¯¾ã«é? ã?
+        if (!initData || initData.status !== "success") throw new Error((initData && initData.message) || "åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ");
+        showLoading(false); // ã‚¨ãƒ©ãƒ¼ãŒèµ·ãã‚‹å‰ã«çµ¶å¯¾ã«éš ã™
         try {
           const cachedBook = SafeStorage.get('kanjiBookName');
           if (cachedBook !== initData.bookName) { SafeStorage.clearData(); SafeStorage.set('kanjiBookName', initData.bookName); }
           const sheetSelect = document.getElementById('sheet-selector');
           sheetSelect.innerHTML = initData.sheets.map(s => `<option value="${s}">${s}</option>`).join('');
           loadKanjiData();
-        } catch(e) { alert("å?æ??å??ã?¨ã?©ã?¼: " + e.message); }
+        } catch(e) { alert("åˆæœŸåŒ–ã‚¨ãƒ©ãƒ¼: " + e.message); }
       })
-      .catch(e => { alert("ã?µã?¼ã?ã?¼æ?¥ç¶?ã?¨ã?©ã?¼: " + (e && e.message ? e.message : e)); showLoading(false); });
+      .catch(e => { alert("ã‚µãƒ¼ãƒãƒ¼æ¥ç¶šã‚¨ãƒ©ãƒ¼: " + (e && e.message ? e.message : e)); showLoading(false); });
   };
 
   function syncData() { const name = document.getElementById('sheet-selector').value; if (name) SafeStorage.remove(`kanjiData_${name}`); loadKanjiData(); }
@@ -499,22 +499,22 @@
       } catch(e) { SafeStorage.remove(`kanjiData_${name}`); } 
     }
 
-    showLoading(true, `${name} ã??èª­è¾¼ä¸­...`);
+    showLoading(true, `${name} ã‚’èª­è¾¼ä¸­...`);
     postKanjiApi("get_kanji_data_from_sheet", { sheetName: name })
       .then(res => {
-        if (!res || res.status !== "success") throw new Error((res && res.message) || "ã??ã?¼ã?¿å?å¾?ã«å¤±æ??ã?ã¾ã?ã?");
+        if (!res || res.status !== "success") throw new Error((res && res.message) || "ãƒ‡ãƒ¼ã‚¿å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ");
         const data = res.data || {};
         showLoading(false); 
         try { KANJI_DATA = data; SafeStorage.set(`kanjiData_${name}`, JSON.stringify(data)); populateKanjiSelector(); } 
-        catch(e) { alert("ã??ã?¼ã?¿å±?é??ä¸­ã«ã?¨ã?©ã?¼: " + e.message); } 
+        catch(e) { alert("ãƒ‡ãƒ¼ã‚¿å±•é–‹ä¸­ã«ã‚¨ãƒ©ãƒ¼: " + e.message); } 
       })
-      .catch(e => { alert("ã??ã?¼ã?¿å?å¾?å¤±æ??: " + (e && e.message ? e.message : e)); showLoading(false); });
+      .catch(e => { alert("ãƒ‡ãƒ¼ã‚¿å–å¾—å¤±æ•—: " + (e && e.message ? e.message : e)); showLoading(false); });
   }
 
   function populateKanjiSelector() {
     const select = document.getElementById('target-kanji');
     const keys = Object.keys(KANJI_DATA);
-    select.innerHTML = keys.length ? keys.map(k => `<option value="${k}">${k}</option>`).join('') : '<option>ã??ã?¼ã?¿ãªã?</option>';
+    select.innerHTML = keys.length ? keys.map(k => `<option value="${k}">${k}</option>`).join('') : '<option>ãƒ‡ãƒ¼ã‚¿ãªã—</option>';
     initTargetKanji();
   }
 
@@ -528,12 +528,12 @@
       });
       switchMode('score');
     } catch(e) {
-      console.warn("SVGè§£æ?ã?¹ã?­ã??ã??:", char);
+      console.warn("SVGè§£æã‚¹ã‚­ãƒƒãƒ—:", char);
     }
   }
 
   // ==========================================
-  // 7. è§£æ?ã¨æç?»ã?¨ã?³ã?¸ã?³ (ã?¼ã?­é?¤ç®?ä¿è­·æ¸?)
+  // 7. è§£æã¨æç”»ã‚¨ãƒ³ã‚¸ãƒ³ (ã‚¼ãƒ­é™¤ç®—ä¿è­·æ¸ˆ)
   // ==========================================
   function sampleSvgPath(d, n) {
     if (!d || typeof d !== 'string' || d.trim() === '') return Array(n).fill({x:0, y:0});
@@ -578,7 +578,7 @@
       const ratio = i / (n - 1);
       let w = bW;
       
-      // â?? ã?¼ã?­é?¤ç®?ã?»NaNå¯¾ç­?
+      // â˜… ã‚¼ãƒ­é™¤ç®—ãƒ»NaNå¯¾ç­–
       if (type === 'harai' && ratio > STROKE_PARAMS.haraiStart) {
         const denom = (1 - STROKE_PARAMS.haraiStart) || 0.001;
         w *= Math.max(0.1, 1 - STROKE_PARAMS.haraiSharp * ((ratio - STROKE_PARAMS.haraiStart) / denom));
@@ -602,7 +602,7 @@
   }
 
   // ==========================================
-  // 8. æ??æ?¸ãå?¦ç?ï¼?ã?¡ã?¤ã?³ã?­ã?£ã?³ã?ã?¹ï¼?
+  // 8. æ‰‹æ›¸ãå‡¦ç†ï¼ˆãƒ¡ã‚¤ãƒ³ã‚­ãƒ£ãƒ³ãƒã‚¹ï¼‰
   // ==========================================
   let isDrawingMain = false, currentPointsMain = [], mainLastTime = 0, mainLastPos = null;
 
@@ -661,7 +661,7 @@
   }
 
   function updateAllPreviews() {
-    ['æ°¸', 'æ ¡', 'æ?¨', 'æ??'].forEach(char => {
+    ['æ°¸', 'æ ¡', 'æœ¨', 'æ–‡'].forEach(char => {
       if (!previewContexts[char]) { previewContexts[char] = setupHighDPICanvas(`pre-${char}`, PREVIEW_SIZE, PREVIEW_SIZE); }
       const pctx = previewContexts[char]; if (!pctx) return;
       pctx.clearRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
@@ -672,7 +672,7 @@
   }
 
   // ==========================================
-  // 9. ã?¢ã?¼ã??å??æ?¿ã¨æ?¡ç?¹ã?¨ã?³ã?¸ã?³ï¼?å?³å¯?å?¤å®?å¯¾å¿?ï¼?
+  // 9. ãƒ¢ãƒ¼ãƒ‰åˆ‡æ›¿ã¨æ¡ç‚¹ã‚¨ãƒ³ã‚¸ãƒ³ï¼ˆå³å¯†åˆ¤å®šå¯¾å¿œï¼‰
   // ==========================================
   function switchMode(m) {
     mode = m; const msg = document.getElementById('mode-msg');
@@ -681,16 +681,16 @@
     if (mode === 'demo') document.getElementById('result-box').classList.add('hidden'); else document.getElementById('result-box').classList.remove('hidden');
     
     clearCanvas();
-    if(mode==='trace') msg.innerHTML = "ã?æ??æ?¬ã??<span style='color:#e53935'>èµ¤ã??ã?³</span>ã§ãªã?ã£ã¦ãã ã?ã?";
-    else if(mode==='demo') { msg.innerText = "æ?¸ãé ?ã??ç¢ºèªã?ã¾ã?ã??ã?"; playAnimation(); }
-    else msg.innerText = "æ­£ç¢ºã«æ?¸ã?ã¦ãã ã?ã?";
+    if(mode==='trace') msg.innerHTML = "ãŠæ‰‹æœ¬ã‚’<span style='color:#e53935'>èµ¤ãƒšãƒ³</span>ã§ãªãã£ã¦ãã ã•ã„";
+    else if(mode==='demo') { msg.innerText = "æ›¸ãé †ã‚’ç¢ºèªã—ã¾ã—ã‚‡ã†"; playAnimation(); }
+    else msg.innerText = "æ­£ç¢ºã«æ›¸ã„ã¦ãã ã•ã„";
   }
 
   function clearCanvas() {
     if(animationId) cancelAnimationFrame(animationId);
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE); userStrokes = [];
     if(mode === 'trace') drawTraceGuide();
-    document.getElementById('score').innerText = "- ç?¹"; document.getElementById('msg').innerText = "æ?¸ã?ã¦ã??æ?¡ç?¹ã?ã??ã?ã??æ?¼ã?ã¦ãã ã?ã?";
+    document.getElementById('score').innerText = "- ç‚¹"; document.getElementById('msg').innerText = "æ›¸ã„ã¦ã€Œæ¡ç‚¹ã™ã‚‹ã€ã‚’æŠ¼ã—ã¦ãã ã•ã„";
   }
 
   function getScaledRefs() {
@@ -722,9 +722,9 @@
   }
 
   // ==========================================
-  // 9b. æ?¡ç?¹ç?¨ã??ã?«ã??ï¼?ã?ªã?µã?³ã??ã?«ã?»æ­£è¦å??ã?»DTWã?»äº¤å·®ã?»ã?µã?¤ã?ºï¼?
+  // 9b. æ¡ç‚¹ç”¨ãƒ˜ãƒ«ãƒ‘ï¼ˆãƒªã‚µãƒ³ãƒ—ãƒ«ãƒ»æ­£è¦åŒ–ãƒ»DTWãƒ»äº¤å·®ãƒ»ã‚µã‚¤ã‚ºï¼‰
   // ==========================================
-  // æ?¡ç?¹ã??ã??ã??æ??ã?ãã?ã??é?½å?: é?ã¿ï¼?è»?é?ã®æ¯?é?â??ã?»ã?µã?¤ã?ºâ??ã??ã??ã??ç·©å??å¯?ã??ï¼?ã¨ä¸?è¨?ã?¹ã?±ã?¼ã?«ã??ä½µç?¨
+  // æ¡ç‚¹ã‚’ã‚„ã‚„æ˜“ã—ãã™ã‚‹éƒ½åˆ: é‡ã¿ï¼ˆè»Œé“ã®æ¯”é‡â†“ãƒ»ã‚µã‚¤ã‚ºâ†“ã‚’ã‚„ã‚„ç·©å’Œå¯„ã‚Šï¼‰ã¨ä¸‹è¨˜ã‚¹ã‚±ãƒ¼ãƒ«ã‚’ä½µç”¨
   const SCORE_WEIGHTS = { trajectory: 0.40, startEnd: 0.22, structure: 0.13, size: 0.25 };
 
   function resamplePolyline(sArray, n) {
@@ -785,7 +785,7 @@
     for (let i = 0; i < rN.length; i++) {
       const us = uN[i][0], ue = uN[i][uN[i].length - 1], rs = rN[i][0], re = rN[i][rN[i].length - 1];
       const dS = Math.hypot(us.x - rs.x, us.y - rs.y), dE = Math.hypot(ue.x - re.x, ue.y - re.y);
-      // æ­£è¦å??åº§æ¨?ä¸?ã®å??ç«¯/æ?«ç«¯å·®ã??ã?¹ã?±ã?¼ã?«ã??å¤§ãã?ã»ã?ã?å?ã?è·é?¢ã§å¾?ç?¹ã?ä¸?ã?ã??ï¼?æ??ã?ã?ï¼?
+      // æ­£è¦åŒ–åº§æ¨™ä¸Šã®å…ˆç«¯/æœ«ç«¯å·®ã€‚ã‚¹ã‚±ãƒ¼ãƒ«ã‚’å¤§ãã„ã»ã†ãŒåŒã˜è·é›¢ã§å¾—ç‚¹ãŒä¸ŠãŒã‚‹ï¼ˆæ˜“ã—ã„ï¼‰
       const pairMean = (dS + dE) / 2;
       total += distTo100(pairMean, 0.30);
       count++;
@@ -835,7 +835,7 @@
       const j = key % 256, i = (key - j) / 256;
       if (strokePolylinesIntersect(userPolys[i], userPolys[j])) matches++;
     }
-    // äº¤å·®ã®ä¸?è?´åº¦ã«æ??ä½?ç?¹ã??ä¸?ã?ã?ã?ã?ã?ãªä¸ä¸?è?´ã§å¤§ããè½ã¡ã«ããã?ã??
+    // äº¤å·®ã®ä¸€è‡´åº¦ã«æœ€ä½ç‚¹ã‚’ä¸ãˆã€ã‚ãšã‹ãªä¸ä¸€è‡´ã§å¤§ããè½ã¡ã«ããã™ã‚‹
     return Math.min(100, Math.round(22 + 78 * (matches / refSet.size)));
   }
 
@@ -865,7 +865,7 @@
 
   function evaluateKanji(isTrace) {
     const sEl = document.getElementById('score'), mEl = document.getElementById('msg');
-    if (userStrokes.length !== referenceStrokes.length) { sEl.innerText = "0 ç?¹"; mEl.innerText = `ç?»æ?°ã?é?ã?ã¾ã?ï¼?æ­£è§£ï¼?${referenceStrokes.length}ç?»ï¼?`; return; }
+    if (userStrokes.length !== referenceStrokes.length) { sEl.innerText = "0 ç‚¹"; mEl.innerText = `ç”»æ•°ãŒé•ã„ã¾ã™ï¼ˆæ­£è§£ï¼š${referenceStrokes.length}ç”»ï¼‰`; return; }
 
     const userResampled = userStrokes.map(s => resamplePolyline(s.points, NUM_SAMPLES));
     const uN = normalizeStrokesToUnitSquare(userResampled);
@@ -888,121 +888,112 @@
       for (let i = 0; i < rN.length; i++) {
         const rType = referenceStrokes[i].type;
         const uType = userStrokes[i].type;
-        // ã¯ã­ã?»ã¯ã??ã?ã?ã?ã??ã¹ãå ´æ??ã«ãªã?å ´å?ã¯æ¸?ç?¹
+        // ã¯ã­ãƒ»ã¯ã‚‰ã„ãŒã‚ã‚‹ã¹ãå ´æ‰€ã«ãªã„å ´åˆã¯æ¸›ç‚¹
         if (rType === 'hane' && uType !== 'hane') {
           typeErrors++; score = Math.max(0, score - 6);
         } else if (rType === 'harai' && uType !== 'harai') {
           typeErrors++; score = Math.max(0, score - 6);
         }
-        // ã¨ã?(rType === 'tome')ã®ç®?æ??ã«ä¸è¦ãªã¯ã­ã?»ã¯ã??ã?ã?å­?å?¨ã?ã¦ã??æ¸?ç?¹ã?ãªã?
+        // ã¨ã‚(rType === 'tome')ã®ç®‡æ‰€ã«ä¸è¦ãªã¯ã­ãƒ»ã¯ã‚‰ã„ãŒå­˜åœ¨ã—ã¦ã‚‚æ¸›ç‚¹ã—ãªã„
       }
     }
 
     const uB2 = boundingBoxFromStrokesInCanvas(userResampled);
     const rB2 = boundingBoxFromStrokesInCanvas(scaledRefs.map(s => s.points));
     const areaRatio = (uB2.area / rB2.area) || 1;
-    const sizeLabel = (areaRatio >= 0.63 && areaRatio <= 1.4) ? 'å¤§ãã?ã¯é©æ­£' : (areaRatio < 0.63 && areaRatio > 0.38) ? 'å°?ã?å°ã?ã?' : (areaRatio < 0.38) ? 'å°ã?ã?ã?' : (areaRatio <= 1.68) ? 'ã??ã??å¤§ãã?' : 'å¤§ãã?ã?';
+    const sizeLabel = (areaRatio >= 0.63 && areaRatio <= 1.4) ? 'å¤§ãã•ã¯é©æ­£' : (areaRatio < 0.63 && areaRatio > 0.38) ? 'å°‘ã—å°ã•ã„' : (areaRatio < 0.38) ? 'å°ã•ã™ã' : (areaRatio <= 1.68) ? 'ã‚„ã‚„å¤§ãã„' : 'å¤§ãã™ã';
 
-    sEl.innerText = score + " ç?¹";
+    sEl.innerText = score + " ç‚¹";
     mEl.style.color = '#555';
-    const subLine = `å??è¨³: è»?é?${trajS} å§?çµ?${seS} æ§?é? ${strS} å¤§ãã?${sizeS}ï¼?${sizeLabel}ï¼?`;
+    const subLine = `å†…è¨³: è»Œé“${trajS} å§‹çµ‚${seS} æ§‹é€ ${strS} å¤§ãã•${sizeS}ï¼ˆ${sizeLabel}ï¼‰`;
     if (isStrict && typeErrors > 0) {
       mEl.style.color = '#e91e63';
-      mEl.innerText = `å½¢ã¯æ?¸ã?ã¦ã?ã¾ã?ã?ã?\nã¨ã?ã?»ã¯ã­ã?»ã¯ã??ã?ã®ã??ã?¹ã? ${typeErrors} ç®?æ??ã?ã??ã¾ã?ã??\n` + subLine;
+      mEl.innerText = `å½¢ã¯æ›¸ã‘ã¦ã„ã¾ã™ãŒã€\nã¨ã‚ãƒ»ã¯ã­ãƒ»ã¯ã‚‰ã„ã®ãƒŸã‚¹ãŒ ${typeErrors} ç®‡æ‰€ã‚ã‚Šã¾ã™ã€‚\n` + subLine;
     } else {
-      if (score > 85) mEl.innerText = "ç´ æ?´ã??ã?ã?ï¼å®?ç?§ã«è¿?ã?ã§ã?ã??\n" + subLine;
-      else if (score > 65) mEl.innerText = `è?¯ã?æ??ã?ã§ã?ã??${sizeLabel}ã??ã?æ??æ?¬ã®å½¢ã«è¿?ã¥ã?ã¾ã?ã??ã?ã??\n` + subLine;
-      else mEl.innerText = `ã??ã?ä¸?æ­©ã??${sizeLabel}ã??ã??ã£ãã??ãªã?ã??ã¨å½¢ã?å®?å®?ã?ã??ã?ã?ã§ã?ã??\n` + subLine;
+      if (score > 85) mEl.innerText = "ç´ æ™´ã‚‰ã—ã„ï¼å®Œç’§ã«è¿‘ã„ã§ã™ã€‚\n" + subLine;
+      else if (score > 65) mEl.innerText = `è‰¯ã„æ„Ÿã˜ã§ã™ã€‚${sizeLabel}ã€‚ãŠæ‰‹æœ¬ã®å½¢ã«è¿‘ã¥ã‘ã¾ã—ã‚‡ã†ã€‚\n` + subLine;
+      else mEl.innerText = `ã‚‚ã†ä¸€æ­©ã€‚${sizeLabel}ã€‚ã‚†ã£ãã‚Šãªãã‚‹ã¨å½¢ãŒå®‰å®šã—ã‚„ã™ã„ã§ã™ã€‚\n` + subLine;
     }
   }
-  </script>
-  <script>
-    // Override data-loading path to current unified KanjiVG.txt flow.
-    (function() {
-      function parseUnicodeToChar(rawUnicode) {
-        const raw = String(rawUnicode || '').trim();
-        if (!raw) return '';
-        const hexMatch = raw.match(/^(?:U\+|0x)?([0-9A-Fa-f]{4,6})$/);
-        if (hexMatch) {
-          const cp = parseInt(hexMatch[1], 16);
-          if (!isNaN(cp) && cp > 0) return String.fromCodePoint(cp);
-        }
-        const sci = Number(raw);
-        if (!isNaN(sci)) {
-          const cp = Math.round(sci);
-          if (cp > 0 && cp <= 0x10FFFF) return String.fromCodePoint(cp);
-        }
-        return '';
+</script>
+<script>
+  // Data loading override for unified repository flow (KanjiVG.txt).
+  (function() {
+    function parseUnicodeToChar(rawUnicode) {
+      const raw = String(rawUnicode || '').trim();
+      if (!raw) return '';
+      const hexMatch = raw.match(/^(?:U\+|0x)?([0-9A-Fa-f]{4,6})$/);
+      if (hexMatch) {
+        const cp = parseInt(hexMatch[1], 16);
+        if (!isNaN(cp) && cp > 0) return String.fromCodePoint(cp);
       }
-
-      function parseKanjiVgTsv(text) {
-        const map = {};
-        const lines = String(text || '').split(/\r?\n/);
-        lines.forEach(line => {
-          const row = line.trim();
-          if (!row) return;
-          const cols = row.split('\t');
-          if (cols.length < 3) return;
-          let kanji = String(cols[0] || '').trim();
-          const unicodeCol = String(cols[1] || '').trim();
-          const strokesCol = String(cols[2] || '').trim();
-          if (!kanji || kanji.length !== 1) {
-            const parsed = parseUnicodeToChar(unicodeCol);
-            if (parsed) kanji = parsed;
-          }
-          if (!kanji || !strokesCol) return;
-          const paths = strokesCol.split('|').map(p => String(p || '').trim()).filter(p => p && (p.startsWith('M') || p.startsWith('m')));
-          if (paths.length > 0) map[kanji] = paths;
-        });
-        return map;
+      const sci = Number(raw);
+      if (!isNaN(sci)) {
+        const cp = Math.round(sci);
+        if (cp > 0 && cp <= 0x10FFFF) return String.fromCodePoint(cp);
       }
-
-      window.syncData = function() {
-        try { SafeStorage.remove('kanjiData_KanjiVG_txt'); } catch (_) {}
-        window.loadKanjiData();
-      };
-
-      window.loadKanjiData = function() {
-        const cacheKey = 'kanjiData_KanjiVG_txt';
-        const cached = SafeStorage.get(cacheKey);
-        if (cached) {
-          try {
-            KANJI_DATA = JSON.parse(cached);
-            populateKanjiSelector();
-            showLoading(false);
-            return;
-          } catch (_) {
-            SafeStorage.remove(cacheKey);
-          }
+      return '';
+    }
+    function parseKanjiVgTsv(text) {
+      const map = {};
+      const lines = String(text || '').split(/\r?\n/);
+      lines.forEach(line => {
+        const row = line.trim();
+        if (!row) return;
+        const cols = row.split('\t');
+        if (cols.length < 3) return;
+        let kanji = String(cols[0] || '').trim();
+        const unicodeCol = String(cols[1] || '').trim();
+        const strokesCol = String(cols[2] || '').trim();
+        if (!kanji || kanji.length !== 1) {
+          const parsed = parseUnicodeToChar(unicodeCol);
+          if (parsed) kanji = parsed;
         }
-        showLoading(true, "KanjiVG.txt ????...");
-        fetch('./KanjiVG.txt')
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.text();
-          })
-          .then(text => {
-            const data = parseKanjiVgTsv(text);
-            if (!Object.keys(data).length) throw new Error("TSV?????????");
-            KANJI_DATA = data;
-            SafeStorage.set(cacheKey, JSON.stringify(data));
-            populateKanjiSelector();
-            showLoading(false);
-          })
-          .catch(e => {
-            alert("KanjiVG.txt ??????: " + (e && e.message ? e.message : e));
-            showLoading(false);
-          });
-      };
-
-      window.onload = function() {
-        updateProfileSelectUI();
-        showLoading(true, "????...");
-        const sel = document.getElementById('sheet-selector');
-        if (sel) sel.innerHTML = '<option value="KanjiVG.txt">KanjiVG.txt</option>';
-        window.loadKanjiData();
-      };
-    })();
-  </script>
+        if (!kanji || !strokesCol) return;
+        const paths = strokesCol.split('|').map(p => String(p || '').trim()).filter(p => p && (p.startsWith('M') || p.startsWith('m')));
+        if (paths.length > 0) map[kanji] = paths;
+      });
+      return map;
+    }
+    window.syncData = function() {
+      try { SafeStorage.remove('kanjiData_KanjiVG_txt'); } catch (_) {}
+      window.loadKanjiData();
+    };
+    window.loadKanjiData = function() {
+      const cacheKey = 'kanjiData_KanjiVG_txt';
+      const cached = SafeStorage.get(cacheKey);
+      if (cached) {
+        try {
+          KANJI_DATA = JSON.parse(cached);
+          populateKanjiSelector();
+          showLoading(false);
+          return;
+        } catch (_) { SafeStorage.remove(cacheKey); }
+      }
+      showLoading(true, "KanjiVG.txt ã‚’èª­è¾¼ä¸­...");
+      fetch('./KanjiVG.txt')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+      .then(text => {
+        const data = parseKanjiVgTsv(text);
+        if (!Object.keys(data).length) throw new Error("TSVã®è§£æçµæœãŒç©ºã§ã™");
+        KANJI_DATA = data;
+        SafeStorage.set(cacheKey, JSON.stringify(data));
+        populateKanjiSelector();
+        showLoading(false);
+      })
+      .catch(e => {
+        alert("KanjiVG.txt ã®èª­è¾¼ã«å¤±æ•—: " + (e && e.message ? e.message : e));
+        showLoading(false);
+      });
+    };
+    window.onload = function() {
+      updateProfileSelectUI();
+      showLoading(true, "åˆæœŸåŒ–ä¸­...");
+      const sel = document.getElementById('sheet-selector');
+      if (sel) sel.innerHTML = '<option value="KanjiVG.txt">KanjiVG.txt</option>';
+      window.loadKanjiData();
+    };
+  })();
+</script>
 </body>
 </html>
