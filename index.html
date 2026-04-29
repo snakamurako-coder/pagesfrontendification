@@ -2016,11 +2016,14 @@
       const frame = document.getElementById('kp-pro-frame');
       if (!frame) return;
       if (frame.dataset.kpLoaded === "1") return;
-      if (typeof window.KP_HTML !== "string" || !window.KP_HTML) {
+      const kpHtml = (typeof window.KP_HTML === "string")
+        ? window.KP_HTML
+        : (window.KP_HTML && typeof window.KP_HTML.value === "string" ? window.KP_HTML.value : "");
+      if (!kpHtml) {
         alert("高機能モードの読み込みに失敗しました。");
         return;
       }
-      frame.srcdoc = window.KP_HTML;
+      frame.srcdoc = kpHtml;
       frame.dataset.kpLoaded = "1";
     }
     function loadMaterialsByFilter(btn, category) {
