@@ -8,6 +8,7 @@ function setupSystem() {
   const props = PropertiesService.getScriptProperties();
   let adminSsId = props.getProperty('ADMIN_SS_ID');
   let materialsFolderId = props.getProperty('MATERIALS_FOLDER_ID');
+  let kanjiMaterialsFolderId = props.getProperty('KANJI_MATERIALS_FOLDER_ID');
   let logMessage = "【セットアップログ】\n";
 
   if (!materialsFolderId) {
@@ -40,6 +41,11 @@ function setupSystem() {
     DriveApp.getFileById(phraseModeSs.getId()).moveTo(materialsFolder);
     
     logMessage += "✅ サンプル教材を作成しました。\n";
+  }
+  if (!kanjiMaterialsFolderId) {
+    const kanjiFolder = parentFolder.createFolder("教材");
+    props.setProperty('KANJI_MATERIALS_FOLDER_ID', kanjiFolder.getId());
+    logMessage += "✅ 教材フォルダ（漢字用）を作成しました。\n";
   }
 
   let adminSs;
@@ -110,7 +116,16 @@ function setupSystem() {
       ["基本Pt_qaudio_to_en_voice", 30],
       ["基本Pt_ja_to_en_sort_sort_all", 25],
       ["基本Pt_ja_to_en_sort_sort_dummy", 28],
-      ["基本Pt_ja_to_en_sort_sort_missing", 30]
+      ["基本Pt_ja_to_en_sort_sort_missing", 30],
+      ["漢字基本Pt_採点_90以上", 10],
+      ["漢字基本Pt_採点_80以上", 5],
+      ["漢字基本Pt_採点_70以上", 4],
+      ["漢字基本Pt_採点_60以上", 3],
+      ["漢字基本Pt_採点_50以上", 1],
+      ["漢字採点_高得点回数上限_週", 3],
+      ["漢字採点_回数上限後倍率", 0.1],
+      ["漢字採点_回復率_日", 0.15],
+      ["漢字採点_完全回復日数", 7]
     ];
     defaultPointRows.forEach(row => {
       if (!existingKeys.has(row[0])) {
@@ -168,7 +183,8 @@ function setupSystem() {
     ["全員", "", "音声→英単語", "タイピング", "ランダム", ""],
     ["全員", "", "音声→英単語", "音声", "ランダム", ""],
     ["全員", "", "英語→英語", "タイピング", "ランダム", ""],
-    ["全員", "", "英語→英語", "音声", "ランダム", ""]
+    ["全員", "", "英語→英語", "音声", "ランダム", ""],
+    ["全員", "", "漢字→採点チャレンジ", "採点", "ランダム", ""]
   ];
   let trainingSheet = adminSs.getSheetByName("特訓メニュー");
   if (!trainingSheet) {
@@ -438,6 +454,48 @@ function parseUnitSheetPointPercent_(sheetName) {
   return p;
 }
 
+function getAppSettingsMap_(adminSs) {
+  const sheet = adminSs.getSheetByName("アプリ設定");
+  const out = {};
+  if (!sheet) return out;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) out[String(data[i][0])] = data[i][1];
+  }
+  return out;
+}
+
+function getKanjiBasePointsByScore_(score, settings) {
+  const s = Number(score) || 0;
+  if (s >= 90) return Number(settings["漢字基本Pt_採点_90以上"] || 10);
+  if (s >= 80) return Number(settings["漢字基本Pt_採点_80以上"] || 5);
+  if (s >= 70) return Number(settings["漢字基本Pt_採点_70以上"] || 4);
+  if (s >= 60) return Number(settings["漢字基本Pt_採点_60以上"] || 3);
+  if (s >= 50) return Number(settings["漢字基本Pt_採点_50以上"] || 1);
+  return 0;
+}
+
+function toDateOnly_(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function calcKanjiCharRecoveryRate_(highScoreDates, now, settings) {
+  const maxHighTimes = Math.max(1, Number(settings["漢字採点_高得点回数上限_週"] || 3));
+  const overRate = Number(settings["漢字採点_回数上限後倍率"] || 0.1);
+  const recoverPerDay = Number(settings["漢字採点_回復率_日"] || 0.15);
+  const maxDays = Math.max(1, Number(settings["漢字採点_完全回復日数"] || 7));
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const recent = (Array.isArray(highScoreDates) ? highScoreDates : [])
+    .map(v => new Date(v))
+    .filter(d => !isNaN(d.getTime()) && d >= weekAgo)
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (recent.length < maxHighTimes) return 1.0;
+  const triggerDate = recent[maxHighTimes - 1];
+  const days = Math.max(0, Math.floor((toDateOnly_(now) - toDateOnly_(triggerDate)) / (24 * 60 * 60 * 1000)));
+  if (days >= maxDays) return 1.0;
+  return Math.min(1, overRate + recoverPerDay * days);
+}
+
 // 学習結果の保存（進捗チェックの更新を追加）
 function handleSaveLearningSession(req) {
   const props = PropertiesService.getScriptProperties();
@@ -485,19 +543,40 @@ function handleSaveLearningSession(req) {
   if (!userData.historyJson[req.unitId]) userData.historyJson[req.unitId] = {};
   const unitHistory = userData.historyJson[req.unitId];
 
-  req.results.forEach(res => {
-    if (res.isCorrect) {
-      let qPoint = Math.max(1, (Number(res.basePoint) || 2) - (Number(res.maxDeduction) || 0));
-      sessionRawPoints += qPoint;
-    }
-    const qId = res.questionId;
-    if (!unitHistory[qId]) unitHistory[qId] = { results: [], times: [] };
-    
-    unitHistory[qId].results.push(res.isCorrect ? 1 : 0);
-    if (unitHistory[qId].results.length > 10) unitHistory[qId].results.shift();
-    unitHistory[qId].times.push(res.timeSec);
-    if (unitHistory[qId].times.length > 10) unitHistory[qId].times.shift();
-  });
+  // 漢字採点チャレンジ専用（score と char を受け取り、文字単位の回数制限＋日次回復を適用）
+  if (req.learningCategory === "kanji" && req.challengeType === "score" && req.kanjiChar) {
+    const settings = getAppSettingsMap_(adminSs);
+    const charKey = String(req.kanjiChar);
+    const score = Number(req.score) || 0;
+    const basePt = getKanjiBasePointsByScore_(score, settings);
+    if (!userData.historyJson.__kanjiChallenge) userData.historyJson.__kanjiChallenge = {};
+    if (!userData.historyJson.__kanjiChallenge[charKey]) userData.historyJson.__kanjiChallenge[charKey] = { highScoreDates: [] };
+    const cHist = userData.historyJson.__kanjiChallenge[charKey];
+    if (!Array.isArray(cHist.highScoreDates)) cHist.highScoreDates = [];
+    const recoveryRate = calcKanjiCharRecoveryRate_(cHist.highScoreDates, now, settings);
+    sessionRawPoints = Math.round(basePt * recoveryRate * 100) / 100;
+    if (basePt >= 3) cHist.highScoreDates.push(now.toISOString());
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    cHist.highScoreDates = cHist.highScoreDates
+      .map(v => new Date(v))
+      .filter(d => !isNaN(d.getTime()) && d >= weekAgo)
+      .map(d => d.toISOString());
+  } else {
+
+    req.results.forEach(res => {
+      if (res.isCorrect) {
+        let qPoint = Math.max(1, (Number(res.basePoint) || 2) - (Number(res.maxDeduction) || 0));
+        sessionRawPoints += qPoint;
+      }
+      const qId = res.questionId;
+      if (!unitHistory[qId]) unitHistory[qId] = { results: [], times: [] };
+      
+      unitHistory[qId].results.push(res.isCorrect ? 1 : 0);
+      if (unitHistory[qId].results.length > 10) unitHistory[qId].results.shift();
+      unitHistory[qId].times.push(res.timeSec);
+      if (unitHistory[qId].times.length > 10) unitHistory[qId].times.shift();
+    });
+  }
 
   let earnedPoints = Math.round((sessionRawPoints * multiplier) * 100) / 100;
   const sheetPointPercent = parseUnitSheetPointPercent_(req.unitSheetName);
@@ -751,7 +830,28 @@ function handleGetPointsMultiplier(req) { const data = SpreadsheetApp.openById(P
 function handleGetChildUsers(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users").getDataRange().getValues(); const users = []; for (let i = 1; i < data.length; i++) { if (data[i][0] && i > 0) users.push({ id: data[i][0], name: data[i][1] }); } return sendResponse({ status: "success", users: users }); }
 function handleVerifyKidPin(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users").getDataRange().getValues(); for (let i = 1; i < data.length; i++) { if (data[i][0] === req.userId) { if (String(data[i][2]) === String(req.pin)) { return sendResponse({ status: "success", user: { id: data[i][0], name: data[i][1], points: data[i][3], lastStudyJson: JSON.parse(data[i][4] || "{}"), historyJson: JSON.parse(data[i][5] || "{}"), dailyPointsJson: JSON.parse(data[i][6] || "{}") }, message: "ログイン成功" }); } else return sendResponse({ status: "error", message: "PINがちがいます" }); } } return sendResponse({ status: "error", message: "ユーザーが見つかりません" }); }
 function handleChangePin(req) { const usersSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("users"); const data = usersSheet.getDataRange().getValues(); for (let i = 1; i < data.length; i++) { if (data[i][0] === req.userId) { usersSheet.getRange(i + 1, 3).setValue(req.newPin); return sendResponse({ status: "success", message: "新しいPINをセットしました！" }); } } return sendResponse({ status: "error", message: "ユーザーが見つかりません" }); }
-function handleGetMaterialsList(req) { const folder = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('MATERIALS_FOLDER_ID')); const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS); const materials = []; while (files.hasNext()) { const file = files.next(); materials.push({ modeId: file.getId(), modeName: file.getName(), units: SpreadsheetApp.open(file).getSheets().map(s => s.getName()) }); } return sendResponse({ status: "success", materials: materials }); }
+function handleGetMaterialsList(req) {
+  const props = PropertiesService.getScriptProperties();
+  const materials = [];
+  const pushFolderFiles = (folderId, category) => {
+    if (!folderId) return;
+    let folder;
+    try { folder = DriveApp.getFolderById(folderId); } catch (_) { return; }
+    const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    while (files.hasNext()) {
+      const file = files.next();
+      materials.push({
+        modeId: file.getId(),
+        modeName: file.getName(),
+        category: category,
+        units: SpreadsheetApp.open(file).getSheets().map(s => s.getName())
+      });
+    }
+  };
+  pushFolderFiles(props.getProperty('MATERIALS_FOLDER_ID'), "english");
+  pushFolderFiles(props.getProperty('KANJI_MATERIALS_FOLDER_ID'), "kanji");
+  return sendResponse({ status: "success", materials: materials });
+}
 function handleGetQuestions(req) { const data = SpreadsheetApp.openById(req.modeId).getSheetByName(req.unitName).getDataRange().getValues(); const headers = data[0]; const questions = []; for (let i = 1; i < data.length; i++) { let qObj = {}; for (let j = 0; j < headers.length; j++) qObj[headers[j]] = data[i][j]; if (qObj["通し番号"]) questions.push(qObj); } return sendResponse({ status: "success", questions: questions }); }
 function handleGetRewards(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("rewards").getDataRange().getValues(); const rewards = []; for (let i = 1; i < data.length; i++) { if (data[i][0] && i > 0) rewards.push({ id: data[i][0], name: data[i][1], points: Number(data[i][2]), desc: data[i][3] }); } return sendResponse({ status: "success", rewards: rewards }); }
 function handleExchangeReward(req) { const adminSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')); const usersSheet = adminSs.getSheetByName("users"); const usersData = usersSheet.getDataRange().getValues(); let userRow = -1; let currentPoints = 0; for (let i = 1; i < usersData.length; i++) { if (usersData[i][0] === req.userId) { userRow = i + 1; currentPoints = Number(usersData[i][3]) || 0; break; } } if (userRow === -1) return sendResponse({ status: "error", message: "ユーザーが見つかりません" }); const rewardsData = adminSs.getSheetByName("rewards").getDataRange().getValues(); let rewardData = null; for (let i = 1; i < rewardsData.length; i++) { if (rewardsData[i][0] === req.rewardId) { rewardData = { name: rewardsData[i][1], points: Number(rewardsData[i][2]) }; break; } } if (currentPoints < rewardData.points) return sendResponse({ status: "error", message: "ポイントが足りません" }); const newPoints = Math.round((currentPoints - rewardData.points) * 100) / 100; usersSheet.getRange(userRow, 4).setValue(newPoints); adminSs.getSheetByName("inventory").appendRow([new Date().toLocaleString(), req.userId, req.rewardId, rewardData.name, "未消化"]); return sendResponse({ status: "success", newPoints: newPoints, message: `${rewardData.name} をゲットしました！` }); }
@@ -767,9 +867,19 @@ function resetProperties() {
 function handleGetKanjiInitData(req) {
   const prop = PropertiesService.getScriptProperties();
   const sheetId = prop.getProperty('KANJI_SHEET_ID');
-  if (!sheetId) return sendResponse({ status: "error", message: "KANJI_SHEET_ID が未設定です" });
+  let targetSheetId = sheetId;
+  if (!targetSheetId) {
+    const folderId = prop.getProperty('KANJI_MATERIALS_FOLDER_ID');
+    if (folderId) {
+      try {
+        const files = DriveApp.getFolderById(folderId).getFilesByType(MimeType.GOOGLE_SHEETS);
+        if (files.hasNext()) targetSheetId = files.next().getId();
+      } catch (_) {}
+    }
+  }
+  if (!targetSheetId) return sendResponse({ status: "error", message: "漢字教材が未設定です（KANJI_SHEET_ID または 教材フォルダを確認）" });
   try {
-    const ss = SpreadsheetApp.openById(sheetId);
+    const ss = SpreadsheetApp.openById(targetSheetId);
     const sheets = ss.getSheets().map(s => s.getName());
     return sendResponse({ status: "success", bookName: ss.getName(), sheets: sheets });
   } catch (e) {
@@ -782,9 +892,19 @@ function handleGetKanjiDataFromSheet(req) {
   if (!sheetName) return sendResponse({ status: "error", message: "sheetName が未指定です" });
   const prop = PropertiesService.getScriptProperties();
   const sheetId = prop.getProperty('KANJI_SHEET_ID');
-  if (!sheetId) return sendResponse({ status: "error", message: "KANJI_SHEET_ID が未設定です" });
+  let targetSheetId = sheetId;
+  if (!targetSheetId) {
+    const folderId = prop.getProperty('KANJI_MATERIALS_FOLDER_ID');
+    if (folderId) {
+      try {
+        const files = DriveApp.getFolderById(folderId).getFilesByType(MimeType.GOOGLE_SHEETS);
+        if (files.hasNext()) targetSheetId = files.next().getId();
+      } catch (_) {}
+    }
+  }
+  if (!targetSheetId) return sendResponse({ status: "error", message: "漢字教材が未設定です（KANJI_SHEET_ID または 教材フォルダを確認）" });
   try {
-    const ss = SpreadsheetApp.openById(sheetId);
+    const ss = SpreadsheetApp.openById(targetSheetId);
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) return sendResponse({ status: "success", data: {} });
     const values = sheet.getDataRange().getValues();

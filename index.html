@@ -2116,8 +2116,9 @@
         c.innerHTML = "";
         const all = Array.isArray(d.materials) ? d.materials : [];
         const list = all.filter(m => {
+          const cat = String(m.category || "").toLowerCase();
           const name = String(m.modeName || "");
-          const isKanji = /漢字|かんじ|kanji/i.test(name);
+          const isKanji = (cat === "kanji") || /漢字|かんじ|kanji/i.test(name);
           return category === "kanji" ? isKanji : !isKanji;
         });
         if (list.length === 0) {
