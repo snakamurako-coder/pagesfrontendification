@@ -2027,51 +2027,74 @@
       kpCtx.clearRect(0, 0, kpCanvas.width, kpCanvas.height);
     }
     function kpSyncData() {
-      const sheet = (document.getElementById('kp-sheet-selector') || {}).value;
-      if (!sheet) return;
-      localStorage.removeItem(`app_cached_kanji_data_${sheet}`);
-      kpLoadKanjiData();
+      localStorage.removeItem('app_cached_kanjivg_tsv_v1');
+      kpLoadKanjiData(true);
+    }
+    function kpParseUnicodeToChar(rawUnicode) {
+      const raw = String(rawUnicode || '').trim();
+      if (!raw) return '';
+      const hexMatch = raw.match(/^(?:U\+|0x)?([0-9A-Fa-f]{4,6})$/);
+      if (hexMatch) {
+        const cp = parseInt(hexMatch[1], 16);
+        if (!isNaN(cp) && cp > 0) return String.fromCodePoint(cp);
+      }
+      const sci = Number(raw);
+      if (!isNaN(sci)) {
+        const cp = Math.round(sci);
+        if (cp > 0 && cp <= 0x10FFFF) return String.fromCodePoint(cp);
+      }
+      return '';
+    }
+    function kpParseKanjiVgTsv(text) {
+      const map = {};
+      const lines = String(text || '').split(/\r?\n/);
+      lines.forEach(line => {
+        const row = line.trim();
+        if (!row) return;
+        const cols = row.split('\t');
+        if (cols.length < 3) return;
+        let kanji = String(cols[0] || '').trim();
+        const unicodeCol = String(cols[1] || '').trim();
+        const strokesCol = String(cols[2] || '').trim();
+        if (!kanji || kanji.length !== 1) {
+          const parsed = kpParseUnicodeToChar(unicodeCol);
+          if (parsed) kanji = parsed;
+        }
+        if (!kanji || !strokesCol) return;
+        const paths = strokesCol.split('|').map(p => String(p || '').trim()).filter(p => p && (p.startsWith('M') || p.startsWith('m')));
+        if (paths.length > 0) map[kanji] = paths;
+      });
+      return map;
     }
     function kpLoadInitData() {
-      kpSetStatus('漢字データを確認中...');
-      kpPost('get_kanji_init_data').then(d => {
-        if (!d || d.status !== 'success') throw new Error((d && d.message) || '初期化に失敗しました');
-        const sel = document.getElementById('kp-sheet-selector');
-        if (!sel) return;
-        const sheets = Array.isArray(d.sheets) ? d.sheets : [];
-        sel.innerHTML = sheets.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-        kpLoadKanjiData();
-      }).catch(e => {
-        kpSetStatus('初期化に失敗しました');
-        alert('漢字練習の初期化に失敗しました: ' + (e.message || e));
-      });
+      const sel = document.getElementById('kp-sheet-selector');
+      if (sel) sel.innerHTML = '<option value="KanjiVG.txt">KanjiVG.txt</option>';
+      kpLoadKanjiData();
     }
-    function kpLoadKanjiData() {
-      const sheet = (document.getElementById('kp-sheet-selector') || {}).value;
-      if (!sheet) {
-        kpSetStatus('シートがありません');
-        return;
-      }
-      const cacheKey = `app_cached_kanji_data_${sheet}`;
+    function kpLoadKanjiData(forceRefresh = false) {
+      const cacheKey = 'app_cached_kanjivg_tsv_v1';
       const cached = localStorage.getItem(cacheKey);
-      if (cached) {
+      if (!forceRefresh && cached) {
         try {
           kpKanjiData = JSON.parse(cached);
           kpPopulateKanjiSelector();
-          kpSetStatus(`${sheet} をキャッシュから読み込みました`);
+          kpSetStatus('KanjiVG.txt をキャッシュから読み込みました');
           return;
         } catch (_) {}
       }
-      kpSetStatus(`${sheet} を読み込み中...`);
-      kpPost('get_kanji_data_from_sheet', { sheetName: sheet }).then(d => {
-        if (!d || d.status !== 'success') throw new Error((d && d.message) || '取得失敗');
-        kpKanjiData = d.data || {};
+      kpSetStatus('KanjiVG.txt を読み込み中...');
+      fetch('./KanjiVG.txt').then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      }).then(text => {
+        kpKanjiData = kpParseKanjiVgTsv(text);
+        if (!Object.keys(kpKanjiData).length) throw new Error('TSVを解析できませんでした');
         localStorage.setItem(cacheKey, JSON.stringify(kpKanjiData));
         kpPopulateKanjiSelector();
-        kpSetStatus(`${sheet} を読み込みました`);
+        kpSetStatus(`KanjiVG.txt を読み込みました（${Object.keys(kpKanjiData).length}字）`);
       }).catch(e => {
         kpSetStatus('読み込みに失敗しました');
-        alert('漢字データ取得に失敗しました: ' + (e.message || e));
+        alert('KanjiVG.txt の読み込みに失敗しました: ' + (e.message || e));
       });
     }
     function kpPopulateKanjiSelector() {
