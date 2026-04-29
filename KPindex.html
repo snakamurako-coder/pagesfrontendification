@@ -202,6 +202,14 @@
   </div>
 
 <script>
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycby3uSaiuQ4zl6ZkfB4iCYzA7BfWa4ffi8l4RIekwJesLxvE6eJ4OZ-d5HRNjqrzbGzmRQ/exec";
+  function postKanjiApi(action, payload = {}) {
+    return fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...payload })
+    }).then(r => r.json());
+  }
+
   // ==========================================
   // 1. 高解像度Canvasセットアップ機構
   // ==========================================
@@ -463,8 +471,9 @@
   window.onload = () => {
     updateProfileSelectUI();
     showLoading(true, "初期化中...");
-    google.script.run
-      .withSuccessHandler(initData => {
+    postKanjiApi("get_kanji_init_data")
+      .then(initData => {
+        if (!initData || initData.status !== "success") throw new Error((initData && initData.message) || "初期化に失敗しました");
         showLoading(false); // エラーが起きる前に絶対に隠す
         try {
           const cachedBook = SafeStorage.get('kanjiBookName');
@@ -474,8 +483,7 @@
           loadKanjiData();
         } catch(e) { alert("初期化エラー: " + e.message); }
       })
-      .withFailureHandler(e => { alert("サーバー接続エラー: " + e.message); showLoading(false); })
-      .getAppInitData();
+      .catch(e => { alert("サーバー接続エラー: " + (e && e.message ? e.message : e)); showLoading(false); });
   };
 
   function syncData() { const name = document.getElementById('sheet-selector').value; if (name) SafeStorage.remove(`kanjiData_${name}`); loadKanjiData(); }
@@ -492,14 +500,15 @@
     }
 
     showLoading(true, `${name} を読込中...`);
-    google.script.run
-      .withSuccessHandler(data => { 
+    postKanjiApi("get_kanji_data_from_sheet", { sheetName: name })
+      .then(res => {
+        if (!res || res.status !== "success") throw new Error((res && res.message) || "データ取得に失敗しました");
+        const data = res.data || {};
         showLoading(false); 
         try { KANJI_DATA = data; SafeStorage.set(`kanjiData_${name}`, JSON.stringify(data)); populateKanjiSelector(); } 
         catch(e) { alert("データ展開中にエラー: " + e.message); } 
       })
-      .withFailureHandler(e => { alert("データ取得失敗: " + e.message); showLoading(false); })
-      .getKanjiDataFromSheet(name);
+      .catch(e => { alert("データ取得失敗: " + (e && e.message ? e.message : e)); showLoading(false); });
   }
 
   function populateKanjiSelector() {
