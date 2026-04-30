@@ -1124,14 +1124,16 @@ function maskKanjiInExampleOnce_(sentence, kanjiCol) {
 }
 
 /**
- * 送り仮名ダミー候補プール（セット全体）。訓かつ L>=3・漢字1字
+ * 送り仮名ダミー候補プール（漢字ごと）。
+ * 問題の漢字と同じ漢字からのみダミーを出し、他漢字の混入を防ぐ。
  */
-function collectOkuriganaDummyPoolKanjiQuiz_(items) {
-  const pool = [];
-  if (!items || !items.length) return pool;
+function collectOkuriganaDummyPoolByKanjiKanjiQuiz_(items) {
+  const poolMap = {};
+  if (!items || !items.length) return poolMap;
   items.forEach(function (item) {
     const k = String(item.kanji || "");
     if (k.length !== 1) return;
+    if (!poolMap[k]) poolMap[k] = [];
     const readings = Array.isArray(item.readings) ? item.readings : [];
     readings.forEach(function (r) {
       if (r.kind !== "kun") return;
@@ -1141,14 +1143,14 @@ function collectOkuriganaDummyPoolKanjiQuiz_(items) {
       let splitPos;
       for (splitPos = 2; splitPos < reading.length; splitPos++) {
         const cand = k + reading.substring(splitPos);
-        if (cand !== correct) pool.push(cand);
+        if (cand !== correct) poolMap[k].push(cand);
       }
     });
   });
-  return pool;
+  return poolMap;
 }
 
-function buildOkuriganaShiftQuizQuestion_(item, dummyPool) {
+function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
   const k = String(item.kanji || "");
   if (k.length !== 1) return null;
   const readings = (Array.isArray(item.readings) ? item.readings : []).filter(function (r) {
@@ -1159,7 +1161,8 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPool) {
   const reading = String(r.reading || "");
   const correct = k + reading.substring(1);
   const wrongSet = {};
-  dummyPool.forEach(function (d) {
+  const sameKanjiPool = (dummyPoolByKanji && dummyPoolByKanji[k]) || [];
+  sameKanjiPool.forEach(function (d) {
     if (d && d !== correct) wrongSet[d] = true;
   });
   let splitPos;
@@ -1281,10 +1284,10 @@ function mergeKanjiQuizBucketsBalanced_(buckets) {
 function buildKanjiQuizProblemList_(group) {
   const items = group.items || [];
   if (!items.length) return [];
-  const dummyPool = collectOkuriganaDummyPoolKanjiQuiz_(items);
+  const dummyPoolByKanji = collectOkuriganaDummyPoolByKanjiKanjiQuiz_(items);
   const buckets = { okurigana_shift: [], ruby_to_kanji: [], sentence_to_ruby: [] };
   items.forEach(function (item) {
-    const o = buildOkuriganaShiftQuizQuestion_(item, dummyPool);
+    const o = buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji);
     if (o) buckets.okurigana_shift.push(o);
     const r2 = buildRubyToKanjiQuizQuestion_(item);
     if (r2) buckets.ruby_to_kanji.push(r2);
