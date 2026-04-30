@@ -477,22 +477,7 @@
       color: #333 !important;
       border: 2px solid #90a4ae !important;
     }
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.active {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      padding-right: clamp(8px, 2vw, 20px);
-      padding-left: 8px;
-      background: #fdfcfa !important;
-    }
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
-      margin: 0 0 0 auto;
-      width: 100%;
-      max-width: 720px;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      text-align: start;
-    }
+    /* Removed duplicate kanji-quiz-drill-wrap styles */
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-play-footer-btns {
       display: flex;
       flex-wrap: wrap;
@@ -550,8 +535,8 @@
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-hw-row {
       display: inline-flex;
-      flex-direction: row; 
-      align-items: center;
+      flex-direction: row; /* top-to-bottom */
+      align-items: center; /* horizontally center relative to the canvas */
       writing-mode: vertical-rl;
       text-orientation: upright;
       line-height: 1.5;
@@ -563,6 +548,7 @@
       writing-mode: vertical-rl;
       text-orientation: upright;
       margin: 10px 0;
+      white-space: nowrap; /* PREVENT line breaks to the left column */
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-submit-btn {
       writing-mode: vertical-rl;
@@ -595,11 +581,11 @@
       text-orientation: upright;
       display: flex;
       flex-direction: column; 
-      align-items: center; 
+      align-items: flex-start; /* Ensure elements hang from the top of the vertical block */
       justify-content: flex-start; 
       padding: 20px 40px;
       overflow-x: auto;
-      overflow-y: hidden;
+      overflow-y: auto; /* Allow vertical scrolling if sentence is very long */
       width: 100%;
       box-sizing: border-box;
       margin: 0;
