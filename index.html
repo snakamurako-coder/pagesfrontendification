@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -1968,8 +1968,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       document.getElementById('message').innerText="";
-      const kanjiFlowIds = ['section-kanji-learning', 'section-kanji-practice', 'section-kanji-quiz-sets', 'section-kanji-quiz-play'];
-      let isKanjiFlow = kanjiFlowIds.includes(id) || ((id === 'section-materials' || id === 'section-settings' || id === 'section-quiz') && currentMaterialsCategory === 'kanji');
+      const kanjiFlowIds = ['section-kanji-learning', 'section-kanji-quiz-sets', 'section-kanji-quiz-play'];
+      let isKanjiFlow = kanjiFlowIds.includes(id) || ((id === 'section-materials' || id === 'section-settings') && currentMaterialsCategory === 'kanji');
       if (id === 'section-result' && document.body.classList.contains('kanji-study-mode')) {
         isKanjiFlow = true;
       }
