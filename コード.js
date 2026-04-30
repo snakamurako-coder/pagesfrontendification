@@ -1029,30 +1029,19 @@ function parseKanjiQuizSheet_(sheet) {
   const readingDefs = [];
   for (let i = 0; i < headers.length; i++) {
     const h = headers[i];
-    // 新形式: 訓読みA_読み / 音読みA_読み
-    let m = h.match(/^(訓読み|音読み)([A-ZＡ-Ｚ])_読み$/);
-    if (m) {
-      const kind = m[1] === "訓読み" ? "訓" : "音";
-      const label = m[2].toUpperCase();
-      const exIdx = [];
-      for (let j = 0; j < headers.length; j++) {
-        const ex = headers[j];
-        if (ex.indexOf(kind + label + "_例文") === 0) exIdx.push(j);
-      }
-      readingDefs.push({ label: kind + label, readingIdx: i, exampleIdx: exIdx });
-      continue;
+    const m = h.match(/^(訓読み|音読み)([A-ZＡ-Ｚ])_読み$/);
+    if (!m) continue;
+    const kind = m[1] === "訓読み" ? "訓" : "音";
+    const label = m[2].toUpperCase();
+    const exIdx = [];
+    for (let j = 0; j < headers.length; j++) {
+      const ex = headers[j];
+      if (ex.indexOf(kind + label + "_例文") === 0) exIdx.push(j);
     }
-    // 旧形式互換: 漢字の読みA / Aの例文1
-    m = h.match(/^漢字の読み([A-ZＡ-Ｚ])$/);
-    if (m) {
-      const label = m[1].toUpperCase();
-      const exIdx = [];
-      for (let j = 0; j < headers.length; j++) {
-        const ex = headers[j];
-        if (ex.indexOf(label + "の例文") === 0) exIdx.push(j);
-      }
-      readingDefs.push({ label, readingIdx: i, exampleIdx: exIdx });
-    }
+    readingDefs.push({ label: kind + label, readingIdx: i, exampleIdx: exIdx });
+  }
+  if (readingDefs.length === 0) {
+    throw new Error("見出しが新形式ではありません。訓読みA_読み / 音読みA_読み の列が必要です。");
   }
 
   const groupsMap = {};
