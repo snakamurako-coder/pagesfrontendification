@@ -1196,7 +1196,7 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPool) {
 
 function buildRubyToKanjiQuizQuestion_(item) {
   const k = String(item.kanji || "");
-  if (k.length !== 1) return null;
+  if (!k) return null;
   const pairs = [];
   (Array.isArray(item.readings) ? item.readings : []).forEach(function (r) {
     const examples = Array.isArray(r.examples) ? r.examples : [];
@@ -1219,7 +1219,7 @@ function buildRubyToKanjiQuizQuestion_(item) {
     readingLabel: pick.r.label,
     readingDisplay: readingDisp,
     maskedSentence: masked.masked,
-    prompt: "読みと例文の空欄に入る漢字を、タイピングで入力しましょう。",
+    prompt: "読みと例文の空欄の漢字を、筆順どおりに手書きしましょう（各字とも60点以上）。",
     correctAnswer: k,
     searchText: searchParts
   };
