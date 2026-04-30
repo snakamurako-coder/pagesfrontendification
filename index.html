@@ -228,9 +228,19 @@
   </div>
   <div id="section-kanji-practice" class="section">
     <h1>漢字練習</h1>
-    <p style="text-align:center;color:#aaa;max-width:420px;margin:0 auto 12px;font-size:14px;">高機能モード（KP）を標準で表示します</p>
-    <div style="width:100%;max-width:420px;margin:0 auto 10px;">
-      <iframe id="kp-pro-frame" src="about:blank" title="Kanji Practice Pro" style="width:100%;height:75vh;min-height:620px;border:1px solid #444;border-radius:10px;background:#111;"></iframe>
+    <p style="text-align:center;color:#aaa;max-width:980px;margin:0 auto 10px;font-size:14px;">練習・調整（キャリブレーション/ペン設定）モードです。教材セットから選んで、漢字/よみで検索できます。</p>
+    <div style="width:96vw;max-width:1200px;margin:0 auto 10px;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:12px;box-sizing:border-box;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;">
+        <select id="kp-book-select" onchange="kpOnBookChange()" style="min-width:180px;max-width:280px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
+        <select id="kp-sheet-select" onchange="kpOnSheetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
+        <select id="kp-set-select" onchange="kpOnSetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
+        <input id="kp-search-input" type="text" placeholder="漢字・よみで検索" oninput="kpApplyFilterAndRender()" style="min-width:220px;max-width:420px;width:38%;padding:8px;background:#111;color:#fff;border:1px solid #555;border-radius:8px;">
+      </div>
+      <div id="kp-practice-status" style="margin-top:8px;text-align:center;color:#9e9e9e;font-size:13px;">教材を読み込み中...</div>
+      <div id="kp-tile-grid" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;max-height:320px;overflow:auto;padding:4px;"></div>
+    </div>
+    <div style="width:96vw;max-width:1200px;margin:0 auto 10px;">
+      <iframe id="kp-pro-frame" src="about:blank" title="Kanji Practice Pro" style="width:100%;height:calc(100vh - 440px);min-height:420px;border:1px solid #444;border-radius:10px;background:#111;"></iframe>
     </div>
     <button class="cancel-btn" style="margin-top:16px;" onclick="openKanjiLearningMenu()">漢字学習メニューにもどる</button>
   </div>
@@ -2008,9 +2018,17 @@
       }
       showHome(JSON.parse(localStorage.getItem('app_kid_user')));
     }
+    let kpCatalogState = {
+      materials: [],
+      sets: [],
+      setQuestions: [],
+      filteredChars: [],
+      loaded: false
+    };
     function openKanjiPractice() {
       switchSection('section-kanji-practice');
       openKanjiPracticePro();
+      initKanjiPracticeCatalog();
     }
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
@@ -2025,6 +2043,170 @@
       }
       frame.srcdoc = kpHtml;
       frame.dataset.kpLoaded = "1";
+    }
+    function setKpStatus(text) {
+      const el = document.getElementById('kp-practice-status');
+      if (el) el.innerText = text || "";
+    }
+    function initKanjiPracticeCatalog() {
+      if (kpCatalogState.loaded && kpCatalogState.materials.length) return;
+      setKpStatus("教材を取得中...");
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
+      .then(r=>r.json()).then(d=>{
+        if (d.status !== "success") throw new Error(d.message || "教材取得失敗");
+        const all = Array.isArray(d.materials) ? d.materials : [];
+        kpCatalogState.materials = all.filter(m => {
+          const cat = String(m.category || "").toLowerCase();
+          const name = String(m.modeName || "");
+          return (cat === "kanji") || /漢字|かんじ|kanji/i.test(name);
+        });
+        kpCatalogState.loaded = true;
+        kpRenderBookSelect();
+      }).catch(e => {
+        setKpStatus("教材の取得に失敗しました。");
+      });
+    }
+    function kpRenderBookSelect() {
+      const sel = document.getElementById('kp-book-select');
+      if (!sel) return;
+      const mats = kpCatalogState.materials;
+      if (!mats.length) {
+        sel.innerHTML = '<option value="">ブックなし</option>';
+        setKpStatus("漢字教材が見つかりません。");
+        return;
+      }
+      sel.innerHTML = mats.map(m => `<option value="${escapeHtml(m.modeId)}">${escapeHtml(m.modeName || m.modeId)}</option>`).join('');
+      kpOnBookChange();
+    }
+    function kpOnBookChange() {
+      const bsel = document.getElementById('kp-book-select');
+      const ssel = document.getElementById('kp-sheet-select');
+      if (!bsel || !ssel) return;
+      const modeId = bsel.value;
+      const mat = kpCatalogState.materials.find(m => String(m.modeId) === String(modeId));
+      const units = mat && Array.isArray(mat.units) ? mat.units : [];
+      if (!units.length) {
+        ssel.innerHTML = '<option value="">シートなし</option>';
+        setKpStatus("シートがありません。");
+        return;
+      }
+      ssel.innerHTML = units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(formatUnitSheetDisplayLabel(u))}</option>`).join('');
+      kpOnSheetChange();
+    }
+    function kpOnSheetChange() {
+      const bsel = document.getElementById('kp-book-select');
+      const ssel = document.getElementById('kp-sheet-select');
+      const setSel = document.getElementById('kp-set-select');
+      if (!bsel || !ssel || !setSel) return;
+      const modeId = bsel.value;
+      const unitName = ssel.value;
+      kpCatalogState.sets = [];
+      kpCatalogState.setQuestions = [];
+      setSel.innerHTML = '<option value="">セット読み込み中...</option>';
+      setKpStatus(`セットを取得中: ${formatUnitSheetDisplayLabel(unitName)}`);
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_kanji_quiz_sets", modeId, unitName }) })
+      .then(r=>r.json()).then(d=>{
+        if (d.status !== "success") throw new Error(d.message || "セット取得失敗");
+        kpCatalogState.sets = Array.isArray(d.sets) ? d.sets : [];
+        if (!kpCatalogState.sets.length) {
+          setSel.innerHTML = '<option value="">セットなし</option>';
+          setKpStatus("このシートにセットがありません。");
+          kpRenderTiles([]);
+          return;
+        }
+        setSel.innerHTML = kpCatalogState.sets.map(s => `<option value="${escapeHtml(String(s.setId || ''))}">セット ${escapeHtml(String(s.setId || ''))}（${escapeHtml(String(s.count || 0))}字）</option>`).join('');
+        kpOnSetChange();
+      }).catch(_ => {
+        setSel.innerHTML = '<option value="">セット取得失敗</option>';
+        setKpStatus("セットの取得に失敗しました。");
+        kpRenderTiles([]);
+      });
+    }
+    function kpOnSetChange() {
+      const bsel = document.getElementById('kp-book-select');
+      const ssel = document.getElementById('kp-sheet-select');
+      const setSel = document.getElementById('kp-set-select');
+      if (!bsel || !ssel || !setSel) return;
+      const modeId = bsel.value;
+      const unitName = ssel.value;
+      const setId = setSel.value;
+      if (!setId) {
+        kpCatalogState.setQuestions = [];
+        kpRenderTiles([]);
+        return;
+      }
+      setKpStatus(`セット ${setId} を読み込み中...`);
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_kanji_quiz_questions", modeId, unitName, setId }) })
+      .then(r=>r.json()).then(d=>{
+        if (d.status !== "success") throw new Error(d.message || "問題取得失敗");
+        kpCatalogState.setQuestions = Array.isArray(d.questions) ? d.questions : [];
+        kpApplyFilterAndRender();
+      }).catch(_ => {
+        kpCatalogState.setQuestions = [];
+        kpRenderTiles([]);
+        setKpStatus("セット問題の取得に失敗しました。");
+      });
+    }
+    function kpApplyFilterAndRender() {
+      const q = (document.getElementById('kp-search-input')?.value || "").trim().toLowerCase();
+      const list = (kpCatalogState.setQuestions || []).filter(item => {
+        const k = String(item.kanji || "");
+        const readings = (Array.isArray(item.readings) ? item.readings : [])
+          .map(r => `${r.reading || ""} ${(Array.isArray(r.examples) ? r.examples.join(" ") : "")}`)
+          .join(" ")
+          .toLowerCase();
+        if (!q) return true;
+        return k.includes(q) || readings.includes(q);
+      }).map(item => String(item.kanji || "")).filter(Boolean);
+      kpCatalogState.filteredChars = list;
+      kpRenderTiles(list);
+      setKpStatus(`${list.length} 件表示中 / セット内 ${(kpCatalogState.setQuestions || []).length} 字`);
+    }
+    function kpRenderTiles(chars) {
+      const grid = document.getElementById('kp-tile-grid');
+      if (!grid) return;
+      grid.innerHTML = "";
+      if (!chars || !chars.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;color:#999;text-align:center;padding:18px;">候補なし</div>';
+        return;
+      }
+      const uniq = Array.from(new Set(chars));
+      uniq.forEach(ch => {
+        const b = document.createElement('button');
+        b.type = "button";
+        b.className = "menu-btn btn-gray";
+        b.style.margin = "0";
+        b.style.width = "100%";
+        b.style.padding = "14px 8px";
+        b.style.fontSize = "52px";
+        b.style.lineHeight = "1";
+        b.style.border = "1px solid #4a4a4a";
+        b.style.background = "#262626";
+        b.innerText = ch;
+        b.title = `${ch} を練習`;
+        b.onclick = () => kpSelectPracticeChar(ch);
+        grid.appendChild(b);
+      });
+    }
+    function kpSelectPracticeChar(ch) {
+      const frame = document.getElementById('kp-pro-frame');
+      if (!frame || !frame.contentWindow) return;
+      try {
+        const doc = frame.contentWindow.document;
+        const sel = doc.getElementById('target-kanji');
+        if (!sel) return;
+        const has = Array.from(sel.options || []).some(o => String(o.value) === String(ch));
+        if (!has) {
+          setKpStatus(`「${ch}」は筆順データ（KanjiVG）未登録です。`);
+          return;
+        }
+        sel.value = ch;
+        if (typeof frame.contentWindow.initTargetKanji === "function") frame.contentWindow.initTargetKanji();
+        if (typeof frame.contentWindow.switchMode === "function") frame.contentWindow.switchMode("score");
+        setKpStatus(`練習対象を「${ch}」に切替えました。`);
+      } catch (_) {
+        setKpStatus("練習対象の切替に失敗しました。");
+      }
     }
     function loadMaterialsByFilter(btn, category) {
       const origText = toggleBtnLoading(btn, true);
