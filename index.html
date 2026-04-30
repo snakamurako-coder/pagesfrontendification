@@ -227,7 +227,11 @@
     <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
   </div>
   <div id="section-kanji-practice" class="section" style="background:#ffffff;color:#222;min-height:100vh;">
-    <h1>漢字練習</h1>
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+      <button class="menu-btn btn-blue" style="width:auto; padding:10px 18px; margin:0;" onclick="kpShowModelDemo()">お手本表示</button>
+      <button class="menu-btn btn-purple" style="width:auto; padding:10px 18px; margin:0;" onclick="kpReplayModelDemo()">書き順デモ再生</button>
+    </div>
+    <h1>漢字練習・設定調整</h1>
     <p style="text-align:center;color:#666;max-width:980px;margin:0 auto 10px;font-size:14px;">練習・調整（キャリブレーション/ペン設定）モードです。教材セットから選んで、漢字/よみで検索できます。</p>
     <div style="width:96vw;max-width:1200px;margin:0 auto 10px;background:#f5f7fa;border:1px solid #d8dde5;border-radius:12px;padding:12px;box-sizing:border-box;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;">
@@ -241,10 +245,6 @@
     </div>
     <div style="width:96vw;max-width:1200px;margin:0 auto 10px;">
       <iframe id="kp-pro-frame" src="about:blank" title="Kanji Practice Pro" scrolling="no" style="width:100%;height:900px;min-height:620px;border:1px solid #ccd3db;border-radius:10px;background:#fff;overflow:hidden;"></iframe>
-    </div>
-    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
-      <button class="menu-btn btn-blue" style="width:auto; padding:10px 18px; margin:0;" onclick="kpShowModelDemo()">お手本表示</button>
-      <button class="menu-btn btn-purple" style="width:auto; padding:10px 18px; margin:0;" onclick="kpReplayModelDemo()">書き順デモ再生</button>
     </div>
     <button class="cancel-btn" style="margin-top:16px;" onclick="openKanjiLearningMenu()">漢字学習メニューにもどる</button>
   </div>
