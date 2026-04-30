@@ -172,61 +172,343 @@
     .word-card:active { cursor: grabbing; }
     .sortable-ghost { opacity: 0.45; background: #444 !important; }
 
-    /* 漢字学習フロー：縦書き（上→下・右→左） */
+    .kanji-quiz-format-wrap {
+      max-width: 420px;
+      margin: 14px auto 16px;
+      text-align: center;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+    }
+    .kanji-quiz-format-wrap label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: #444;
+      font-size: clamp(14px, 3vw, 17px);
+    }
+    .kanji-quiz-sets-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* 漢字学習フロー：国語教材風・縦書き・右上ブロック */
     body.kanji-study-mode {
       text-align: center;
+      background: #f5f2eb;
+      color: #1a1a1a;
+    }
+    body.kanji-study-mode #global-header {
+      left: auto;
+      right: 14px;
+      text-align: right;
+      color: #555;
+      font-size: clamp(13px, 3vw, 16px);
+    }
+    body.kanji-study-mode #section-kanji-learning.active,
+    body.kanji-study-mode #section-kanji-quiz-sets.active,
+    body.kanji-study-mode #section-materials.active {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      min-height: calc(100vh - 36px);
+      padding: 16px 12px 52px;
+      box-sizing: border-box;
+      background: #f5f2eb;
+      color: #1a1a1a;
     }
     body.kanji-study-mode #section-kanji-learning.active .kanji-study-vertical-wrap,
     body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-study-vertical-wrap {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      min-height: 65vh;
-      margin: 10px auto 0;
-      display: inline-block;
+      max-height: min(92vh, 920px);
+      margin: 0;
+      display: block;
       text-align: start;
-      padding: 8px 12px;
+      padding: 10px 6px 10px 16px;
     }
     body.kanji-study-mode #section-kanji-learning.active .kanji-study-vertical-wrap h1,
     body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-study-vertical-wrap h1 {
       margin: 0 0.4em 0 0;
-      font-size: 1.35em;
+      font-size: clamp(1.55rem, 5vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #111;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-study-lead,
+    body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-study-lead {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: clamp(16px, 3.4vw, 20px);
+      color: #444;
+      line-height: 1.65;
+      max-height: min(70vh, 22em);
+      margin: 0 0 0 10px;
+      text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-study-menu-btns {
+      display: block;
+      margin-top: 10px;
     }
     body.kanji-study-mode #section-kanji-learning.active .menu-btn,
     body.kanji-study-mode #section-kanji-learning.active .cancel-btn,
     body.kanji-study-mode #section-kanji-quiz-sets.active .menu-btn,
     body.kanji-study-mode #section-kanji-quiz-sets.active .cancel-btn {
-      writing-mode: horizontal-tb;
-      width: auto;
-      max-width: 320px;
-      margin: 10px 6px;
-    }
-    body.kanji-study-mode #section-materials.active {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      min-height: 68vh;
+      width: clamp(54px, 12vw, 68px);
+      min-height: clamp(160px, 32vh, 260px);
+      max-width: none;
+      padding: 16px 12px;
+      margin: 0 12px 0 0;
+      font-size: clamp(18px, 3.6vw, 24px);
+      font-weight: 800;
+      line-height: 1.35;
+      border-radius: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.14);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.06);
+      box-sizing: border-box;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .cancel-btn,
+    body.kanji-study-mode #section-kanji-quiz-sets.active .cancel-btn,
+    body.kanji-study-mode #section-materials.active .cancel-btn {
+      background: #e8e4dc !important;
+      color: #333 !important;
+      border: 2px solid #a99880 !important;
+      font-weight: 700;
+    }
+    body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-quiz-format-wrap {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      max-width: none;
+      max-height: min(78vh, 640px);
+      margin: 0 10px 0 0;
       text-align: start;
     }
+    body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-quiz-format-wrap label {
+      color: #333 !important;
+      font-size: clamp(15px, 3.2vw, 18px) !important;
+      font-weight: 700;
+      margin: 0 0 0 10px !important;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+    }
+    body.kanji-study-mode #section-kanji-quiz-sets.active #kanji-quiz-format-select {
+      background: #fff !important;
+      color: #111 !important;
+      border: 2px solid #333 !important;
+      font-size: clamp(16px, 3.2vw, 20px) !important;
+      padding: 12px !important;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      width: min(100%, 360px);
+      max-width: 360px;
+    }
+    body.kanji-study-mode #section-kanji-quiz-sets.active #kanji-quiz-sets-container,
+    body.kanji-study-mode #section-kanji-quiz-sets.active .kanji-quiz-sets-stack {
+      margin: 0 !important;
+      max-width: 520px !important;
+      gap: 12px !important;
+      align-items: flex-start;
+    }
+    body.kanji-study-mode #section-materials.active .kanji-study-materials-wrap {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      max-height: min(92vh, 920px);
+      margin: 0;
+      display: block;
+      text-align: start;
+      padding: 10px 6px 10px 16px;
+    }
     body.kanji-study-mode #section-materials.active #materials-title {
-      margin: 0 0.35em 0 0;
+      margin: 0 0.4em 0 0;
+      font-size: clamp(1.45rem, 4.5vw, 2.1rem);
+      font-weight: 800;
+      color: #111;
     }
     body.kanji-study-mode #section-materials.active #materials-container {
-      writing-mode: horizontal-tb;
-      max-width: 400px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      max-width: none;
+      max-height: min(80vh, 680px);
+      margin: 0 !important;
+      gap: 12px !important;
     }
     body.kanji-study-mode #section-materials.active .menu-btn,
     body.kanji-study-mode #section-materials.active .cancel-btn {
-      writing-mode: horizontal-tb;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      width: clamp(54px, 12vw, 68px);
+      min-height: clamp(140px, 28vh, 240px);
+      max-width: none;
+      padding: 14px 10px;
+      margin: 0 10px 0 0;
+      font-size: clamp(17px, 3.5vw, 22px);
+      font-weight: 800;
+      line-height: 1.35;
+      border-radius: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.14);
+      box-sizing: border-box;
+    }
+    body.kanji-study-mode #section-kanji-practice.active {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      padding: 14px 10px 40px;
+      box-sizing: border-box;
     }
     body.kanji-study-mode #section-kanji-practice.active .kanji-practice-vertical-head {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      max-height: 70vh;
-      margin: 0 auto;
-      display: inline-block;
+      max-height: min(88vh, 720px);
+      margin: 0 0 10px 0;
+      display: block;
       text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-practice.active .kanji-practice-vertical-head p {
+      font-size: clamp(16px, 3.2vw, 20px) !important;
+      color: #333 !important;
+      line-height: 1.65 !important;
     }
     body.kanji-study-mode #section-kanji-practice.active .kp-controls-row {
       writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      direction: ltr;
+      width: 100% !important;
+      max-width: 1200px;
+      margin-left: auto !important;
+      margin-right: 0 !important;
+    }
+    body.kanji-study-mode #section-kanji-practice.active #kp-practice-status {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: start;
+      margin: 8px 0 !important;
+      font-size: clamp(14px, 2.8vw, 17px) !important;
+      color: #607080 !important;
+    }
+    body.kanji-study-mode #section-kanji-practice.active > div[style*="width:96vw"],
+    body.kanji-study-mode #section-kanji-practice.active #kp-iframe-slot-practice {
+      width: 100% !important;
+      max-width: 1200px;
+      margin-left: auto !important;
+      margin-right: 0 !important;
+    }
+    body.kanji-study-mode #section-kanji-practice.active > .cancel-btn {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      align-self: flex-end;
+      width: clamp(52px, 12vw, 64px);
+      min-height: 180px;
+      max-width: none;
+      padding: 14px 10px;
+      margin-top: 18px;
+      font-size: clamp(17px, 3.2vw, 22px);
+      font-weight: 800;
+      border-radius: 12px;
+      background: #eef2f7 !important;
+      color: #333 !important;
+      border: 2px solid #90a4ae !important;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.active {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      padding-right: clamp(8px, 2vw, 20px);
+      padding-left: 8px;
+      background: #fdfcfa !important;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
+      margin: 0 0 0 auto;
+      width: 100%;
+      max-width: 720px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-play-footer-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: flex-end;
+      width: 100%;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: 0;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      direction: ltr;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-head {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: start;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-type-badge {
+      margin: 6px 0 0 0 !important;
+      display: block;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-title,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-char,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-prompt,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-summary,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-write-slot-hint {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-detail,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-detail * {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-choices {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      justify-content: flex-start !important;
+      align-items: flex-start !important;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-typing-wrap,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-typing-wrap * {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-quiz-drill-handwriting {
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+      width: 100%;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-hw-row,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-hw-actions,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-penstrip {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      direction: ltr;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-hw-prefix-col,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-hw-suffix-col,
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-reading-aside {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-submit-btn {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      min-height: 120px;
+      width: 52px;
+      padding: 12px 8px;
+      font-size: 17px;
+      margin: 0;
+    }
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-vbtn {
+      min-height: 150px;
+      width: 56px;
+      font-size: clamp(16px, 3.2vw, 20px);
     }
     /* 漢字クイズ＝小学生ドリル風・白背景 */
     #section-kanji-quiz-play.kanji-quiz-drill-section.active {
@@ -297,27 +579,75 @@
       background: #fff8e1;
       border-color: #f57c00;
     }
+    .kanji-drill-hw-row {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 12px 14px;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      direction: ltr;
+      margin-top: 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .kanji-drill-hw-prefix-col,
+    .kanji-drill-hw-suffix-col {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: clamp(26px, 6vw, 40px);
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: 0.04em;
+      color: #000;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      flex-shrink: 0;
+      max-height: min(78vh, 520px);
+    }
+    .kanji-drill-q-marker { margin: 0 0.15em 0 0; }
+    .kanji-drill-hw-actions { flex-shrink: 0; }
+    .kanji-drill-penstrip {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+    .kanji-drill-penchip {
+      padding: 6px 12px;
+      font-size: clamp(13px, 2.8vw, 16px);
+      font-weight: 700;
+      border: 2px solid #444;
+      border-radius: 8px;
+      background: #f0f0f0;
+      cursor: pointer;
+      color: #111;
+      font-family: inherit;
+    }
+    .kanji-drill-penchip.is-active-prior {
+      background: #fff8e1;
+      border-color: #f57c00;
+    }
+    .kanji-drill-reading-aside {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: clamp(28px, 7vw, 48px);
+      font-weight: 800;
+      color: #0d47a1;
+      line-height: 1.2;
+      flex-shrink: 0;
+      padding-bottom: 4px;
+    }
     .kanji-drill-vbtn-col {
       display: flex;
       flex-direction: column;
       gap: 10px;
       align-items: center;
       flex-shrink: 0;
-    }
-    .kanji-drill-writing-row {
-      display: flex;
-      flex-direction: row;
-      align-items: stretch;
-      justify-content: center;
-      gap: 14px;
-      margin: 18px auto 0;
-      flex-wrap: wrap;
-    }
-    .kanji-drill-masu-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
     }
     .kanji-drill-context {
       font-size: clamp(26px, 7vw, 40px);
@@ -338,6 +668,10 @@
     }
     #kanji-quiz-drill-handwriting {
       margin-top: 16px;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      width: 100%;
+      max-width: 100%;
     }
     #kanji-play-write-slot-hint {
       font-size: clamp(16px, 3.5vw, 22px) !important;
@@ -429,8 +763,8 @@
   <div id="section-kanji-learning" class="section">
     <div class="kanji-study-vertical-wrap">
     <h1>漢字の自由学習</h1>
-    <p style="text-align:center;color:#aaa;max-width:420px;margin:0 auto 12px;font-size:14px;">やりたい学習をえらんでね</p>
-    <div style="display:flex; flex-direction:column; align-items:center; margin-top:20px;">
+    <p class="kanji-study-lead">やりたい学習をえらんでね</p>
+    <div class="kanji-study-menu-btns">
       <button class="menu-btn btn-red" onclick="loadKanjiMaterials(this)">漢字クイズに挑戦</button>
       <button class="menu-btn btn-blue" onclick="openKanjiPractice()">漢字練習をする</button>
     </div>
@@ -472,20 +806,26 @@
   <div id="section-rewards" class="section"><h1>🎁 けいひん こうかんじょ</h1><div id="rewards-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
   <div id="section-inventory" class="section"><h1>🎒 もちもの</h1><p>おうちの人に画面を見せてボタンをおしてね。</p><div style="margin-bottom: 15px;"><button id="toggle-inventory-btn" class="menu-btn btn-gray" onclick="toggleInventoryView()" style="width: auto; padding: 10px 20px; font-size: 16px;">すべて表示する</button></div><div id="inventory-container"><p>よみこみ中...</p></div><button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button></div>
   
-  <div id="section-materials" class="section"><h1 id="materials-title">なにを勉強する？</h1><div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div><button class="cancel-btn" style="margin-top:20px;" onclick="backFromMaterials()">もどる</button></div>
+  <div id="section-materials" class="section">
+    <div class="kanji-study-materials-wrap">
+    <h1 id="materials-title">なにを勉強する？</h1>
+    <div id="materials-container" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;"></div>
+    <button class="cancel-btn" style="margin-top:20px;" onclick="backFromMaterials()">もどる</button>
+    </div>
+  </div>
   <div id="section-kanji-quiz-sets" class="section">
     <div class="kanji-study-vertical-wrap">
     <h1 id="kanji-quiz-title">漢字クイズに挑戦</h1>
-    <div id="kanji-quiz-format-wrap" class="kanji-quiz-format-wrap" style="max-width:420px;margin:14px auto 16px;text-align:center;writing-mode:horizontal-tb;">
-      <label for="kanji-quiz-format-select" style="display:block;color:#bbb;font-size:14px;margin-bottom:8px;">もんだいのしかた</label>
-      <select id="kanji-quiz-format-select" class="large-select" style="max-width:100%;font-size:16px;background:#2a2a2a;color:#fff;border:1px solid #555;" onchange="onKanjiQuizFormatChange()">
+    <div id="kanji-quiz-format-wrap" class="kanji-quiz-format-wrap">
+      <label for="kanji-quiz-format-select">もんだいのしかた</label>
+      <select id="kanji-quiz-format-select" class="large-select" onchange="onKanjiQuizFormatChange()">
         <option value="mixed">混合（3しゅるいを まぜる）</option>
         <option value="write_kanji">かんじを かいて こたえる</option>
         <option value="select_kana">よみかな・おくりがな（せんたく）</option>
         <option value="type_yomi">よみかなを かいて こたえる</option>
       </select>
     </div>
-    <div id="kanji-quiz-sets-container" style="display:flex; flex-direction:column; gap:10px; max-width:420px; margin:0 auto;"></div>
+    <div id="kanji-quiz-sets-container" class="kanji-quiz-sets-stack"></div>
     <button class="cancel-btn" style="margin-top:20px;" onclick="openKanjiLearningMenu()">もどる</button>
     </div>
   </div>
@@ -505,20 +845,25 @@
         <p style="font-size:15px;color:#555;margin:8px 0 0;">音は<strong>カタカナ</strong>、訓は<strong>ひらがな</strong></p>
       </div>
       <div id="kanji-quiz-drill-handwriting" style="display:none;">
-        <p id="kanji-play-write-slot-hint" style="margin:12px 0;"></p>
-        <div class="kanji-drill-writing-row">
-          <div class="kanji-drill-vbtn-col">
-            <button type="button" class="kanji-drill-vbtn" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
-            <button type="button" class="kanji-drill-vbtn is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
-            <button type="button" class="kanji-drill-vbtn" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
+        <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint"></p>
+        <div class="kanji-drill-hw-row">
+          <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
+            <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
+          </div>
+          <div class="kanji-drill-vbtn-col kanji-drill-hw-actions">
             <button type="button" class="kanji-drill-vbtn" style="background:#e3f2fd;border-color:#1565c0;color:#0d47a1;" onclick="kanjiQuizRunHandwritingAnswer()">これで<br>かいとう</button>
             <button type="button" class="kanji-drill-vbtn" onclick="kanjiQuizClearWritePad(true)">さいしょ<br>から</button>
             <button type="button" class="kanji-drill-vbtn" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりを<br>けす</button>
           </div>
-          <div class="kanji-drill-masu-col">
-            <div id="kanji-drill-context-above" class="kanji-drill-context" aria-hidden="false"></div>
-            <canvas id="kanji-quiz-write-canvas" width="300" height="300"></canvas>
-            <div id="kanji-drill-context-below" class="kanji-drill-context" aria-hidden="false"></div>
+          <div class="kanji-drill-penstrip" aria-label="ペンの太さ">
+            <button type="button" class="kanji-drill-penchip" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
+            <button type="button" class="kanji-drill-penchip is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
+            <button type="button" class="kanji-drill-penchip" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
+          </div>
+          <canvas id="kanji-quiz-write-canvas" width="300" height="300"></canvas>
+          <div class="kanji-drill-reading-aside" id="kanji-play-char-handwriting"></div>
+          <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
+            <span id="kanji-drill-ctx-suffix" class="kanji-drill-context-inline"></span>
           </div>
         </div>
       </div>
@@ -2723,7 +3068,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         sets.forEach(s => {
           const b = document.createElement('button');
           b.className = "menu-btn btn-gray";
-          b.innerText = `セット ${s.setId}（${s.count}字）: ${(s.kanjiList || []).join(" ")}`;
+          b.innerText = `セット ${s.setId}（${s.count}字）`;
           b.onclick = () => {
             fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_kanji_quiz_questions", modeId: modeId, unitName: unitName, setId: s.setId }) })
               .then(r => r.json()).then(q => {
@@ -2763,6 +3108,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       let rest = str.slice(idx + 1);
       rest = rest.replace(/^[＿_〼]+/, "");
       return { before: str.slice(0, idx), after: rest };
+    }
+    function kanjiQuizCircledQuestionNum(n) {
+      const i = Math.max(1, Number(n) || 1);
+      if (i <= 20) return String.fromCodePoint(0x245f + i);
+      return "(" + i + ")";
     }
     function kanjiQuizCanvasXY(e, canvas) {
       const r = canvas.getBoundingClientRect();
@@ -2975,7 +3325,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const nextCh = targets[slot + 1];
       if (!selectKanjiCharInQuizFrame(nextCh)) return;
       const hint = document.getElementById("kanji-play-write-slot-hint");
-      if (hint) hint.innerText = "だい " + (slot + 2) + " もじ／" + targets.length + "　「" + nextCh + "」（" + KANJI_QUIZ_HAND_PASS + "てんいじょう）";
+      if (hint) hint.innerText = "だい " + (slot + 2) + " もじ／" + targets.length;
       const sum = document.getElementById("kanji-play-summary");
       if (sum) sum.innerHTML = "";
       kanjiQuizClearWritePad(true);
@@ -3139,8 +3489,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       kanjiQuizSession.selectedChoice = null;
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
-      const aboveEl = document.getElementById("kanji-drill-context-above");
-      const belowEl = document.getElementById("kanji-drill-context-below");
+      const markerEl = document.getElementById("kanji-drill-q-marker");
+      const prefixEl = document.getElementById("kanji-drill-ctx-prefix");
+      const suffixEl = document.getElementById("kanji-drill-ctx-suffix");
+      const charHand = document.getElementById("kanji-play-char-handwriting");
       const total = kanjiQuizSession.questions.length;
       const progress = document.getElementById('kanji-play-progress');
       if (progress) progress.innerText = `${kanjiQuizSession.index + 1} / ${total}`;
@@ -3151,17 +3503,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const charEl = document.getElementById('kanji-play-char');
       if (charEl) {
         charEl.style.fontSize = "";
+        charEl.style.display = "";
         if (q.type === "okurigana_shift") {
           charEl.innerText = q.kanji || "？";
-          charEl.style.fontSize = "";
         } else if (q.type === "ruby_to_kanji") {
-          charEl.innerText = q.readingDisplay || "";
+          charEl.innerText = "";
+          charEl.style.display = "none";
         } else {
           charEl.innerText = "かな";
         }
       }
       const promptEl = document.getElementById('kanji-play-prompt');
-      if (promptEl) promptEl.innerText = q.prompt || "";
+      if (promptEl) {
+        if (q.type === "ruby_to_kanji") promptEl.innerText = "";
+        else promptEl.innerText = q.prompt || "";
+      }
       const detail = document.getElementById('kanji-play-detail');
       const choicesBox = document.getElementById('kanji-play-choices');
       const typingWrap = document.getElementById('kanji-play-typing-wrap');
@@ -3185,18 +3541,23 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           return;
         }
         const hint = document.getElementById("kanji-play-write-slot-hint");
-        if (hint) hint.innerText = "だい 1 もじ／" + targets.length + "　「" + targets[0] + "」（" + KANJI_QUIZ_HAND_PASS + "てんいじょう）";
+        if (hint) hint.innerText = "だい 1 もじ／" + targets.length;
         const ctxDrill = parseMaskedForDrill(q.maskedSentence);
-        if (aboveEl) aboveEl.textContent = ctxDrill.before || "";
-        if (belowEl) belowEl.textContent = ctxDrill.after || "";
+        const qn = kanjiQuizCircledQuestionNum(kanjiQuizSession.index + 1);
+        if (markerEl) markerEl.textContent = qn;
+        if (prefixEl) prefixEl.textContent = ctxDrill.before || "";
+        if (suffixEl) suffixEl.textContent = ctxDrill.after || "";
+        if (charHand) charHand.textContent = q.readingDisplay || "";
         kanjiQuizSetPenWidth(kanjiQuizPenW);
         kanjiQuizClearWritePad(true);
         kanjiQuizSetupWriteCanvas();
       } else {
         restoreKanjiPracticeFrameIfMoved();
         if (drillHand) drillHand.style.display = "none";
-        if (aboveEl) aboveEl.textContent = "";
-        if (belowEl) belowEl.textContent = "";
+        if (markerEl) markerEl.textContent = "";
+        if (prefixEl) prefixEl.textContent = "";
+        if (suffixEl) suffixEl.textContent = "";
+        if (charHand) charHand.textContent = "";
       }
       if (detail) {
         if (q.type === "okurigana_shift") {
@@ -3204,7 +3565,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             <div style="margin-top:10px;color:#333;">訓読み（ひらがな）: <strong style="color:#000;">${escapeHtml(q.readingHint || "")}</strong></div>
             <div style="margin-top:12px;font-size:clamp(16px,3.5vw,20px);color:#666;">ただしい ひょうきを えらんでください。</div>`;
         } else if (q.type === "ruby_to_kanji") {
-          detail.innerHTML = `<div style="color:#333;font-weight:700;font-size:clamp(18px,4vw,24px);">下のマスに、よみのかんじをおおきくかいてね。</div>`;
+          detail.innerHTML = "";
         } else {
           detail.innerHTML = `<div style="color:#222;font-size:clamp(20px,4.5vw,28px);line-height:1.5;">${escapeHtml(q.sentence || "")}</div>`;
         }
@@ -3363,7 +3724,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         isCorrect = normalizeKanjiQuizInput(userRaw) === normalizeKanjiQuizInput(q.correctAnswer);
       } else if (q.type === "ruby_to_kanji") {
         if (!kanjiQuizSession.rubyHandComplete) {
-          alert("かくかんじを マスにかき、「これでかいとう」で　" + KANJI_QUIZ_HAND_PASS + "　てんいじょうにしてください。");
+          alert("かくかんじを マスにかき、「これでかいとう」で こたえてください。");
           return;
         }
         isCorrect = true;
