@@ -2105,28 +2105,46 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!d || d.status !== "success" || !Array.isArray(d.materials)) return null;
         return d.materials;
       })();
-      const applyMaterials = (all) => {
-        kpCatalogState.materials = (Array.isArray(all) ? all : []).filter(m => {
+      const pickKanjiMaterials = (all) => {
+        return (Array.isArray(all) ? all : []).filter(m => {
           const cat = String(m.category || "").toLowerCase();
-          const name = String(m.modeName || "");
-          return (cat === "kanji") || /漢字|かんじ|kanji/i.test(name);
+          const modeName = String(m.modeName || "");
+          const modeId = String(m.modeId || "");
+          const joined = `${modeName} ${modeId}`;
+          return (cat === "kanji") || /漢字|かんじ|kanji/i.test(joined);
         });
+      };
+      const applyMaterials = (all) => {
+        kpCatalogState.materials = pickKanjiMaterials(all);
         kpCatalogState.loaded = true;
         kpRenderBookSelect();
       };
+      const fetchMaterialsFresh = () => {
+        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
+        .then(r=>r.json()).then(d=>{
+          if (d.status !== "success") throw new Error(d.message || "教材取得失敗");
+          kpSetCachedJson('app_cached_materials', d);
+          applyMaterials(d.materials);
+          if (!kpCatalogState.materials.length) {
+            setKpStatus("漢字教材が0件です（設定または分類を確認してください）。");
+          }
+        }).catch(_ => {
+          setKpStatus("教材の取得に失敗しました。");
+        });
+      };
       if (fromMaterialsCache) {
-        applyMaterials(fromMaterialsCache);
-        setKpStatus("教材キャッシュを使用しました。");
+        const cachedKanji = pickKanjiMaterials(fromMaterialsCache);
+        if (cachedKanji.length) {
+          applyMaterials(fromMaterialsCache);
+          setKpStatus("教材キャッシュを使用しました。");
+          return;
+        }
+        // キャッシュが古く漢字教材が含まれない場合は自動で再取得
+        setKpStatus("漢字教材キャッシュを更新中...");
+        fetchMaterialsFresh();
         return;
       }
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
-      .then(r=>r.json()).then(d=>{
-        if (d.status !== "success") throw new Error(d.message || "教材取得失敗");
-        kpSetCachedJson('app_cached_materials', d);
-        applyMaterials(d.materials);
-      }).catch(_ => {
-        setKpStatus("教材の取得に失敗しました。");
-      });
+      fetchMaterialsFresh();
     }
     function kpRenderBookSelect() {
       const sel = document.getElementById('kp-book-select');
