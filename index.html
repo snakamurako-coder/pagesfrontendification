@@ -264,20 +264,22 @@
     <button class="cancel-btn" style="margin-top:20px;" onclick="openKanjiLearningMenu()">もどる</button>
   </div>
   <div id="section-kanji-quiz-play" class="section">
-    <h1 id="kanji-play-title">漢字採点チャレンジ</h1>
+    <h1 id="kanji-play-title">漢字クイズ</h1>
     <p id="kanji-play-progress" style="text-align:center;color:#9e9e9e;font-size:14px;margin:0 0 8px;">1 / 1</p>
+    <p id="kanji-play-type-badge" style="text-align:center;font-size:13px;color:#B39DDB;margin:0 0 10px;min-height:1.3em;"></p>
     <div style="max-width:420px;margin:0 auto;background:#222;border:1px solid #444;border-radius:12px;padding:14px;">
-      <div style="font-size:56px; font-weight:bold; line-height:1.1; text-align:center; margin:2px 0 8px;" id="kanji-play-char">漢</div>
-      <div id="kanji-play-readings" style="text-align:left;color:#ddd;font-size:14px;line-height:1.6;"></div>
-      <div style="margin-top:12px;">
-        <label for="kanji-play-score" style="display:block;font-weight:bold;margin-bottom:6px;">自己採点（0〜100点）</label>
-        <input id="kanji-play-score" type="range" min="0" max="100" step="1" value="80" oninput="document.getElementById('kanji-play-score-val').innerText=this.value" style="width:100%;">
-        <div style="text-align:center; margin-top:6px;"><span id="kanji-play-score-val">80</span> 点</div>
+      <div style="font-size:48px; font-weight:bold; line-height:1.1; text-align:center; margin:2px 0 10px; min-height:52px; word-break: break-all;" id="kanji-play-char"></div>
+      <div id="kanji-play-prompt" style="color:#fff;font-weight:bold;font-size:15px;margin-bottom:8px;line-height:1.45;"></div>
+      <div id="kanji-play-detail" style="text-align:left;color:#ddd;font-size:15px;line-height:1.75;"></div>
+      <div id="kanji-play-choices" style="display:none;flex-direction:column;gap:10px;margin-top:14px;"></div>
+      <div id="kanji-play-typing-wrap" style="margin-top:14px;display:none;">
+        <input type="text" id="kanji-play-input" inputmode="text" autocomplete="off" lang="ja" placeholder="こたえを入力" style="width:100%;font-size:22px;padding:12px;border-radius:8px;border:2px solid #555;background:#111;color:#fff;box-sizing:border-box;">
+        <p style="font-size:12px;color:#888;margin:8px 0 0;line-height:1.4;">音読みは<strong>カタカナ</strong>、訓読みは<strong>ひらがな</strong>で入力（完全一致で正解）。</p>
       </div>
     </div>
-    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
-      <button class="submit-btn btn-blue" style="width:auto;padding:10px 18px;margin:0;" onclick="submitKanjiQuizScore()">この点数でつぎへ</button>
-      <button class="cancel-btn" style="width:auto;padding:10px 18px;margin:0;" onclick="cancelKanjiQuizPlay()">中断</button>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+      <button type="button" class="submit-btn btn-blue" id="kanji-play-submit-btn" style="width:auto;padding:10px 18px;margin:0;display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
+      <button type="button" class="cancel-btn" style="width:auto;padding:10px 18px;margin:0;" onclick="cancelKanjiQuizPlay()">中断</button>
     </div>
     <div id="kanji-play-summary" style="max-width:420px; margin:14px auto 0; color:#ccc; font-size:14px; line-height:1.6;"></div>
   </div>
@@ -2270,16 +2272,18 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const q = (document.getElementById('kp-search-input')?.value || "").trim().toLowerCase();
       const list = (kpCatalogState.setQuestions || []).filter(item => {
         const k = String(item.kanji || "");
+        const fromNew = String(item.searchText || "").toLowerCase();
         const readings = (Array.isArray(item.readings) ? item.readings : [])
           .map(r => `${r.reading || ""} ${(Array.isArray(r.examples) ? r.examples.join(" ") : "")}`)
           .join(" ")
           .toLowerCase();
+        const hay = fromNew || `${k} ${readings}`;
         if (!q) return true;
-        return k.includes(q) || readings.includes(q);
+        return k.toLowerCase().includes(q) || hay.includes(q);
       }).map(item => String(item.kanji || "")).filter(Boolean);
       kpCatalogState.filteredChars = list;
       kpRenderTiles(list);
-      setKpStatus(`${list.length} 件表示中 / セット内 ${(kpCatalogState.setQuestions || []).length} 字`);
+      setKpStatus(`${list.length} 件表示中 / セット内 ${(kpCatalogState.setQuestions || []).length} 問`);
     }
     function kpRenderTiles(chars) {
       const grid = document.getElementById('kp-tile-grid');
@@ -2441,31 +2445,113 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("通信エラーが発生しました。");
       });
     }
+    function normalizeKanjiQuizInput(str) {
+      try {
+        return String(str || "").trim().normalize("NFKC");
+      } catch (e) {
+        return String(str || "").trim();
+      }
+    }
+    function kanjiQuizTypeBadgeText(type) {
+      if (type === "okurigana_shift") return "問題タイプ: 送り仮名（選択）";
+      if (type === "ruby_to_kanji") return "問題タイプ: 読み→漢字（タイピング）";
+      if (type === "sentence_to_ruby") return "問題タイプ: 例文→読み（タイピング）";
+      return "";
+    }
     function renderKanjiQuizQuestion() {
       if (!kanjiQuizSession) return;
       const q = kanjiQuizSession.questions[kanjiQuizSession.index];
       if (!q) return;
+      if (!q.type || !q.correctAnswer) {
+        alert("問題データの形式が古い可能性があります。セット一覧から開き直してください。");
+        return;
+      }
+      kanjiQuizSession.selectedChoice = null;
       const total = kanjiQuizSession.questions.length;
       const progress = document.getElementById('kanji-play-progress');
       if (progress) progress.innerText = `${kanjiQuizSession.index + 1} / ${total}`;
       const title = document.getElementById('kanji-play-title');
       if (title) title.innerText = `【${kanjiQuizSession.modeName}】${formatUnitSheetDisplayLabel(kanjiQuizSession.unitName)} / セット ${kanjiQuizSession.setId}`;
+      const badge = document.getElementById('kanji-play-type-badge');
+      if (badge) badge.innerText = kanjiQuizTypeBadgeText(q.type);
       const charEl = document.getElementById('kanji-play-char');
-      if (charEl) charEl.innerText = q.kanji || "？";
-      const readingsEl = document.getElementById('kanji-play-readings');
-      if (readingsEl) {
-        const arr = Array.isArray(q.readings) ? q.readings : [];
-        readingsEl.innerHTML = arr.map(r => {
-          const ex = (Array.isArray(r.examples) ? r.examples : []).slice(0, 2).join(" / ");
-          return `<div>・${escapeHtml(r.label || "")}: <strong>${escapeHtml(r.reading || "")}</strong>${ex ? `（${escapeHtml(ex)}）` : ""}</div>`;
-        }).join("") || "<div>読み情報なし</div>";
+      if (charEl) {
+        charEl.style.fontSize = "";
+        if (q.type === "okurigana_shift") {
+          charEl.innerText = q.kanji || "？";
+          charEl.style.fontSize = "48px";
+        } else if (q.type === "ruby_to_kanji") {
+          charEl.innerText = q.readingDisplay || "";
+          charEl.style.fontSize = "32px";
+        } else {
+          charEl.innerText = "⌨️";
+          charEl.style.fontSize = "40px";
+        }
       }
-      const score = document.getElementById('kanji-play-score');
-      const scoreVal = document.getElementById('kanji-play-score-val');
-      if (score) score.value = "80";
-      if (scoreVal) scoreVal.innerText = "80";
+      const promptEl = document.getElementById('kanji-play-prompt');
+      if (promptEl) promptEl.innerText = q.prompt || "";
+      const detail = document.getElementById('kanji-play-detail');
+      const choicesBox = document.getElementById('kanji-play-choices');
+      const typingWrap = document.getElementById('kanji-play-typing-wrap');
+      const subBtn = document.getElementById('kanji-play-submit-btn');
       const summary = document.getElementById('kanji-play-summary');
       if (summary) summary.innerHTML = "";
+      if (detail) {
+        if (q.type === "okurigana_shift") {
+          detail.innerHTML = `<div style="color:#bbb;">対象の漢字: <strong style="color:#fff;">${escapeHtml(q.kanji || "")}</strong></div>
+            <div style="margin-top:8px;">訓読み（ひらがな）: <strong style="color:#fff;">${escapeHtml(q.readingHint || "")}</strong></div>
+            <div style="margin-top:10px;font-size:13px;color:#9e9e9e;">正しい表記を選んでください。</div>`;
+        } else if (q.type === "ruby_to_kanji") {
+          detail.innerHTML = `<div>例文: <span style="color:#fff;font-size:17px;">${escapeHtml(q.maskedSentence || "")}</span></div>`;
+        } else {
+          detail.innerHTML = `<div>例文: <span style="color:#fff;font-size:17px;">${escapeHtml(q.sentence || "")}</span></div>`;
+        }
+      }
+      if (choicesBox) {
+        choicesBox.innerHTML = "";
+        if (q.type === "okurigana_shift") {
+          choicesBox.style.display = "flex";
+          const arr = Array.isArray(q.choices) ? q.choices : [];
+          arr.forEach(function (c) {
+            const b = document.createElement('button');
+            b.type = "button";
+            b.className = "menu-btn btn-gray";
+            b.style.width = "100%";
+            b.style.padding = "14px 12px";
+            b.style.fontSize = "20px";
+            b.innerText = c;
+            b.onclick = function () {
+              if (!kanjiQuizSession) return;
+              kanjiQuizSession.selectedChoice = c;
+              submitKanjiQuizScore();
+            };
+            choicesBox.appendChild(b);
+          });
+        } else {
+          choicesBox.style.display = "none";
+        }
+      }
+      if (typingWrap) {
+        if (q.type === "okurigana_shift") {
+          typingWrap.style.display = "none";
+        } else {
+          typingWrap.style.display = "block";
+          const inp = document.getElementById('kanji-play-input');
+          if (inp) {
+            inp.value = "";
+            inp.onkeydown = function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitKanjiQuizScore();
+              }
+            };
+            setTimeout(function () { inp.focus(); }, 80);
+          }
+        }
+      }
+      if (subBtn) {
+        subBtn.style.display = q.type === "okurigana_shift" ? "none" : "inline-block";
+      }
     }
     function startKanjiQuizPlay(ctx) {
       const questions = Array.isArray(ctx.questions) ? ctx.questions : [];
@@ -2484,7 +2570,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         questions,
         index: 0,
         totalEarned: 0,
-        logs: []
+        logs: [],
+        selectedChoice: null
       };
       lastKanjiQuizContext = {
         modeId: ctx.modeId,
@@ -2513,7 +2600,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const settingsBtn = document.getElementById('result-settings-btn');
       const homeBtn = document.getElementById('result-home-btn');
       if (!rc || !retryBtn || !settingsBtn || !homeBtn) return;
-      const rows = (Array.isArray(logs) ? logs : []).map(v => `「${escapeHtml(v.kanji)}」 ${v.score}点 → +${Number(v.earned || 0).toFixed(2)}Pt`).join("<br>");
+      const rows = (Array.isArray(logs) ? logs : []).map(function (v) {
+        const mark = v.isCorrect ? "○" : "×";
+        return `「${escapeHtml(v.kanji || "")}」 ${mark} ${Number(v.score || 0)}点 → +${Number(v.earned || 0).toFixed(2)}Pt`;
+      }).join("<br>");
       rc.innerHTML = `<h2 style="color:#4CAF50;">✨ 漢字セット完了！ ✨</h2>
         <p>かくとくポイント: <span style="color:gold;font-size:30px;">+${Number(totalEarned || 0).toFixed(2)}</span></p>
         <hr style="border-color:#444;">
@@ -2547,13 +2637,35 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (!kanjiQuizSession) return;
       const q = kanjiQuizSession.questions[kanjiQuizSession.index];
       if (!q) return;
-      const score = Number((document.getElementById('kanji-play-score') || {}).value || 0);
+      if (!q.type) {
+        alert("問題形式が不明です。やり直してください。");
+        return;
+      }
+      let userRaw = "";
+      if (q.type === "okurigana_shift") {
+        userRaw = kanjiQuizSession.selectedChoice != null ? String(kanjiQuizSession.selectedChoice) : "";
+        if (!userRaw) {
+          alert("選択肢を選んでください。");
+          return;
+        }
+      } else {
+        const inp = document.getElementById('kanji-play-input');
+        userRaw = inp ? String(inp.value || "") : "";
+        if (!normalizeKanjiQuizInput(userRaw)) {
+          alert("こたえを入力してください。");
+          return;
+        }
+      }
+      const isCorrect = normalizeKanjiQuizInput(userRaw) === normalizeKanjiQuizInput(q.correctAnswer);
+      const score = isCorrect ? 100 : 0;
+      kanjiQuizSession.selectedChoice = null;
       const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
       if (!user || !user.id) {
         alert("ログイン情報が見つかりません。");
         return;
       }
-      const unitId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}_${q.kanji}`;
+      const qid = q.questionId || (`${q.kanji}_${kanjiQuizSession.index}_${q.type}`);
+      const unitId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}_${qid}`;
       const payload = {
         action: "save_learning_session",
         userId: user.id,
@@ -2571,11 +2683,23 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         payload.trainingStepIndex = kanjiQuizSession.trainingStepIndex;
         payload.trainingMenuId = kanjiQuizSession.trainingMenuId;
       }
+      const summary = document.getElementById('kanji-play-summary');
+      if (summary) {
+        summary.innerHTML = isCorrect
+          ? '<span style="color:#69F0AE;">せいかい！</span>'
+          : '<span style="color:#FF8A80;">ざんねん… 次はがんばろう</span>';
+      }
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
       .then(r => r.json()).then(d => {
         if (d.status !== "success") throw new Error(d.message || "保存に失敗");
         kanjiQuizSession.totalEarned += Number(d.earnedPoints || 0);
-        kanjiQuizSession.logs.push({ kanji: q.kanji, score, earned: Number(d.earnedPoints || 0) });
+        kanjiQuizSession.logs.push({
+          kanji: q.kanji,
+          score: score,
+          earned: Number(d.earnedPoints || 0),
+          isCorrect: isCorrect,
+          qType: q.type
+        });
         user.points = d.newTotal;
         localStorage.setItem('app_kid_user', JSON.stringify(user));
         kanjiQuizSession.index += 1;

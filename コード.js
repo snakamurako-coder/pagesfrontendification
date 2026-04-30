@@ -1063,7 +1063,8 @@ function parseKanjiQuizSheet_(sheet) {
       const examples = def.exampleIdx
         .map(i => cellText(row[i]))
         .filter(Boolean);
-      readings.push({ label: def.label, reading, examples });
+      const rk = def.label.indexOf("音") === 0 ? "on" : "kun";
+      readings.push({ label: def.label, kind: rk, reading, examples });
     });
     groupsMap[setId].items.push({
       rowIndex: r + 1,
@@ -1073,6 +1074,231 @@ function parseKanjiQuizSheet_(sheet) {
   }
   const groups = order.map(setId => groupsMap[setId]).filter(g => g.items.length > 0);
   return { groups };
+}
+
+/**
+ * 漢字クイズ3形式: 配列シャッフル（非破壊）
+ */
+function shuffleKanjiQuizArray_(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+  }
+  return a;
+}
+
+/** ひらがな → カタカナ（音読み表示・正解用） */
+function hiraganaToKatakanaKanjiQuiz_(s) {
+  return Array.from(String(s || ""))
+    .map(function (ch) {
+      const c = ch.charCodeAt(0);
+      if (c >= 0x3041 && c <= 0x3096) return String.fromCharCode(c + 0x60);
+      return ch;
+    })
+    .join("");
+}
+
+/** 音=カタカナ・訓=シートのまま（ひらがな想定） */
+function readingDisplayForQuiz_(reading, kind) {
+  const r = String(reading || "");
+  if (kind === "on") return hiraganaToKatakanaKanjiQuiz_(r);
+  return r;
+}
+
+/** 正解読み（完全一致判定用）。音はカタカナ、訓は原文 */
+function normalizedCorrectReadingAnswer_(reading, kind) {
+  return readingDisplayForQuiz_(reading, kind);
+}
+
+/** 例文中で最初の kanji 列文字列をマスク（×等は素材に入らない前提） */
+function maskKanjiInExampleOnce_(sentence, kanjiCol) {
+  const s = String(sentence || "");
+  const k = String(kanjiCol || "");
+  if (!s || !k) return { ok: false, masked: s };
+  const idx = s.indexOf(k);
+  if (idx < 0) return { ok: false, masked: s };
+  return { ok: true, masked: s.slice(0, idx) + "＿" + s.slice(idx + k.length) };
+}
+
+/**
+ * 送り仮名ダミー候補プール（セット全体）。訓かつ L>=3・漢字1字
+ */
+function collectOkuriganaDummyPoolKanjiQuiz_(items) {
+  const pool = [];
+  if (!items || !items.length) return pool;
+  items.forEach(function (item) {
+    const k = String(item.kanji || "");
+    if (k.length !== 1) return;
+    const readings = Array.isArray(item.readings) ? item.readings : [];
+    readings.forEach(function (r) {
+      if (r.kind !== "kun") return;
+      const reading = String(r.reading || "");
+      if (reading.length < 3) return;
+      const correct = k + reading.substring(1);
+      let splitPos;
+      for (splitPos = 2; splitPos < reading.length; splitPos++) {
+        const cand = k + reading.substring(splitPos);
+        if (cand !== correct) pool.push(cand);
+      }
+    });
+  });
+  return pool;
+}
+
+function buildOkuriganaShiftQuizQuestion_(item, dummyPool) {
+  const k = String(item.kanji || "");
+  if (k.length !== 1) return null;
+  const readings = (Array.isArray(item.readings) ? item.readings : []).filter(function (r) {
+    return r.kind === "kun" && String(r.reading || "").length >= 3;
+  });
+  if (!readings.length) return null;
+  const r = readings[Math.floor(Math.random() * readings.length)];
+  const reading = String(r.reading || "");
+  const correct = k + reading.substring(1);
+  const wrongSet = {};
+  dummyPool.forEach(function (d) {
+    if (d && d !== correct) wrongSet[d] = true;
+  });
+  let splitPos;
+  for (splitPos = 2; splitPos < reading.length; splitPos++) {
+    const cand = k + reading.substring(splitPos);
+    if (cand !== correct) wrongSet[cand] = true;
+  }
+  const wrongList = shuffleKanjiQuizArray_(Object.keys(wrongSet));
+  const picks = wrongList.slice(0, 3);
+  const choices = shuffleKanjiQuizArray_([correct].concat(picks));
+  const uniq = [];
+  const seen = {};
+  choices.forEach(function (c) {
+    if (c && !seen[c]) {
+      seen[c] = true;
+      uniq.push(c);
+    }
+  });
+  if (uniq.length < 2) return null;
+  const searchParts = [k, reading, r.label].concat(uniq).join(" ");
+  return {
+    type: "okurigana_shift",
+    kanji: k,
+    rowIndex: item.rowIndex,
+    readingLabel: r.label,
+    readingKind: "kun",
+    readingHint: reading,
+    prompt: "訓読みのつながりとして正しい表記を選びましょう。",
+    choices: uniq,
+    correctAnswer: correct,
+    searchText: searchParts
+  };
+}
+
+function buildRubyToKanjiQuizQuestion_(item) {
+  const k = String(item.kanji || "");
+  if (k.length !== 1) return null;
+  const pairs = [];
+  (Array.isArray(item.readings) ? item.readings : []).forEach(function (r) {
+    const examples = Array.isArray(r.examples) ? r.examples : [];
+    examples.forEach(function (ex) {
+      const exs = String(ex || "");
+      if (exs.indexOf(k) >= 0) pairs.push({ r: r, ex: exs });
+    });
+  });
+  if (!pairs.length) return null;
+  const pick = pairs[Math.floor(Math.random() * pairs.length)];
+  const masked = maskKanjiInExampleOnce_(pick.ex, k);
+  if (!masked.ok) return null;
+  const readingDisp = readingDisplayForQuiz_(pick.r.reading, pick.r.kind);
+  const searchParts = [k, readingDisp, pick.r.label, masked.masked, pick.ex].join(" ");
+  return {
+    type: "ruby_to_kanji",
+    kanji: k,
+    rowIndex: item.rowIndex,
+    readingKind: pick.r.kind,
+    readingLabel: pick.r.label,
+    readingDisplay: readingDisp,
+    maskedSentence: masked.masked,
+    prompt: "読みと例文の空欄に入る漢字を、タイピングで入力しましょう。",
+    correctAnswer: k,
+    searchText: searchParts
+  };
+}
+
+function buildSentenceToRubyQuizQuestion_(item) {
+  const k = String(item.kanji || "");
+  if (!k) return null;
+  const pairs = [];
+  (Array.isArray(item.readings) ? item.readings : []).forEach(function (r) {
+    const examples = Array.isArray(r.examples) ? r.examples : [];
+    examples.forEach(function (ex) {
+      const exs = String(ex || "");
+      if (exs.indexOf(k) >= 0) pairs.push({ r: r, ex: exs });
+    });
+  });
+  if (!pairs.length) return null;
+  const pick = pairs[Math.floor(Math.random() * pairs.length)];
+  const masked = maskKanjiInExampleOnce_(pick.ex, k);
+  if (!masked.ok) return null;
+  const ans = normalizedCorrectReadingAnswer_(pick.r.reading, pick.r.kind);
+  var hintOn = pick.r.kind === "on" ? "（音読みはカタカナ）" : "（訓読みはひらがな）";
+  const searchParts = [k, ans, pick.r.label, masked.masked, pick.ex].join(" ");
+  return {
+    type: "sentence_to_ruby",
+    kanji: k,
+    rowIndex: item.rowIndex,
+    readingKind: pick.r.kind,
+    readingLabel: pick.r.label,
+    sentence: masked.masked,
+    prompt: "空欄に当てはまる読みを、タイピングで入力しましょう。" + hintOn,
+    correctAnswer: ans,
+    searchText: searchParts
+  };
+}
+
+/**
+ * 3タイプを偏りなく混在（各バケットをシャッフル後ラウンドロビン）
+ */
+function mergeKanjiQuizBucketsBalanced_(buckets) {
+  const order = ["okurigana_shift", "ruby_to_kanji", "sentence_to_ruby"];
+  const queues = order.map(function (key) {
+    return shuffleKanjiQuizArray_(buckets[key] || []).slice();
+  });
+  const out = [];
+  var keepGoing = true;
+  while (keepGoing) {
+    keepGoing = false;
+    queues.forEach(function (q) {
+      if (q.length) {
+        out.push(q.shift());
+        keepGoing = true;
+      }
+    });
+  }
+  return out;
+}
+
+function buildKanjiQuizProblemList_(group) {
+  const items = group.items || [];
+  if (!items.length) return [];
+  const dummyPool = collectOkuriganaDummyPoolKanjiQuiz_(items);
+  const buckets = { okurigana_shift: [], ruby_to_kanji: [], sentence_to_ruby: [] };
+  items.forEach(function (item) {
+    const o = buildOkuriganaShiftQuizQuestion_(item, dummyPool);
+    if (o) buckets.okurigana_shift.push(o);
+    const r2 = buildRubyToKanjiQuizQuestion_(item);
+    if (r2) buckets.ruby_to_kanji.push(r2);
+    const r3 = buildSentenceToRubyQuizQuestion_(item);
+    if (r3) buckets.sentence_to_ruby.push(r3);
+  });
+  const merged = mergeKanjiQuizBucketsBalanced_(buckets);
+  return merged.map(function (q, i) {
+    const base = Object.assign({}, q);
+    base.questionIndex = i;
+    base.questionId =
+      "KANJI_Q_" + String(group.setId) + "_" + q.rowIndex + "_" + q.type + "_" + i;
+    return base;
+  });
 }
 
 function handleGetKanjiQuizSets(req) {
@@ -1105,10 +1331,11 @@ function handleGetKanjiQuizQuestions(req) {
     const parsed = parseKanjiQuizSheet_(sheet);
     const group = parsed.groups.find(g => String(g.setId) === setId);
     if (!group) return sendResponse({ status: "error", message: "指定セットが見つかりません。" });
+    const questions = buildKanjiQuizProblemList_(group);
     return sendResponse({
       status: "success",
       setId,
-      questions: group.items
+      questions: questions
     });
   } catch (e) {
     return sendResponse({ status: "error", message: "漢字問題取得に失敗しました: " + e.message });
