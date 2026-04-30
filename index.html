@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -759,6 +759,9 @@
       border-radius: 8px;
       cursor: pointer;
       margin: 6px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-input {
       background: #fff !important;
@@ -1178,6 +1181,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; let externalMenus = [];
     let kanjiQuizSession = null; let lastKanjiQuizContext = null;
+    let __kanjiQuizSubmitInFlight = false;
     let currentMaterialsCategory = "english";
     let stopwatches = {
       home: { timerId: null, startAt: 0, elapsed: 0 },
@@ -3257,6 +3261,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (!t) return arr.slice();
       return arr.filter(function (q) { return q.type === t; });
     }
+    function shuffleKanjiQuizChoicesArray(arr) {
+      const a = Array.isArray(arr) ? arr.slice() : [];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = a[i];
+        a[i] = a[j];
+        a[j] = t;
+      }
+      return a;
+    }
     function prepareKanjiQuizQuestionsForPlay(rawList) {
       var mode = getKanjiQuizFormatMode();
       var filtered = filterKanjiQuizQuestionsByFormat(rawList, mode);
@@ -3864,7 +3878,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (q.type === "okurigana_shift") {
           detail.innerHTML = `<div style="color:#444;">たいしょうのかんじ: <strong style="color:#000;">${escapeHtml(q.kanji || "")}</strong></div>
             <div style="margin-top:10px;color:#333;">訓読み（ひらがな）: <strong style="color:#000;">${escapeHtml(q.readingHint || "")}</strong></div>
-            <div style="margin-top:12px;font-size:clamp(16px,3.5vw,20px);color:#666;">ただしい ひょうきを えらんでください。</div>`;
+            <div style="margin-top:12px;font-size:clamp(16px,3.5vw,20px);color:#666;">ただしい ひょうきを <strong>タップ</strong>すると、すぐに こたえが送られます。</div>`;
         } else if (q.type === "ruby_to_kanji") {
           detail.innerHTML = "";
         } else {
@@ -3875,13 +3889,15 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         choicesBox.innerHTML = "";
         if (q.type === "okurigana_shift") {
           choicesBox.style.display = "flex";
-          const arr = Array.isArray(q.choices) ? q.choices : [];
+          const arr = shuffleKanjiQuizChoicesArray(q.choices);
           arr.forEach(function (c) {
             const b = document.createElement('button');
             b.type = "button";
             b.className = "kanji-drill-choice-btn";
             b.innerText = c;
-            b.onclick = function () {
+            b.setAttribute("aria-label", "選択肢 " + c);
+            b.onclick = function (e) {
+              e.preventDefault();
               if (!kanjiQuizSession) return;
               kanjiQuizSession.selectedChoice = c;
               submitKanjiQuizScore();
@@ -4107,6 +4123,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("ログイン情報が見つかりません。");
         return;
       }
+      if (__kanjiQuizSubmitInFlight) return;
+      __kanjiQuizSubmitInFlight = true;
       const qid = q.questionId || (`${q.kanji}_${kanjiQuizSession.index}_${q.type}`);
       const unitId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}_${qid}`;
       const payload = {
@@ -4162,6 +4180,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         renderKanjiQuizQuestion();
       }).catch(e => {
         alert("保存に失敗しました: " + (e.message || e));
+      }).finally(function () {
+        __kanjiQuizSubmitInFlight = false;
       });
     }
     function loadQuestionsForSettings(btn, mId, mName, uName, categoryHint) { 
