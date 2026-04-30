@@ -391,6 +391,15 @@
   <div id="section-kanji-quiz-sets" class="section">
     <div class="kanji-study-vertical-wrap">
     <h1 id="kanji-quiz-title">漢字クイズに挑戦</h1>
+    <div id="kanji-quiz-format-wrap" class="kanji-quiz-format-wrap" style="max-width:420px;margin:14px auto 16px;text-align:center;writing-mode:horizontal-tb;">
+      <label for="kanji-quiz-format-select" style="display:block;color:#bbb;font-size:14px;margin-bottom:8px;">もんだいのしかた</label>
+      <select id="kanji-quiz-format-select" class="large-select" style="max-width:100%;font-size:16px;background:#2a2a2a;color:#fff;border:1px solid #555;" onchange="onKanjiQuizFormatChange()">
+        <option value="mixed">混合（3しゅるいを まぜる）</option>
+        <option value="write_kanji">かんじを かいて こたえる</option>
+        <option value="select_kana">よみかな・おくりがな（せんたく）</option>
+        <option value="type_yomi">よみかなを かいて こたえる</option>
+      </select>
+    </div>
     <div id="kanji-quiz-sets-container" style="display:flex; flex-direction:column; gap:10px; max-width:420px; margin:0 auto;"></div>
     <button class="cancel-btn" style="margin-top:20px;" onclick="openKanjiLearningMenu()">もどる</button>
     </div>
@@ -1762,12 +1771,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
               })
               .then(r => r.json()).then(q => {
                 if (q.status !== "success") throw new Error(q.message || "漢字問題取得失敗");
+                var raw = Array.isArray(q.questions) ? q.questions : [];
+                var prep = prepareKanjiQuizQuestionsForPlay(raw);
+                if (!prep) throw new Error("この形式の問題がありません");
                 startKanjiQuizPlay({
                   modeId: foundModeId,
                   modeName: foundModeName,
                   unitName: currentUnitName,
                   setId: String((q.setId != null) ? q.setId : ""),
-                  questions: Array.isArray(q.questions) ? q.questions : [],
+                  questions: prep.questions,
+                  formatMode: prep.formatMode,
                   isTrainingMode: true,
                   trainingStepIndex: currentTrainingStepIndex,
                   trainingMenuId: currentTrainingMenuId
@@ -2553,6 +2566,45 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         });
       }).catch(e => toggleBtnLoading(btn, false, origText));
     }
+    const LS_KANJI_QUIZ_FORMAT = 'app_kanji_quiz_format_v1';
+    function getKanjiQuizFormatMode() {
+      const sel = document.getElementById('kanji-quiz-format-select');
+      if (sel && sel.value) return sel.value;
+      try {
+        const v = localStorage.getItem(LS_KANJI_QUIZ_FORMAT);
+        if (v && ['mixed', 'write_kanji', 'select_kana', 'type_yomi'].indexOf(v) >= 0) return v;
+      } catch (e) {}
+      return 'mixed';
+    }
+    function onKanjiQuizFormatChange() {
+      const sel = document.getElementById('kanji-quiz-format-select');
+      if (sel) {
+        try { localStorage.setItem(LS_KANJI_QUIZ_FORMAT, sel.value); } catch (e) {}
+      }
+    }
+    function syncKanjiQuizFormatSelectFromStorage() {
+      const sel = document.getElementById('kanji-quiz-format-select');
+      if (!sel) return;
+      const v = getKanjiQuizFormatMode();
+      sel.value = v;
+    }
+    function filterKanjiQuizQuestionsByFormat(questions, mode) {
+      const arr = Array.isArray(questions) ? questions : [];
+      if (!mode || mode === 'mixed') return arr.slice();
+      var typeMap = { write_kanji: 'ruby_to_kanji', select_kana: 'okurigana_shift', type_yomi: 'sentence_to_ruby' };
+      var t = typeMap[mode];
+      if (!t) return arr.slice();
+      return arr.filter(function (q) { return q.type === t; });
+    }
+    function prepareKanjiQuizQuestionsForPlay(rawList) {
+      var mode = getKanjiQuizFormatMode();
+      var filtered = filterKanjiQuizQuestionsByFormat(rawList, mode);
+      if (!filtered.length) {
+        alert('この しかた では もんだいがありません。\nほかの しかたを えらぶか、混合にしてください。');
+        return null;
+      }
+      return { questions: filtered, formatMode: mode };
+    }
     function openKanjiQuizSets(modeId, modeName, unitName, btn, origText) {
       const title = document.getElementById('kanji-quiz-title');
       if (title) title.innerText = `【${modeName}】${formatUnitSheetDisplayLabel(unitName)}`;
@@ -2566,6 +2618,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           return;
         }
         switchSection('section-kanji-quiz-sets');
+        syncKanjiQuizFormatSelectFromStorage();
         if (!box) return;
         box.innerHTML = "";
         const sets = Array.isArray(d.sets) ? d.sets : [];
@@ -2581,12 +2634,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_kanji_quiz_questions", modeId: modeId, unitName: unitName, setId: s.setId }) })
               .then(r => r.json()).then(q => {
                 if (q.status !== "success") { alert("取得失敗: " + (q.message || "エラー")); return; }
+                var raw = Array.isArray(q.questions) ? q.questions : [];
+                var prep = prepareKanjiQuizQuestionsForPlay(raw);
+                if (!prep) return;
                 startKanjiQuizPlay({
                   modeId: modeId,
                   modeName: modeName,
                   unitName: unitName,
                   setId: String(s.setId || ""),
-                  questions: Array.isArray(q.questions) ? q.questions : []
+                  questions: prep.questions,
+                  formatMode: prep.formatMode
                 });
               });
           };
@@ -2914,7 +2971,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           questions: questions,
           isTrainingMode: !!ctx.isTrainingMode,
           trainingStepIndex: ctx.trainingStepIndex,
-          trainingMenuId: ctx.trainingMenuId
+          trainingMenuId: ctx.trainingMenuId,
+          formatMode: ctx.formatMode != null ? ctx.formatMode : getKanjiQuizFormatMode()
         };
         switchSection('section-kanji-quiz-play');
         renderKanjiQuizQuestion();
