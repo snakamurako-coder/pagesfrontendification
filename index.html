@@ -226,21 +226,21 @@
     </div>
     <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
   </div>
-  <div id="section-kanji-practice" class="section">
+  <div id="section-kanji-practice" class="section" style="background:#ffffff;color:#222;min-height:100vh;">
     <h1>漢字練習</h1>
-    <p style="text-align:center;color:#aaa;max-width:980px;margin:0 auto 10px;font-size:14px;">練習・調整（キャリブレーション/ペン設定）モードです。教材セットから選んで、漢字/よみで検索できます。</p>
-    <div style="width:96vw;max-width:1200px;margin:0 auto 10px;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:12px;box-sizing:border-box;">
+    <p style="text-align:center;color:#666;max-width:980px;margin:0 auto 10px;font-size:14px;">練習・調整（キャリブレーション/ペン設定）モードです。教材セットから選んで、漢字/よみで検索できます。</p>
+    <div style="width:96vw;max-width:1200px;margin:0 auto 10px;background:#f5f7fa;border:1px solid #d8dde5;border-radius:12px;padding:12px;box-sizing:border-box;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;">
-        <select id="kp-book-select" onchange="kpOnBookChange()" style="min-width:180px;max-width:280px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
-        <select id="kp-sheet-select" onchange="kpOnSheetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
-        <select id="kp-set-select" onchange="kpOnSetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:8px;"></select>
-        <input id="kp-search-input" type="text" placeholder="漢字・よみで検索" oninput="kpApplyFilterAndRender()" style="min-width:220px;max-width:420px;width:38%;padding:8px;background:#111;color:#fff;border:1px solid #555;border-radius:8px;">
+        <select id="kp-book-select" onchange="kpOnBookChange()" style="min-width:180px;max-width:280px;padding:8px;background:#fff;color:#222;border:1px solid #b8c1cc;border-radius:8px;"></select>
+        <select id="kp-sheet-select" onchange="kpOnSheetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#fff;color:#222;border:1px solid #b8c1cc;border-radius:8px;"></select>
+        <select id="kp-set-select" onchange="kpOnSetChange()" style="min-width:140px;max-width:220px;padding:8px;background:#fff;color:#222;border:1px solid #b8c1cc;border-radius:8px;"></select>
+        <input id="kp-search-input" type="text" placeholder="漢字・よみで検索" oninput="kpApplyFilterAndRender()" style="min-width:220px;max-width:420px;width:38%;padding:8px;background:#fff;color:#222;border:1px solid #b8c1cc;border-radius:8px;">
       </div>
-      <div id="kp-practice-status" style="margin-top:8px;text-align:center;color:#9e9e9e;font-size:13px;">教材を読み込み中...</div>
-      <div id="kp-tile-grid" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;max-height:320px;overflow:auto;padding:4px;"></div>
+      <div id="kp-practice-status" style="margin-top:8px;text-align:center;color:#607080;font-size:13px;">教材を読み込み中...</div>
+      <div id="kp-tile-grid" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;padding:4px;"></div>
     </div>
     <div style="width:96vw;max-width:1200px;margin:0 auto 10px;">
-      <iframe id="kp-pro-frame" src="about:blank" title="Kanji Practice Pro" style="width:100%;height:calc(100vh - 440px);min-height:420px;border:1px solid #444;border-radius:10px;background:#111;"></iframe>
+      <iframe id="kp-pro-frame" src="about:blank" title="Kanji Practice Pro" scrolling="no" style="width:100%;height:900px;min-height:620px;border:1px solid #ccd3db;border-radius:10px;background:#fff;overflow:hidden;"></iframe>
     </div>
     <button class="cancel-btn" style="margin-top:16px;" onclick="openKanjiLearningMenu()">漢字学習メニューにもどる</button>
   </div>
@@ -2033,7 +2033,10 @@
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
       if (!frame) return;
-      if (frame.dataset.kpLoaded === "1") return;
+      if (frame.dataset.kpLoaded === "1") {
+        kpResizeFrameToContent();
+        return;
+      }
       const kpHtml = (typeof window.KP_HTML === "string")
         ? window.KP_HTML
         : (window.KP_HTML && typeof window.KP_HTML.value === "string" ? window.KP_HTML.value : "");
@@ -2043,6 +2046,30 @@
       }
       frame.srcdoc = kpHtml;
       frame.dataset.kpLoaded = "1";
+      setTimeout(kpResizeFrameToContent, 120);
+      setTimeout(kpResizeFrameToContent, 700);
+    }
+    function kpResizeFrameToContent() {
+      const frame = document.getElementById('kp-pro-frame');
+      if (!frame || !frame.contentWindow || !frame.contentWindow.document) return;
+      try {
+        const doc = frame.contentWindow.document;
+        const bodyH = doc.body ? doc.body.scrollHeight : 0;
+        const htmlH = doc.documentElement ? doc.documentElement.scrollHeight : 0;
+        const h = Math.max(bodyH, htmlH, 620);
+        frame.style.height = `${h + 8}px`;
+        if (!frame.dataset.kpObserved) {
+          const ro = new ResizeObserver(() => {
+            const bH = doc.body ? doc.body.scrollHeight : 0;
+            const dH = doc.documentElement ? doc.documentElement.scrollHeight : 0;
+            const nextH = Math.max(bH, dH, 620);
+            frame.style.height = `${nextH + 8}px`;
+          });
+          if (doc.body) ro.observe(doc.body);
+          if (doc.documentElement) ro.observe(doc.documentElement);
+          frame.dataset.kpObserved = "1";
+        }
+      } catch (_) {}
     }
     function setKpStatus(text) {
       const el = document.getElementById('kp-practice-status');
@@ -2180,8 +2207,10 @@
         b.style.padding = "14px 8px";
         b.style.fontSize = "52px";
         b.style.lineHeight = "1";
-        b.style.border = "1px solid #4a4a4a";
-        b.style.background = "#262626";
+        b.style.color = "#111";
+        b.style.border = "1px solid #cfd8dc";
+        b.style.background = "#ffffff";
+        b.style.boxShadow = "none";
         b.innerText = ch;
         b.title = `${ch} を練習`;
         b.onclick = () => kpSelectPracticeChar(ch);
@@ -2203,6 +2232,7 @@
         sel.value = ch;
         if (typeof frame.contentWindow.initTargetKanji === "function") frame.contentWindow.initTargetKanji();
         if (typeof frame.contentWindow.switchMode === "function") frame.contentWindow.switchMode("score");
+        kpResizeFrameToContent();
         setKpStatus(`練習対象を「${ch}」に切替えました。`);
       } catch (_) {
         setKpStatus("練習対象の切替に失敗しました。");
