@@ -268,7 +268,17 @@ function ensureKanjiSampleBook_(kanjiFolder) {
     sheet = ss.getSheets()[0] || ss.insertSheet("小１");
     sheet.setName("小１");
   }
-  const header = ["セット", "漢字", "漢字の読みA", "Aの例文1", "Aの例文2", "漢字の読みB", "Bの例文1", "Bの例文2", "漢字の読みC", "Cの例文1", "Cの例文2", "漢字の読みD", "Dの例文1", "Dの例文2"];
+  const header = [
+    "セット", "漢字",
+    "訓読みA_読み", "訓A_例文1", "訓A_例文2",
+    "訓読みB_読み", "訓B_例文1", "訓B_例文2",
+    "訓読みC_読み", "訓C_例文1", "訓C_例文2",
+    "訓読みD_読み", "訓D_例文1", "訓D_例文2",
+    "音読みA_読み", "音A_例文1", "音A_例文2",
+    "音読みB_読み", "音B_例文1", "音B_例文2",
+    "音読みC_読み", "音C_例文1", "音C_例文2",
+    "音読みD_読み", "音D_例文1", "音D_例文2"
+  ];
   const data = sheet.getDataRange().getValues();
   const headNow = (data[0] || []).map(v => String(v || "").trim());
   const sameHeader = headNow.length >= header.length && header.every((h, i) => headNow[i] === h);
@@ -279,15 +289,13 @@ function ensureKanjiSampleBook_(kanjiFolder) {
   const hasRows = sheet.getLastRow() > 1;
   if (!hasRows) {
     const rows = [
-      [1, "一", "いち", "日本一の山", "一番好きなこと", "ひと", "一言はなす。", "消しゴムが一つある。", "いっ", "りんごが一個ある。", "", "", "", ""],
-      [1, "右", "みぎ", "右手をあげる。", "右足から歩く。", "ゆう", "左右を見る。", "座右のめい。", "", "", "", "", "", ""],
-      [1, "雨", "あめ", "雨がふる。", "大雨になる。", "う", "雨天で休み。", "雨天けっ行。", "あま", "雨雲がでる。", "雨水がたまる。", "", "", ""],
-      [1, "円", "えん", "百円だま。", "千円さつ。", "まる", "円い月が出る。", "円く円をかく。", "", "", "", "", "", ""],
-      [1, "王", "おう", "王様になる。", "森の女王。", "", "", "", "", "", "", "", "", ""],
-      [1, "音", "おと", "足音が聞こえる。", "雨音がする。", "おん", "音楽をきく。", "漢字の音よみ。", "ね", "虫の音をきく。", "本音を言う。", "", "", ""],
-      [1, "下", "した", "木の下で休む。", "下書きをする。", "か", "地下にもぐる。", "上下にゆれる。", "げ", "下山する。", "下水どう。", "さ", "頭を下げる。", "ねだんが下がる。"],
-      [1, "火", "ひ", "花火を見る。", "火花がちる。", "か", "火よう日。", "火山がふん火する。", "", "", "", "", "", ""],
-      [1, "花", "はな", "お花見にいく。", "花がさく。", "か", "花だんの花。", "生け花をする。", "", "", "", "", "", ""]
+      [1, "一", "ひと", "一つある。", "もう一つだ。", "いっ", "けしゴムを一こかした。", "×", "×", "×", "×", "×", "×", "×", "いち", "一ばんだよ。", "一月はふゆだ。", "いつ", "きん一にまぜる。", "とう一する。", "×", "×", "×", "×", "×", "×"],
+      [1, "右", "みぎ", "右をむく。", "右手を見る。", "×", "×", "×", "×", "×", "×", "×", "×", "×", "う", "うせつする。", "さゆうを見る。", "×", "×", "×", "×", "×", "×", "×", "×", "×"],
+      [1, "雨", "あめ", "雨がふる。", "大雨がふる。", "あま", "雨水がでる。", "雨ぐもをみる。", "×", "×", "×", "×", "×", "×", "う", "雨てんちゅうしだ。", "ごう雨になる。", "×", "×", "×", "×", "×", "×", "×", "×", "×"],
+      [1, "円", "まる", "円い形。", "円くかく。", "×", "×", "×", "×", "×", "×", "×", "×", "×", "えん", "百円玉をもつ。", "いちまん円だ。", "×", "×", "×", "×", "×", "×", "×", "×", "×"],
+      [1, "王", "×", "×", "×", "×", "×", "×", "×", "×", "×", "×", "×", "×", "おう", "王さまにあう。", "王女さまをみる。", "×", "×", "×", "×", "×", "×", "×", "×", "×"],
+      [1, "音", "おと", "音がなる。", "足音をきく。", "ね", "虫の音をきく。", "本音をいう。", "×", "×", "×", "×", "×", "×", "おん", "はつ音がよい。", "おん楽をきく。", "×", "×", "×", "×", "×", "×", "×", "×", "×"],
+      [1, "下", "した", "下をむく。", "くつ下をはく。", "さ", "あたまを下げる。", "手を下げる。", "くだ", "さかを下る。", "川を下る。", "お", "山を下りる。", "木から下りる。", "か", "上下する。", "下きゅう生だ。", "げ", "下こうする。", "下しゃする。", "×", "×", "×", "×", "×", "×"]
     ];
     sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
   }
@@ -1007,6 +1015,11 @@ function parseKanjiQuizSheet_(sheet) {
   const values = sheet.getDataRange().getValues();
   if (!values || values.length < 2) return { groups: [] };
   const headers = values[0].map(v => String(v || "").trim());
+  const cellText = (v) => {
+    const s = String(v || "").trim();
+    if (!s || s === "×" || s === "x" || s === "X") return "";
+    return s;
+  };
   const idxSet = headers.indexOf("セット");
   const idxKanji = headers.indexOf("漢字");
   if (idxSet < 0 || idxKanji < 0) {
@@ -1016,23 +1029,38 @@ function parseKanjiQuizSheet_(sheet) {
   const readingDefs = [];
   for (let i = 0; i < headers.length; i++) {
     const h = headers[i];
-    const m = h.match(/^漢字の読み([A-ZＡ-Ｚ])$/);
-    if (!m) continue;
-    const label = m[1].toUpperCase();
-    const exIdx = [];
-    for (let j = 0; j < headers.length; j++) {
-      const ex = headers[j];
-      if (ex.indexOf(label + "の例文") === 0) exIdx.push(j);
+    // 新形式: 訓読みA_読み / 音読みA_読み
+    let m = h.match(/^(訓読み|音読み)([A-ZＡ-Ｚ])_読み$/);
+    if (m) {
+      const kind = m[1] === "訓読み" ? "訓" : "音";
+      const label = m[2].toUpperCase();
+      const exIdx = [];
+      for (let j = 0; j < headers.length; j++) {
+        const ex = headers[j];
+        if (ex.indexOf(kind + label + "_例文") === 0) exIdx.push(j);
+      }
+      readingDefs.push({ label: kind + label, readingIdx: i, exampleIdx: exIdx });
+      continue;
     }
-    readingDefs.push({ label, readingIdx: i, exampleIdx: exIdx });
+    // 旧形式互換: 漢字の読みA / Aの例文1
+    m = h.match(/^漢字の読み([A-ZＡ-Ｚ])$/);
+    if (m) {
+      const label = m[1].toUpperCase();
+      const exIdx = [];
+      for (let j = 0; j < headers.length; j++) {
+        const ex = headers[j];
+        if (ex.indexOf(label + "の例文") === 0) exIdx.push(j);
+      }
+      readingDefs.push({ label, readingIdx: i, exampleIdx: exIdx });
+    }
   }
 
   const groupsMap = {};
   const order = [];
   for (let r = 1; r < values.length; r++) {
     const row = values[r];
-    const setRaw = String(row[idxSet] || "").trim();
-    const kanji = String(row[idxKanji] || "").trim();
+    const setRaw = cellText(row[idxSet]);
+    const kanji = cellText(row[idxKanji]);
     if (!setRaw || !kanji) continue;
     const setId = setRaw;
     if (!groupsMap[setId]) {
@@ -1041,10 +1069,10 @@ function parseKanjiQuizSheet_(sheet) {
     }
     const readings = [];
     readingDefs.forEach(def => {
-      const reading = String(row[def.readingIdx] || "").trim();
+      const reading = cellText(row[def.readingIdx]);
       if (!reading) return;
       const examples = def.exampleIdx
-        .map(i => String(row[i] || "").trim())
+        .map(i => cellText(row[i]))
         .filter(Boolean);
       readings.push({ label: def.label, reading, examples });
     });
