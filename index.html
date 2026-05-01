@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <title>学習アプリ</title>
   <style>
     body { font-family: 'Hiragino Maru Gothic ProN', sans-serif; background-color: #141414; color: white; text-align: center; margin: 0; padding: 30px 20px 60px 20px; min-height: 100vh; position: relative;}
-    h1, h2, h3 { color: #fff; } .section { display: none; } .active { display: block; }
+    h1, h2, h3 { color: #fff; } h2 { color: var(--vk-font-px); } .section { display: none; } .active { display: block; }
     .user-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
     .user-card { background: #333; padding: 20px; border-radius: 15px; width: 120px; cursor: pointer; transition: 0.2s; }
     .user-icon { width: 80px; height: 80px; background: #e50914; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; }
@@ -586,13 +586,14 @@
       flex-direction: column; 
       align-items: flex-start; /* Ensure elements hang from the top of the vertical block */
       justify-content: flex-start; 
-      padding: 20px 40px;
+      padding: 20px 120px 20px 40px;
       overflow-x: auto;
       overflow-y: auto; /* Allow vertical scrolling if sentence is very long */
       width: 100%;
       box-sizing: border-box;
       margin: 0;
       max-width: none;
+      position: relative;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section.active {
       background: #fff !important;
@@ -605,6 +606,29 @@
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
       max-width: 720px;
       margin: 0 auto;
+    }
+    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap {
+      position: absolute;
+      top: 30px;
+      right: 20px;
+      bottom: 30px;
+      width: 72px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      border-left: 1px solid #d8d0c4;
+      padding-left: 8px;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap #kanji-play-title {
+      margin: 0;
+      font-size: clamp(16px, 3.5vw, 20px);
+      font-weight: 700;
+      color: #333;
+      line-height: 1.3;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-head {
       writing-mode: horizontal-tb;
@@ -1035,13 +1059,15 @@
   </div>
   <div id="section-kanji-quiz-play" class="section kanji-quiz-drill-section">
     <div class="kanji-quiz-drill-wrap">
+      <div class="kanji-quiz-title-rail-wrap">
+        <h1 id="kanji-play-title">漢字ドリル</h1>
+      </div>
       <div style="display:flex; flex-direction:column; justify-content:flex-start; margin-left:16px;">
         <div>
           <div class="kanji-quiz-drill-head" style="margin-left:0;">
             <span id="kanji-play-progress">1 / 1</span>
             <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;"></span>
           </div>
-          <h1 id="kanji-play-title" style="margin:8px 0;font-size:clamp(16px,3.5vw,20px);font-weight:700;color:#333;">漢字ドリル</h1>
         </div>
       </div>
       <div class="kanji-quiz-drill-reading" id="kanji-play-char"></div>
