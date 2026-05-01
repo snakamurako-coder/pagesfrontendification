@@ -551,8 +551,6 @@
       text-orientation: upright;
       margin: 10px 0;
       white-space: pre-wrap;
-      /* 手書き枠の中心線に合わせるため、文脈列を約2文字分下げる */
-      transform: translateY(2em);
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-submit-btn {
       writing-mode: vertical-rl;
@@ -724,13 +722,14 @@
       flex-shrink: 0;
       height: max-content; /* Packed to text */
       min-height: 40px;
-      width: clamp(64px, 15vw, 96px); /* Wider to fit the very large font */
+      width: 300px; /* Force width to match canvas exactly for perfect centering */
       border: 2px solid transparent; /* Camouflage with background */
       border-radius: 8px;
       background: transparent; /* Camouflage with background */
       padding: 0; /* No padding to bring it closer */
       box-sizing: border-box;
       overflow: hidden;
+      align-self: center;
     }
     .kanji-drill-hw-prefix-col {
       justify-content: flex-end;
@@ -1058,7 +1057,7 @@
           <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
             <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
           </div>
-          <div style="position:relative; display:flex; justify-content:center; align-items:center; margin:2px 0; writing-mode:horizontal-tb;">
+          <div style="position:relative; display:flex; justify-content:center; align-items:center; margin:2px 0; align-self:center;">
             <!-- Actions (Left) -->
             <div id="kanji-hw-canvas-actions" style="display:none; flex-direction:column; gap:8px; align-items:center; position:absolute; right:calc(100% + 16px); top:50%; transform:translateY(-50%); z-index:1;">
               <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
