@@ -667,6 +667,26 @@
       background: #fff8e1;
       border-color: #f57c00;
     }
+    .kanji-drill-vbtn-small {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      padding: 8px 6px;
+      font-size: 14px;
+      font-weight: bold;
+      border: 2px solid #555;
+      border-radius: 6px;
+      background: #fafafa;
+      cursor: pointer;
+      color: #111;
+      font-family: inherit;
+      line-height: 1.2;
+    }
+    .kanji-drill-vbtn-small:active { background: #e8e8e8; }
+    .kanji-drill-vbtn-small.submit-btn-small {
+      background: #e8f5e9;
+      border-color: #4CAF50;
+      color: #2e7d32;
+    }
     .kanji-drill-hw-row {
       display: flex;
       flex-direction: row;
@@ -1007,11 +1027,20 @@
   </div>
   <div id="section-kanji-quiz-play" class="section kanji-quiz-drill-section">
     <div class="kanji-quiz-drill-wrap">
-      <div class="kanji-quiz-drill-head">
-        <span id="kanji-play-progress">1 / 1</span>
-        <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;"></span>
+      <div style="display:flex; flex-direction:row; justify-content:flex-start; height:100%;">
+        <div>
+          <div class="kanji-quiz-drill-head" style="margin-left:0;">
+            <span id="kanji-play-progress">1 / 1</span>
+            <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;"></span>
+          </div>
+          <h1 id="kanji-play-title" style="margin:8px 0;font-size:clamp(16px,3.5vw,20px);font-weight:700;color:#333;">漢字ドリル</h1>
+        </div>
+        <div id="kanji-drill-pen-controls" class="kanji-drill-penstrip" style="display:none; flex-direction:row; gap:6px; align-items:center; margin-top:auto;">
+          <button type="button" class="kanji-drill-penchip" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
+          <button type="button" class="kanji-drill-penchip is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
+          <button type="button" class="kanji-drill-penchip" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
+        </div>
       </div>
-      <h1 id="kanji-play-title" style="margin:8px 0;font-size:clamp(16px,3.5vw,20px);font-weight:700;color:#333;">漢字ドリル</h1>
       <div class="kanji-quiz-drill-reading" id="kanji-play-char"></div>
       <div id="kanji-play-prompt"></div>
       <div id="kanji-play-detail"></div>
@@ -1028,7 +1057,14 @@
           </div>
           <div style="position:relative; display:inline-block; vertical-align:middle; line-height:0; margin:10px 0;">
             <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none;"></canvas>
-            <div class="kanji-drill-reading-aside" id="kanji-play-char-handwriting" style="position:absolute; right:105%; top:50%; transform:translateY(-50%); font-size:24px; color:#c62828; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0;"></div>
+            <div style="position:absolute; right:105%; top:50%; transform:translateY(-50%); display:flex; flex-direction:row; align-items:center; gap:16px;">
+              <div class="kanji-drill-reading-aside" id="kanji-play-char-handwriting" style="font-size:24px; color:#c62828; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0;"></div>
+              <div id="kanji-hw-canvas-actions" style="display:none; flex-direction:row; gap:8px; align-items:center; writing-mode:vertical-rl; text-orientation:upright;">
+                <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
+                <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
+                <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を<br>書き直す</button>
+              </div>
+            </div>
           </div>
           <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
             <span id="kanji-drill-ctx-suffix" class="kanji-drill-context-inline"></span>
@@ -1038,18 +1074,6 @@
       <div id="kanji-play-summary"></div>
     </div>
     <div class="kanji-quiz-play-footer-btns" style="padding:15px; background:#fff; border-top:1px solid #ccc; width:100%; box-sizing:border-box;">
-      <div id="kanji-hw-footer-controls" style="display:none; flex-direction:column; gap:10px; align-items:center; margin-bottom:10px;">
-        <div class="kanji-drill-hw-actions" style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
-          <button type="button" class="submit-btn btn-green" style="margin:0; padding:12px 24px;" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
-          <button type="button" class="submit-btn btn-gray" style="margin:0;" onclick="kanjiQuizClearWritePad(true)">さいしょから</button>
-          <button type="button" class="submit-btn btn-gray" style="margin:0;" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
-        </div>
-        <div class="kanji-drill-penstrip" aria-label="ペンの太さ" style="display:flex; gap:8px;">
-          <button type="button" class="kanji-drill-penchip" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
-          <button type="button" class="kanji-drill-penchip is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
-          <button type="button" class="kanji-drill-penchip" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
-        </div>
-      </div>
       <div style="display:flex; gap:10px; justify-content:center;">
         <button type="button" class="submit-btn btn-blue" id="kanji-play-submit-btn" style="display:none;margin:0;" onclick="submitKanjiQuizScore()">こたえを決定</button>
         <button type="button" class="cancel-btn" style="margin:0;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
@@ -3861,8 +3885,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (hint) hint.innerText = "";
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       if (drillHand) drillHand.style.display = "none";
-      const hwFooter = document.getElementById("kanji-hw-footer-controls");
-      if (hwFooter) hwFooter.style.display = "none";
+      const penCtrls = document.getElementById("kanji-drill-pen-controls");
+      if (penCtrls) penCtrls.style.display = "none";
+      const cvsActions = document.getElementById("kanji-hw-canvas-actions");
+      if (cvsActions) cvsActions.style.display = "none";
       const markerEl = document.getElementById("kanji-drill-q-marker");
       if (markerEl) markerEl.textContent = "";
       const prefixEl = document.getElementById("kanji-drill-ctx-prefix");
@@ -3927,8 +3953,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (summary) summary.innerHTML = "";
       if (q.type === "ruby_to_kanji") {
         if (drillHand) drillHand.style.display = "block";
-        const hwFooter = document.getElementById("kanji-hw-footer-controls");
-        if (hwFooter) hwFooter.style.display = "flex";
+        const penCtrls = document.getElementById("kanji-drill-pen-controls");
+        if (penCtrls) penCtrls.style.display = "flex";
+        const cvsActions = document.getElementById("kanji-hw-canvas-actions");
+        if (cvsActions) cvsActions.style.display = "flex";
         kanjiQuizEnsureScoreListener();
         const idxAtRender = kanjiQuizSession.index;
         const targets = kanjiQuizHanOnlyChars(q.correctAnswer || q.kanji);
