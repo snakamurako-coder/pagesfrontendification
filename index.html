@@ -1058,15 +1058,26 @@
     </div>
   </div>
   <div id="section-kanji-quiz-play" class="section kanji-quiz-drill-section">
+    <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;position:absolute;"></span>
+    <div style="position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:16px; align-items:center; writing-mode:horizontal-tb; z-index:100;">
+      <div id="kanji-drill-pen-controls" style="display:none; flex-direction:column; gap:8px; align-items:center;">
+        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
+        <button type="button" class="kanji-drill-vbtn-small is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
+        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
+      </div>
+      <div style="display:flex; flex-direction:row; gap:12px; align-items:flex-end;">
+        <button type="button" class="kanji-drill-vbtn-small" style="background:#f44336; color:#fff; border-color:#d32f2f;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
+        <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
+      </div>
+    </div>
     <div class="kanji-quiz-drill-wrap">
+      <span id="kanji-play-progress">1 / 1</span>
       <div class="kanji-quiz-title-rail-wrap">
         <h1 id="kanji-play-title">漢字ドリル</h1>
       </div>
       <div style="display:flex; flex-direction:column; justify-content:flex-start; margin-left:16px;">
         <div>
           <div class="kanji-quiz-drill-head" style="margin-left:0;">
-            <span id="kanji-play-progress">1 / 1</span>
-            <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;"></span>
           </div>
         </div>
       </div>
@@ -1096,9 +1107,9 @@
 
             <!-- Ruby & Hint (Right) -->
             <div style="position:absolute; left:calc(100% + 16px); top:50%; transform:translateY(-50%); display:flex; flex-direction:row; align-items:center; gap:16px; z-index:1;">
-              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside" style="font-size:clamp(36px, 8vw, 56px); color:#c62828; font-weight:bold; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></div>
+              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside" style="font-size:clamp(36px, 8vw, 56px); color:#c62828; font-weight:bold; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center; position:absolute; left:510px; top:174px;"></div>
               
-              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint" style="font-size:20px; font-weight:bold; color:#666; margin:0; writing-mode:vertical-rl; text-orientation:upright; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></p>
+              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint" style="font-size:20px; font-weight:bold; color:#666; margin:0; writing-mode:vertical-rl; text-orientation:upright; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center; position:absolute; left:693px; top:174px;"></p>
             </div>
           </div>
           <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
@@ -1107,17 +1118,6 @@
         </div>
       </div>
       <div id="kanji-play-summary"></div>
-    </div>
-    <div style="position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:16px; align-items:center; writing-mode:horizontal-tb; z-index:100;">
-      <div id="kanji-drill-pen-controls" style="display:none; flex-direction:column; gap:8px; align-items:center;">
-        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
-        <button type="button" class="kanji-drill-vbtn-small is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
-        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
-      </div>
-      <div style="display:flex; flex-direction:row; gap:12px; align-items:flex-end;">
-        <button type="button" class="kanji-drill-vbtn-small" style="background:#f44336; color:#fff; border-color:#d32f2f;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
-        <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
-      </div>
     </div>
   </div>
   
