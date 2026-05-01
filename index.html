@@ -538,6 +538,7 @@
       flex-direction: row; /* top-to-bottom */
       align-items: center; /* horizontally center relative to the canvas */
       flex-wrap: nowrap; /* FORCE ONE LINE */
+      gap: 0; /* REMOVE GAP to bring elements closer */
       writing-mode: vertical-rl;
       text-orientation: upright;
       line-height: 1.5;
@@ -705,21 +706,21 @@
     .kanji-drill-hw-suffix-col {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      font-size: clamp(20px, 5vw, 32px);
+      font-size: clamp(26px, 6.5vw, 42px); /* Larger text size */
       font-weight: 800;
-      line-height: 1.3;
-      letter-spacing: 0.04em;
+      line-height: 1.25;
+      letter-spacing: 0.02em;
       color: #000;
       display: flex;
       flex-direction: row;
       align-items: center;
       flex-shrink: 0;
       height: clamp(150px, 30vh, 250px);
-      width: clamp(40px, 10vw, 60px);
-      border: 2px solid #d8dde5;
+      width: clamp(48px, 11vw, 68px); /* Slightly wider to fit larger font */
+      border: 2px solid transparent; /* Camouflage with background */
       border-radius: 8px;
-      background: #fdfdfd;
-      padding: 10px 4px;
+      background: transparent; /* Camouflage with background */
+      padding: 0; /* No padding to bring it closer */
       box-sizing: border-box;
       overflow: hidden;
     }
@@ -1055,7 +1056,7 @@
           <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
             <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
           </div>
-          <div style="position:relative; display:inline-block; vertical-align:middle; line-height:0; margin:10px 0;">
+          <div style="position:relative; display:inline-block; vertical-align:middle; line-height:0; margin:2px 0;">
             <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none;"></canvas>
             <div style="position:absolute; right:105%; top:50%; transform:translateY(-50%); display:flex; flex-direction:row; align-items:center; gap:16px;">
               <div class="kanji-drill-reading-aside" id="kanji-play-char-handwriting" style="font-size:24px; color:#c62828; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0;"></div>
