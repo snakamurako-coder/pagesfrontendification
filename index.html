@@ -551,6 +551,8 @@
       text-orientation: upright;
       margin: 10px 0;
       white-space: pre-wrap;
+      /* 手書き枠の中心線に合わせるため、文脈列を約2文字分下げる */
+      transform: translateY(2em);
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-submit-btn {
       writing-mode: vertical-rl;
