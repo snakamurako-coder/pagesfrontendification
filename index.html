@@ -814,6 +814,9 @@
       display: block;
       touch-action: none;
       cursor: crosshair;
+      position: relative;
+      z-index: 3;
+      pointer-events: auto;
       background: #fff;
       border: 3px solid #222;
       border-radius: 4px;
@@ -830,6 +833,11 @@
       font-size: clamp(16px, 3.5vw, 22px) !important;
       color: #c62828 !important;
       font-weight: bold;
+    }
+    #kanji-play-char-handwriting,
+    #kanji-play-write-slot-hint,
+    #kanji-play-type-badge {
+      pointer-events: none;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-choice-btn {
       writing-mode: vertical-rl;
