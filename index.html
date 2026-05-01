@@ -3760,20 +3760,27 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("かんじを かいてください。");
         return;
       }
-      const frame = document.getElementById("kp-pro-frame");
-      if (!frame || !frame.contentWindow) {
-        alert("さいてんようのびゅうが みつかりません。");
-        return;
+      function postEvalToFrame() {
+        const frame = document.getElementById("kp-pro-frame");
+        if (!frame || !frame.contentWindow) return false;
+        frame.contentWindow.postMessage(
+          {
+            type: "quizEvalParentStrokes",
+            strokes: kanjiQuizParentStrokes.map(function (s) {
+              return { type: s.type, points: s.points.map(function (p) { return { x: +p.x, y: +p.y }; }) };
+            })
+          },
+          "*"
+        );
+        return true;
       }
-      frame.contentWindow.postMessage(
-        {
-          type: "quizEvalParentStrokes",
-          strokes: kanjiQuizParentStrokes.map(function (s) {
-            return { type: s.type, points: s.points.map(function (p) { return { x: +p.x, y: +p.y }; }) };
-          })
-        },
-        "*"
-      );
+      if (postEvalToFrame()) return;
+      ensureKanjiHwFrameReadyOnce().then(function () {
+        ensureKanjiFrameForQuizEval();
+        if (!postEvalToFrame()) {
+          alert("さいてんようのびゅうが みつかりません。");
+        }
+      });
     }
     function kanjiQuizOnHandwritingScored(sc) {
       if (!kanjiQuizSession) return;
@@ -4045,7 +4052,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (q.type === "ruby_to_kanji") {
         if (drillHand) drillHand.style.display = "block";
         const penCtrls = document.getElementById("kanji-drill-pen-controls");
-        if (penCtrls) penCtrls.style.display = "flex";
+        if (penCtrls) penCtrls.style.display = "none";
         const cvsActions = document.getElementById("kanji-hw-canvas-actions");
         if (cvsActions) cvsActions.style.display = "flex";
         kanjiQuizEnsureScoreListener();
@@ -4068,6 +4075,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (suffixEl) suffixEl.textContent = ctxDrill.after || "";
         if (charHand) charHand.textContent = q.readingDisplay || "";
         const t0 = targets[0];
+        kanjiQuizSetPenWidth(8);
+        kanjiQuizClearWritePad(false);
+        kanjiQuizSetupWriteCanvas();
         ensureKanjiHwFrameReadyOnce().then(function () {
           const sec = document.getElementById("section-kanji-quiz-play");
           if (!sec || !sec.classList.contains("active")) return;
@@ -4077,7 +4087,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           ensureKanjiFrameForQuizEval();
           if (!selectKanjiCharInQuizFrame(t0)) return;
           if (charHand) charHand.textContent = qNow.readingDisplay || "";
-          kanjiQuizSetPenWidth(kanjiQuizPenW);
+          kanjiQuizSetPenWidth(8);
           kanjiQuizClearWritePad(true);
           kanjiQuizSetupWriteCanvas();
         });
