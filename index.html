@@ -711,7 +711,7 @@
     .kanji-drill-hw-suffix-col {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      font-size: clamp(32px, 8vw, 56px); /* EVEN LARGER text size */
+      font-size: clamp(42px, 10vw, 68px); /* One size larger than Ruby */
       font-weight: 800;
       line-height: 1.25;
       letter-spacing: 0.02em;
@@ -722,7 +722,7 @@
       flex-shrink: 0;
       height: max-content; /* Packed to text */
       min-height: 40px;
-      width: clamp(56px, 13vw, 84px); /* Wider to fit even larger font */
+      width: clamp(64px, 15vw, 96px); /* Wider to fit the very large font */
       border: 2px solid transparent; /* Camouflage with background */
       border-radius: 8px;
       background: transparent; /* Camouflage with background */
@@ -1056,17 +1056,23 @@
           <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
             <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
           </div>
-          <div style="display:flex; flex-direction:row; align-items:center; gap:16px; margin:2px 0; writing-mode:horizontal-tb;">
-            <div id="kanji-hw-canvas-actions" style="display:none; flex-direction:column; gap:8px; align-items:center;">
+          <div style="position:relative; display:flex; justify-content:center; align-items:center; margin:2px 0; writing-mode:horizontal-tb;">
+            <!-- Actions (Left) -->
+            <div id="kanji-hw-canvas-actions" style="display:none; flex-direction:column; gap:8px; align-items:center; position:absolute; right:calc(100% + 16px); top:50%; transform:translateY(-50%); z-index:1;">
               <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
             </div>
-            <div style="position:relative;">
-              <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0;"></canvas>
+
+            <!-- Canvas (Center) -->
+            <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0; z-index:2;"></canvas>
+
+            <!-- Ruby & Hint (Right) -->
+            <div style="position:absolute; left:calc(100% + 16px); top:50%; transform:translateY(-50%); display:flex; flex-direction:row; align-items:center; gap:16px; z-index:1;">
+              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside" style="font-size:clamp(36px, 8vw, 56px); color:#c62828; font-weight:bold; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></div>
+              
+              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint" style="font-size:20px; font-weight:bold; color:#666; margin:0; writing-mode:vertical-rl; text-orientation:upright; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></p>
             </div>
-            <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside" style="font-size:clamp(36px, 8vw, 56px); color:#c62828; font-weight:bold; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></div>
-            <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint" style="font-size:20px; font-weight:bold; color:#666; margin:0; writing-mode:vertical-rl; text-orientation:upright; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center;"></p>
           </div>
           <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
             <span id="kanji-drill-ctx-suffix" class="kanji-drill-context-inline"></span>
