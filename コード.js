@@ -1138,10 +1138,17 @@ function collectOkuriganaDummyPoolByKanjiKanjiQuiz_(items) {
     readings.forEach(function (r) {
       if (r.kind !== "kun") return;
       const reading = String(r.reading || "");
-      if (reading.length < 3) return;
-      const correct = k + reading.substring(1);
-      let splitPos;
-      for (splitPos = 2; splitPos < reading.length; splitPos++) {
+      if (reading.length < 2) return;
+      let bestSplitPos = 1;
+      for (let s = 1; s <= reading.length; s++) {
+        const cand = k + reading.substring(s);
+        if (Array.isArray(r.examples) && r.examples.some(function(ex) { return String(ex).indexOf(cand) >= 0; })) {
+          bestSplitPos = s;
+          break;
+        }
+      }
+      const correct = k + reading.substring(bestSplitPos);
+      for (let splitPos = 1; splitPos <= reading.length; splitPos++) {
         const cand = k + reading.substring(splitPos);
         if (cand !== correct) poolMap[k].push(cand);
       }
@@ -1154,19 +1161,26 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
   const k = String(item.kanji || "");
   if (k.length !== 1) return null;
   const readings = (Array.isArray(item.readings) ? item.readings : []).filter(function (r) {
-    return r.kind === "kun" && String(r.reading || "").length >= 3;
+    return r.kind === "kun" && String(r.reading || "").length >= 2;
   });
   if (!readings.length) return null;
   const r = readings[Math.floor(Math.random() * readings.length)];
   const reading = String(r.reading || "");
-  const correct = k + reading.substring(1);
+  let bestSplitPos = 1;
+  for (let s = 1; s <= reading.length; s++) {
+    const cand = k + reading.substring(s);
+    if (Array.isArray(r.examples) && r.examples.some(function(ex) { return String(ex).indexOf(cand) >= 0; })) {
+      bestSplitPos = s;
+      break;
+    }
+  }
+  const correct = k + reading.substring(bestSplitPos);
   const wrongSet = {};
   const sameKanjiPool = (dummyPoolByKanji && dummyPoolByKanji[k]) || [];
   sameKanjiPool.forEach(function (d) {
     if (d && d !== correct) wrongSet[d] = true;
   });
-  let splitPos;
-  for (splitPos = 2; splitPos < reading.length; splitPos++) {
+  for (let splitPos = 1; splitPos <= reading.length; splitPos++) {
     const cand = k + reading.substring(splitPos);
     if (cand !== correct) wrongSet[cand] = true;
   }
