@@ -5376,26 +5376,31 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     function startKanjiQuizPlay(ctx) {
       const mode = ctx.formatMode != null ? ctx.formatMode : getKanjiQuizFormatMode();
       let questions;
+      let allQuestionsStored;
       if (ctx.nigateBypassFilter && Array.isArray(ctx.questions) && ctx.questions.length) {
         questions = shuffleKanjiQuizQuestionsArray(ctx.questions.slice());
+        allQuestionsStored = questions.slice();
       } else if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
-        questions = filterKanjiQuizQuestionsByFormat(ctx.allQuestions, mode);
-        if (!questions.length) {
+        const filtered = filterKanjiQuizQuestionsByFormat(ctx.allQuestions, mode);
+        if (!filtered.length) {
           alert("この しかた では もんだいがありません。\nほかの しかたを えらぶか、混合にしてください。");
           return;
         }
+        allQuestionsStored = filtered.slice();
+        questions = shuffleKanjiQuizQuestionsArray(filtered.slice());
       } else {
-        questions = Array.isArray(ctx.questions) ? ctx.questions.slice() : [];
+        const base = Array.isArray(ctx.questions) ? ctx.questions.slice() : [];
+        if (!base.length) {
+          alert("このセットには問題がありません。");
+          return;
+        }
+        questions = shuffleKanjiQuizQuestionsArray(base);
+        allQuestionsStored = questions.slice();
       }
-      questions = shuffleKanjiQuizQuestionsArray(questions);
       if (!questions.length) {
         alert("このセットには問題がありません。");
         return;
       }
-      const allQuestionsStored =
-        Array.isArray(ctx.allQuestions) && ctx.allQuestions.length
-          ? ctx.allQuestions
-          : questions.slice();
       const proceed = function () {
         kanjiQuizSession = {
           modeId: ctx.modeId,
@@ -5455,7 +5460,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         });
         return;
       }
-      const mode = getKanjiQuizFormatMode();
+      const mode = ctx.formatMode != null ? ctx.formatMode : getKanjiQuizFormatMode();
+      if (Array.isArray(ctx.questions) && ctx.questions.length) {
+        startKanjiQuizPlay({
+          modeId: ctx.modeId,
+          modeName: ctx.modeName,
+          unitName: ctx.unitName,
+          setId: ctx.setId,
+          questions: ctx.questions.slice(),
+          formatMode: mode,
+          isTrainingMode: !!ctx.isTrainingMode,
+          trainingStepIndex: ctx.trainingStepIndex,
+          trainingMenuId: ctx.trainingMenuId
+        });
+        return;
+      }
       if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
         const filtered = filterKanjiQuizQuestionsByFormat(ctx.allQuestions, mode);
         if (!filtered.length) {
@@ -5477,21 +5496,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         });
         return;
       }
-      if (!Array.isArray(ctx.questions) || !ctx.questions.length) {
-        openKanjiLearningMenu();
-        return;
-      }
-      startKanjiQuizPlay({
-        modeId: ctx.modeId,
-        modeName: ctx.modeName,
-        unitName: ctx.unitName,
-        setId: ctx.setId,
-        questions: filterKanjiQuizQuestionsByFormat(ctx.questions, mode),
-        formatMode: mode,
-        isTrainingMode: !!ctx.isTrainingMode,
-        trainingStepIndex: ctx.trainingStepIndex,
-        trainingMenuId: ctx.trainingMenuId
-      });
+      openKanjiLearningMenu();
     }
     function showKanjiQuizResult(totalEarned, logs, isTrainingMode, newTotalPoints) {
       restoreKanjiPracticeFrameIfMoved();
