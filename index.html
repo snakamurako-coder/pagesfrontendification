@@ -3943,12 +3943,17 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("かんじを かいてください。");
         return;
       }
+      if (!kanjiQuizSession) return;
       function postEvalToFrame() {
         const frame = document.getElementById("kp-pro-frame");
         if (!frame || !frame.contentWindow) return false;
+        const targets = kanjiQuizSession ? kanjiQuizSession.rubyHandTargets || [] : [];
+        const slot = kanjiQuizSession ? kanjiQuizSession.rubyHandSlot || 0 : 0;
+        const expectedChar = targets[slot];
         frame.contentWindow.postMessage(
           {
             type: "quizEvalParentStrokes",
+            expectedChar: expectedChar,
             strokes: kanjiQuizParentStrokes.map(function (s) {
               return { type: s.type, points: s.points.map(function (p) { return { x: +p.x, y: +p.y }; }) };
             })
@@ -3976,6 +3981,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const slot = kanjiQuizSession.rubyHandSlot || 0;
       if (slot + 1 >= targets.length) {
         kanjiQuizSession.rubyHandComplete = true;
+        kanjiQuizSession.rubyHandKanjiVgPass = true;
         submitKanjiQuizScore();
         return;
       }
@@ -4004,8 +4010,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!win || typeof win.evaluateKanji !== "function") return;
         const doc = frame.contentDocument;
         if (!doc || !doc.documentElement) return;
-        if (doc.documentElement.dataset.kanjiQuizEvalPatch === "1") return;
-        doc.documentElement.dataset.kanjiQuizEvalPatch = "1";
+        if (doc.documentElement.dataset.kanjiQuizEvalPatchV === "2") return;
+        if (doc.documentElement.dataset.kanjiQuizEvalPatch === "1") {
+          try {
+            win.location.reload();
+          } catch (e) {}
+          return;
+        }
+        doc.documentElement.dataset.kanjiQuizEvalPatchV = "2";
         const s = doc.createElement("script");
         s.textContent =
           "(function(){" +
@@ -4019,6 +4031,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           "if(!ev||!ev.data)return;var d=ev.data;" +
           "try{" +
           "if(d.type===\"quizEvalParentStrokes\"&&Array.isArray(d.strokes)){" +
+          "if(d.expectedChar){" +
+          "var _ksel=document.getElementById(\"target-kanji\");" +
+          "if(!_ksel||String(_ksel.value)!==String(d.expectedChar)){" +
+          "if(window.parent)window.parent.postMessage({type:\"kanjiQuizScored\",score:0},\"*\");return;" +
+          "}" +
+          "}" +
           "userStrokes=d.strokes.map(function(s){return{type:(s&&s.type)||\"tome\",points:Array.isArray(s&&s.points)?s.points.map(function(p){return{x:+p.x,y:+p.y}}):[]};});" +
           "if(typeof redrawAllUserStrokes===\"function\")redrawAllUserStrokes();" +
           "if(typeof evaluateKanji===\"function\")evaluateKanji(false);" +
@@ -4117,6 +4135,34 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         sel.value = ch;
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
+        if (typeof win.switchMode === "function") win.switchMode("score");
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    /** 正解漢字それぞれの KanjiVG 参照を裏で先読み（採点・手書き用） */
+    function preloadKanjiQuizTargetsInFrame(targets, activeChar) {
+      const frame = document.getElementById("kp-pro-frame");
+      const win = frame && frame.contentWindow;
+      if (!win || !Array.isArray(targets) || !targets.length) return false;
+      try {
+        const sel = win.document.getElementById("target-kanji");
+        if (!sel) return false;
+        for (let i = 0; i < targets.length; i++) {
+          const ch = targets[i];
+          const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
+          if (!ok) {
+            alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+            return false;
+          }
+          sel.value = ch;
+          if (typeof win.initTargetKanji === "function") win.initTargetKanji();
+        }
+        if (activeChar) {
+          sel.value = activeChar;
+          if (typeof win.initTargetKanji === "function") win.initTargetKanji();
+        }
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
       } catch (e) {
@@ -4240,6 +4286,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizSession.rubyHandTargets = targets;
         kanjiQuizSession.rubyHandSlot = 0;
         kanjiQuizSession.rubyHandComplete = false;
+        kanjiQuizSession.rubyHandKanjiVgPass = false;
         kanjiQuizSession.lastHandScore = null;
         if (!targets.length) {
           alert("手書き対象の漢字が見つかりません。");
@@ -4262,7 +4309,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
           if (!qNow || qNow.type !== "ruby_to_kanji") return;
           ensureKanjiFrameForQuizEval();
-          if (!selectKanjiCharInQuizFrame(t0)) return;
+          if (!preloadKanjiQuizTargetsInFrame(targets, t0)) return;
           if (charHand) charHand.textContent = qNow.readingDisplay || "";
           kanjiQuizSetPenWidth(8);
           kanjiQuizClearWritePad(true);
@@ -4509,7 +4556,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           alert("かくかんじを マスにかき、「これでかいとう」で こたえてください。");
           return;
         }
-        isCorrect = true;
+        isCorrect = !!kanjiQuizSession.rubyHandKanjiVgPass;
       } else if (q.type === "sentence_to_ruby") {
         const inp = document.getElementById('kanji-play-input');
         userRaw = inp ? String(inp.value || "") : "";
