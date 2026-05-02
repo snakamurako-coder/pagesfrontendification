@@ -1181,6 +1181,34 @@
       background: #d4c8b8;
       font-weight: bold;
     }
+    /* 漢字学習フロー：プルダウン展開＝各項目は縦書き、列は左→右にずらり（混合＝左端・かく＝右端） */
+    body.kanji-study-mode .cvs-menu {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      direction: ltr;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    body.kanji-study-mode .cvs-item {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 0.04em;
+      border-left: none;
+      border-right: 1px dashed #ccc;
+      flex: 0 0 auto;
+      min-width: 2.6em;
+      min-height: 7.5em;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    body.kanji-study-mode .cvs-item:last-child {
+      border-left: none;
+      border-right: none;
+    }
   </style>
 </head>
 <body>
@@ -1295,9 +1323,9 @@
       <label for="kanji-quiz-format-select">もんだいのしかた</label>
       <select id="kanji-quiz-format-select" class="large-select" onchange="onKanjiQuizFormatChange()">
         <option value="mixed">混合（3しゅるいを まぜる）</option>
-        <option value="write_kanji">かんじを かいて こたえる</option>
         <option value="select_kana">よみかな・おくりがな（せんたく）</option>
         <option value="type_yomi">よみかなを かいて こたえる</option>
+        <option value="write_kanji" selected>かんじを かいて こたえる</option>
       </select>
     </div>
     <div id="kanji-quiz-sets-container" class="kanji-quiz-sets-stack"></div>
@@ -2329,6 +2357,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         isKanjiFlow = true;
       }
       document.body.classList.toggle('kanji-study-mode', isKanjiFlow);
+      if (id === 'section-kanji-quiz-sets') {
+        syncKanjiQuizFormatSelectFromStorage();
+      }
       setTimeout(() => syncKanjiVerticalSelects(isKanjiFlow), 10);
     }
 
@@ -3630,7 +3661,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const v = localStorage.getItem(LS_KANJI_QUIZ_FORMAT);
         if (v && ['mixed', 'write_kanji', 'select_kana', 'type_yomi'].indexOf(v) >= 0) return v;
       } catch (e) {}
-      return 'mixed';
+      return 'write_kanji';
     }
     function onKanjiQuizFormatChange() {
       const sel = document.getElementById('kanji-quiz-format-select');
