@@ -340,6 +340,8 @@ function doPost(e) {
     else if (action === "get_kanji_data_from_sheet") return handleGetKanjiDataFromSheet(requestData);
     else if (action === "get_kanji_quiz_sets") return handleGetKanjiQuizSets(requestData);
     else if (action === "get_kanji_quiz_questions") return handleGetKanjiQuizQuestions(requestData);
+    else if (action === "append_kanji_weak_signals") return handleAppendKanjiWeakSignals(requestData);
+    else if (action === "get_kanji_weak_review_plan") return handleGetKanjiWeakReviewPlan(requestData);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -694,6 +696,170 @@ function handleSaveLearningSession(req) {
   usersSheet.getRange(targetRowIdx, 8).setValue(JSON.stringify(userData.trainingProgressJson)); // ★ 保存
 
   return sendResponse({ status: "success", earnedPoints: earnedPoints, newTotal: newTotalPoints, historyJson: userData.historyJson, dailyPointsJson: userData.dailyPointsJson, bonusApplied: req.isRandom, trainingProgressJson: userData.trainingProgressJson, sheetPointPercent: sheetPointPercent });
+}
+
+/** 漢字ニガテ：historyJson.__kanjiWeak へ薄いシグナルだけマージ（キー数・recent 上限あり） */
+var KANJI_WEAK_MAX_KEYS_ = 200;
+var KANJI_WEAK_RECENT_MAX_ = 12;
+
+function kanjiWeakMakeKey_(modeId, unitName, setId, kanji) {
+  return [String(modeId || ""), String(unitName || ""), String(setId || ""), String(kanji || "")].join("\x1f");
+}
+
+function pruneKanjiWeakIfNeeded_(weakRoot) {
+  const keys = Object.keys(weakRoot);
+  if (keys.length <= KANJI_WEAK_MAX_KEYS_) return;
+  const scored = keys.map(function (k) {
+    const r = weakRoot[k] || {};
+    return { k: k, t: String(r.updatedAt || "") };
+  });
+  scored.sort(function (a, b) {
+    return a.t.localeCompare(b.t);
+  });
+  const drop = scored.length - KANJI_WEAK_MAX_KEYS_;
+  for (let i = 0; i < drop; i++) delete weakRoot[scored[i].k];
+}
+
+function mergeKanjiWeakFromRequest_(userData, req, nowIso) {
+  const kanji = String(req.kanji || "").trim();
+  if (!kanji) return { ok: false, message: "kanji が空です" };
+  const modeId = String(req.modeId || "").trim();
+  const unitName = String(req.unitName || "").trim();
+  const setId = String(req.setId || "").trim();
+  const signal = String(req.signal || "hand_analytics");
+  if (!userData.historyJson.__kanjiWeak) userData.historyJson.__kanjiWeak = {};
+  const weakRoot = userData.historyJson.__kanjiWeak;
+  const key = kanjiWeakMakeKey_(modeId, unitName, setId, kanji);
+  if (!weakRoot[key]) {
+    weakRoot[key] = {
+      modeId: modeId,
+      unitName: unitName,
+      setId: setId,
+      kanji: kanji,
+      strokeOrderFails: 0,
+      brushFails: 0,
+      strokeCountFails: 0,
+      readingFails: 0,
+      lastRefStrokeCount: null,
+      recent: [],
+      updatedAt: nowIso
+    };
+  }
+  const row = weakRoot[key];
+  if (signal === "hand_analytics") {
+    if (req.strokeCountMismatch === true) row.strokeCountFails++;
+    if (req.hasStrokeOrderIssue === true) row.strokeOrderFails++;
+    if (req.brushEndingAllOk === false) row.brushFails++;
+    if (req.referenceStrokeCount != null && !isNaN(Number(req.referenceStrokeCount))) {
+      row.lastRefStrokeCount = Number(req.referenceStrokeCount);
+    }
+  } else if (signal === "reading_mistake") {
+    row.readingFails++;
+  }
+  const ev = {
+    at: nowIso,
+    signal: signal,
+    q: String(req.questionId || "")
+  };
+  if (req.hasStrokeOrderIssue != null) ev.hso = !!req.hasStrokeOrderIssue;
+  if (req.brushEndingAllOk != null) ev.bok = !!req.brushEndingAllOk;
+  if (req.strokeCountMismatch != null) ev.scm = !!req.strokeCountMismatch;
+  if (!Array.isArray(row.recent)) row.recent = [];
+  row.recent.push(ev);
+  while (row.recent.length > KANJI_WEAK_RECENT_MAX_) row.recent.shift();
+  row.updatedAt = nowIso;
+  pruneKanjiWeakIfNeeded_(weakRoot);
+  return { ok: true };
+}
+
+function handleAppendKanjiWeakSignals(req) {
+  const userId = req.userId;
+  if (!userId) return sendResponse({ status: "error", message: "userId が必要です" });
+  const props = PropertiesService.getScriptProperties();
+  const adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  const usersSheet = adminSs.getSheetByName("users");
+  const data = usersSheet.getDataRange().getValues();
+  let targetRowIdx = -1;
+  let userData = null;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      targetRowIdx = i + 1;
+      userData = {
+        points: Number(data[i][3]) || 0,
+        lastStudyJson: JSON.parse(data[i][4] || "{}"),
+        historyJson: JSON.parse(data[i][5] || "{}"),
+        dailyPointsJson: JSON.parse(data[i][6] || "{}"),
+        trainingProgressJson: JSON.parse(data[i][7] || "{}")
+      };
+      break;
+    }
+  }
+  if (targetRowIdx === -1) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+  const nowIso = new Date().toISOString();
+  const r = mergeKanjiWeakFromRequest_(userData, req, nowIso);
+  if (!r.ok) return sendResponse({ status: "error", message: r.message || "マージ失敗" });
+  usersSheet.getRange(targetRowIdx, 6).setValue(JSON.stringify(userData.historyJson));
+  return sendResponse({ status: "success", historyJson: userData.historyJson });
+}
+
+function handleGetKanjiWeakReviewPlan(req) {
+  const userId = req.userId;
+  if (!userId) return sendResponse({ status: "error", message: "userId が必要です" });
+  const props = PropertiesService.getScriptProperties();
+  const adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  const usersSheet = adminSs.getSheetByName("users");
+  const data = usersSheet.getDataRange().getValues();
+  let historyJson = null;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      historyJson = JSON.parse(data[i][5] || "{}");
+      break;
+    }
+  }
+  if (!historyJson) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+  const weakRoot = historyJson.__kanjiWeak || {};
+  const modeId = String(req.modeId || "");
+  const unitNames = Array.isArray(req.unitNames) ? req.unitNames.map(function (x) { return String(x); }) : [];
+  const setIds = Array.isArray(req.setIds) ? req.setIds.map(function (x) { return String(x); }) : [];
+  const setScopes = Array.isArray(req.setScopes)
+    ? req.setScopes.map(function (x) {
+        return { unitName: String((x && x.unitName) || ""), setId: String((x && x.setId) || "") };
+      })
+      .filter(function (x) { return x.unitName && x.setId; })
+    : [];
+  const trainMode = String(req.trainMode || "stroke_order");
+  const rows = [];
+  Object.keys(weakRoot).forEach(function (k) {
+    const r = weakRoot[k];
+    if (!r || !r.kanji) return;
+    if (modeId && String(r.modeId) !== modeId) return;
+    if (unitNames.length && unitNames.indexOf(String(r.unitName)) < 0) return;
+    if (setScopes.length) {
+      var inScope = setScopes.some(function (sc) {
+        return String(r.unitName) === sc.unitName && String(r.setId) === sc.setId;
+      });
+      if (!inScope) return;
+    } else if (setIds.length && setIds.indexOf(String(r.setId)) < 0) return;
+    let w = 0;
+    if (trainMode === "reading") w = Number(r.readingFails) || 0;
+    else if (trainMode === "brush") w = Number(r.brushFails) || 0;
+    else if (trainMode === "stroke_count") w = Number(r.strokeCountFails) || 0;
+    else w = Number(r.strokeOrderFails) || 0;
+    rows.push({
+      modeId: r.modeId,
+      unitName: r.unitName,
+      setId: r.setId,
+      kanji: r.kanji,
+      w: w,
+      strokeOrderFails: r.strokeOrderFails || 0,
+      brushFails: r.brushFails || 0,
+      strokeCountFails: r.strokeCountFails || 0,
+      readingFails: r.readingFails || 0,
+      lastRefStrokeCount: r.lastRefStrokeCount
+    });
+  });
+  rows.sort(function (a, b) { return b.w - a.w; });
+  return sendResponse({ status: "success", rows: rows.slice(0, 300) });
 }
 
 // ==========================================
