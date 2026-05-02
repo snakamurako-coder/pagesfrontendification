@@ -651,8 +651,8 @@ function handleSaveLearningSession(req) {
       if (unitHistory[qHistId].times.length > 10) unitHistory[qHistId].times.shift();
     }
   } else {
-
-    req.results.forEach(res => {
+    const resultsList = Array.isArray(req.results) ? req.results : [];
+    resultsList.forEach(res => {
       if (res.isCorrect) {
         let qPoint = Math.max(1, (Number(res.basePoint) || 2) - (Number(res.maxDeduction) || 0));
         sessionRawPoints += qPoint;
@@ -1486,7 +1486,7 @@ function buildKanjiQuizProblemList_(group) {
     const r3 = buildSentenceToRubyQuizQuestion_(item);
     if (r3) buckets.sentence_to_ruby.push(r3);
   });
-  const merged = mergeKanjiQuizBucketsBalanced_(buckets);
+  const merged = shuffleKanjiQuizArray_(mergeKanjiQuizBucketsBalanced_(buckets));
   return merged.map(function (q, i) {
     const base = Object.assign({}, q);
     base.questionIndex = i;
