@@ -505,8 +505,7 @@
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-title,
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-char,
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-prompt,
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-summary,
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-write-slot-hint {
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-summary {
       writing-mode: vertical-rl;
       text-orientation: upright;
       text-align: start;
@@ -883,33 +882,7 @@
       align-items: center;
       justify-content: center;
     }
-    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
-      font-size: clamp(16px, 3.5vw, 20px);
-      font-weight: bold;
-      color: #666;
-      margin: 0;
-      padding: 10px 12px;
-      min-height: 160px;
-      box-sizing: border-box;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      border: 2px solid #cfd8dc;
-      border-radius: 8px;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #kanji-play-write-slot-hint {
-      font-size: clamp(16px, 3.5vw, 22px) !important;
-      color: #c62828 !important;
-      font-weight: bold;
-    }
-    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
-      color: #666 !important;
-    }
     #kanji-play-char-handwriting,
-    #kanji-play-write-slot-hint,
     #kanji-play-type-badge {
       pointer-events: none;
     }
@@ -1185,7 +1158,6 @@
             <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0; z-index:2;"></canvas>
             <div class="kanji-drill-hw-panel-aside">
               <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside kanji-drill-hw-ruby-box"></div>
-              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint kanji-drill-hw-hint-box"></p>
             </div>
           </div>
           <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
@@ -3868,8 +3840,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizSession.lastHandScore = null;
       const nextCh = targets[slot + 1];
       if (!selectKanjiCharInQuizFrame(nextCh)) return;
-      const hint = document.getElementById("kanji-play-write-slot-hint");
-      if (hint) hint.innerText = "だい " + (slot + 2) + " もじ／" + targets.length;
       const sum = document.getElementById("kanji-play-summary");
       if (sum) sum.innerHTML = "";
       kanjiQuizClearWritePad(true);
@@ -4047,8 +4017,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (subBtn) subBtn.style.display = "none";
       const summary = document.getElementById("kanji-play-summary");
       if (summary) summary.innerHTML = "";
-      const hint = document.getElementById("kanji-play-write-slot-hint");
-      if (hint) hint.innerText = "";
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       if (drillHand) drillHand.style.display = "none";
       const penCtrls = document.getElementById("kanji-drill-pen-controls");
@@ -4134,8 +4102,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           alert("手書き対象の漢字が見つかりません。");
           return;
         }
-        const hint = document.getElementById("kanji-play-write-slot-hint");
-        if (hint) hint.innerText = "だい 1 もじ／" + targets.length;
         const ctxDrill = parseMaskedForDrill(q.maskedSentence);
         const qn = kanjiQuizCircledQuestionNum(kanjiQuizSession.index + 1);
         if (markerEl) markerEl.textContent = qn;
