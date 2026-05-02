@@ -3817,7 +3817,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert('この しかた では もんだいがありません。\nほかの しかたを えらぶか、混合にしてください。');
         return null;
       }
-      return { questions: shuffleKanjiQuizQuestionsArray(filtered), formatMode: mode };
+      // 出題順のシャッフルは startKanjiQuizPlay 内で1回だけ行う（二重シャッフル防止）
+      return { questions: filtered, formatMode: mode };
     }
     function kanjiQuizDrillCacheKeySets(modeId, unitName) {
       return "app_cached_kanji_quiz_sets_" + String(modeId || "") + "_" + String(unitName || "");
@@ -3948,6 +3949,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     let __kanjiQuizWriteCanvasBound = false;
     let __kanjiQuizHwFrameReadyP = null;
     let __kanjiQuizScrollGuardBound = false;
+    let __kanjiQuizTouchLockLastBump = 0;
     let __kanjiPracticeLastSubmitAt = 0;
     let __kanjiPracticeLastSubmitKey = "";
     function clearKanjiHwFrameReadyCache() {
@@ -4146,7 +4148,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           const py = (clientY - r.top) * (kanjiQuizWriteLogicalSize / Math.max(1, r.height));
           kanjiQuizIsDrawing = true;
           kanjiQuizStrokeStartTime = Date.now();
-          markKanjiQuizTouchDrawActivity(3000);
+          __kanjiQuizTouchLockLastBump = Date.now();
+          markKanjiQuizTouchDrawActivity(700);
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizCurrentStrokePoints.push({ x: px, y: py });
           kanjiQuizRedrawParentCanvas(kanjiQuizCurrentStrokePoints);
@@ -4157,13 +4160,17 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           const px = (clientX - r.left) * (kanjiQuizWriteLogicalSize / Math.max(1, r.width));
           const py = (clientY - r.top) * (kanjiQuizWriteLogicalSize / Math.max(1, r.height));
           kanjiQuizCurrentStrokePoints.push({ x: px, y: py });
-          markKanjiQuizTouchDrawActivity(3000);
+          const now = Date.now();
+          if (now - __kanjiQuizTouchLockLastBump >= 260) {
+            __kanjiQuizTouchLockLastBump = now;
+            markKanjiQuizTouchDrawActivity(700);
+          }
           kanjiQuizRedrawParentCanvas(kanjiQuizCurrentStrokePoints);
         }
         function endStroke() {
           if (!kanjiQuizIsDrawing) return;
           kanjiQuizIsDrawing = false;
-          markKanjiQuizTouchDrawActivity(3000);
+          markKanjiQuizTouchDrawActivity(420);
           const pts = kanjiQuizCurrentStrokePoints.map(function (p) {
             return { x: p.x, y: p.y };
           });
@@ -4536,7 +4543,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
 
         var nowMs = Date.now();
         var dedupeKey = kanjiChar + ":" + score;
-        if (dedupeKey === __kanjiPracticeLastSubmitKey && nowMs - __kanjiPracticeLastSubmitAt < 6000) return;
+        if (dedupeKey === __kanjiPracticeLastSubmitKey && nowMs - __kanjiPracticeLastSubmitAt < 950) return;
         __kanjiPracticeLastSubmitKey = dedupeKey;
         __kanjiPracticeLastSubmitAt = nowMs;
 
