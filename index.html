@@ -669,6 +669,12 @@
       max-width: none;
       position: relative;
     }
+    /* 手書き：描画中〜ストローク直後はパームや慣性でスクロールしない */
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.kanji-hw-scroll-suppress .kanji-quiz-drill-wrap {
+      overflow: hidden !important;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
     /* 縦持ちタブレット・狭い幅：横に詰めすぎない／固定100vhのクリップを避ける */
     @media (max-width: 900px) {
       html {
@@ -695,6 +701,11 @@
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+      }
+      body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.active.kanji-hw-scroll-suppress {
+        overflow: hidden !important;
+        overscroll-behavior-y: none;
+        touch-action: none;
       }
       #section-kanji-quiz-play.kanji-quiz-drill-section.active {
         min-height: 100dvh;
@@ -1636,7 +1647,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
   </script>
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままで大丈夫） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx54AwkrkwduMiONu74v70kXslg4g80oGs26_fjZAWcNFh8CXB7y4SyMtoDAX3Wl1SL2Q/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzV1so0tecfOg1KF6OfeYuuKtFxPVbeRkqThf557_i8Hvbhc7SoB4LLHPQ7DpETmZGS8A/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -4482,6 +4493,79 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     let kanjiQuizStrokeStartTime = 0;
     let __kanjiQuizWriteCanvasBound = false;
     let __kanjiQuizHwFrameReadyP = null;
+    const KANJI_HW_SCROLL_GUARD_MS = 3000;
+    let __kanjiHwNoScrollUntil = 0;
+    let __kanjiHwScrollLockTimer = null;
+    let __kanjiHwTouchMoveBlock = null;
+    let __kanjiHwWheelBlock = null;
+    function kanjiQuizApplyHandwritingScrollSuppress(active) {
+      var sec = document.getElementById("section-kanji-quiz-play");
+      if (sec) sec.classList.toggle("kanji-hw-scroll-suppress", !!active);
+      if (!active) {
+        if (__kanjiHwTouchMoveBlock) {
+          document.removeEventListener("touchmove", __kanjiHwTouchMoveBlock, { capture: true, passive: false });
+          __kanjiHwTouchMoveBlock = null;
+        }
+        if (__kanjiHwWheelBlock) {
+          window.removeEventListener("wheel", __kanjiHwWheelBlock, { capture: true, passive: false });
+          __kanjiHwWheelBlock = null;
+        }
+        return;
+      }
+      if (__kanjiHwTouchMoveBlock) return;
+      __kanjiHwTouchMoveBlock = function (ev) {
+        if (!sec || !sec.classList.contains("kanji-hw-scroll-suppress")) return;
+        var el = ev.target;
+        if (el && typeof el.closest === "function") {
+          if (el.closest("button, [role=\"button\"], a, input, textarea, select, label, #kanji-drill-pen-controls")) return;
+          if (el.closest(".kanji-quiz-title-rail-wrap")) return;
+        }
+        ev.preventDefault();
+      };
+      __kanjiHwWheelBlock = function (ev) {
+        if (!sec || !sec.classList.contains("kanji-hw-scroll-suppress")) return;
+        var el = ev.target;
+        if (el && typeof el.closest === "function") {
+          if (el.closest("button, [role=\"button\"], a, input, textarea, select")) return;
+        }
+        ev.preventDefault();
+      };
+      document.addEventListener("touchmove", __kanjiHwTouchMoveBlock, { capture: true, passive: false });
+      window.addEventListener("wheel", __kanjiHwWheelBlock, { capture: true, passive: false });
+    }
+    function kanjiQuizClearHandwritingScrollSuppress() {
+      __kanjiHwNoScrollUntil = 0;
+      if (__kanjiHwScrollLockTimer) {
+        clearTimeout(__kanjiHwScrollLockTimer);
+        __kanjiHwScrollLockTimer = null;
+      }
+      kanjiQuizApplyHandwritingScrollSuppress(false);
+    }
+    function kanjiQuizRefreshHandwritingScrollLockState() {
+      var sec = document.getElementById("section-kanji-quiz-play");
+      if (!sec || !sec.classList.contains("active")) {
+        kanjiQuizClearHandwritingScrollSuppress();
+        return;
+      }
+      var q = kanjiQuizSession && kanjiQuizSession.questions[kanjiQuizSession.index];
+      if (!q || q.type !== "ruby_to_kanji") {
+        kanjiQuizClearHandwritingScrollSuppress();
+        return;
+      }
+      var locked = kanjiQuizIsDrawing || Date.now() < __kanjiHwNoScrollUntil;
+      kanjiQuizApplyHandwritingScrollSuppress(locked);
+      if (__kanjiHwScrollLockTimer) {
+        clearTimeout(__kanjiHwScrollLockTimer);
+        __kanjiHwScrollLockTimer = null;
+      }
+      if (locked && !kanjiQuizIsDrawing) {
+        var ms = Math.max(0, __kanjiHwNoScrollUntil - Date.now());
+        __kanjiHwScrollLockTimer = setTimeout(function () {
+          __kanjiHwScrollLockTimer = null;
+          kanjiQuizRefreshHandwritingScrollLockState();
+        }, ms + 24);
+      }
+    }
     function clearKanjiHwFrameReadyCache() {
       __kanjiQuizHwFrameReadyP = null;
     }
@@ -4495,6 +4579,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const quizPlayEl = document.getElementById("section-kanji-quiz-play");
       const wasPlay = quizPlayEl && quizPlayEl.classList.contains("active");
       if (!wasPlay || newSectionId === "section-kanji-quiz-play" || !kanjiQuizSession) return;
+      kanjiQuizClearHandwritingScrollSuppress();
       kanjiQuizSession = null;
       lastKanjiQuizContext = null;
       clearKanjiHwFrameReadyCache();
@@ -4661,6 +4746,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizCurrentStrokePoints.push({ x: px, y: py });
           kanjiQuizRedrawParentCanvas(kanjiQuizCurrentStrokePoints);
+          kanjiQuizRefreshHandwritingScrollLockState();
         }
         function moveStrokeAt(clientX, clientY) {
           if (!kanjiQuizIsDrawing) return;
@@ -4682,22 +4768,36 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           }
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizRedrawParentCanvas();
+          __kanjiHwNoScrollUntil = Date.now() + KANJI_HW_SCROLL_GUARD_MS;
+          kanjiQuizRefreshHandwritingScrollLockState();
         }
         canvas.addEventListener("pointerdown", function (e) {
           if (!canStartKanjiQuizDraw()) return;
-          canvas.setPointerCapture(e.pointerId);
+          if (e.pointerType === "touch" && e.isPrimary === false) {
+            e.preventDefault();
+            return;
+          }
+          try {
+            canvas.setPointerCapture(e.pointerId);
+          } catch (_) {}
           beginStrokeAt(e.clientX, e.clientY);
         });
         canvas.addEventListener("pointermove", function (e) {
           moveStrokeAt(e.clientX, e.clientY);
-        });
+          if (kanjiQuizIsDrawing && e.pointerType === "touch") {
+            e.preventDefault();
+          }
+        }, { passive: false });
         canvas.addEventListener("pointerup", function () {
           endStroke();
         });
         canvas.addEventListener("pointercancel", function () {
+          if (!kanjiQuizIsDrawing) return;
           kanjiQuizIsDrawing = false;
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizRedrawParentCanvas();
+          __kanjiHwNoScrollUntil = Date.now() + KANJI_HW_SCROLL_GUARD_MS;
+          kanjiQuizRefreshHandwritingScrollLockState();
         });
         canvas.addEventListener("mousedown", function (e) {
           if (!canStartKanjiQuizDraw()) return;
@@ -4714,6 +4814,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         canvas.addEventListener("touchstart", function (e) {
           if (!canStartKanjiQuizDraw()) return;
           if (!e.touches || !e.touches.length) return;
+          if (e.touches.length > 1) {
+            e.preventDefault();
+            return;
+          }
           e.preventDefault();
           beginStrokeAt(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
@@ -4771,6 +4875,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizRedrawParentCanvas();
     }
     function kanjiQuizClearWritePad(clearIframe) {
+      kanjiQuizClearHandwritingScrollSuppress();
       kanjiQuizParentStrokes = [];
       kanjiQuizCurrentStrokePoints = [];
       kanjiQuizIsDrawing = false;
@@ -5256,6 +5361,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       kanjiQuizSession.selectedChoice = null;
       resetKanjiQuizDrillPlayShell();
+      kanjiQuizClearHandwritingScrollSuppress();
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       const markerEl = document.getElementById("kanji-drill-q-marker");
       const prefixEl = document.getElementById("kanji-drill-ctx-prefix");
