@@ -829,10 +829,84 @@
       width: 100%;
       max-width: 100%;
     }
+    /* 手書き：るび・記述（スロット）・操作ボタンを同一の長方形パネル内に配置 */
+    .kanji-drill-hw-canvas-panel {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+      direction: ltr;
+      border: 2px solid #90a4ae;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-sizing: border-box;
+      background: #faf8f5;
+      margin: 4px 0;
+      align-self: center;
+      flex-shrink: 0;
+      max-width: 100%;
+    }
+    .kanji-drill-hw-panel-btns {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .kanji-drill-hw-panel-aside {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      writing-mode: horizontal-tb;
+    }
+    #kanji-play-char-handwriting.kanji-drill-hw-ruby-box {
+      font-size: clamp(36px, 8vw, 56px);
+      color: #c62828;
+      font-weight: bold;
+      white-space: nowrap;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      margin: 0;
+      padding: 10px 12px;
+      min-height: 160px;
+      box-sizing: border-box;
+      border: 2px solid #cfd8dc;
+      border-radius: 8px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
+      font-size: clamp(16px, 3.5vw, 20px);
+      font-weight: bold;
+      color: #666;
+      margin: 0;
+      padding: 10px 12px;
+      min-height: 160px;
+      box-sizing: border-box;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      border: 2px solid #cfd8dc;
+      border-radius: 8px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     #kanji-play-write-slot-hint {
       font-size: clamp(16px, 3.5vw, 22px) !important;
       color: #c62828 !important;
       font-weight: bold;
+    }
+    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
+      color: #666 !important;
     }
     #kanji-play-char-handwriting,
     #kanji-play-write-slot-hint,
@@ -1102,22 +1176,16 @@
           <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
             <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
           </div>
-          <div style="position:relative; display:flex; justify-content:center; align-items:center; margin:2px 0; align-self:center;">
-            <!-- Actions (Left) -->
-            <div id="kanji-hw-canvas-actions" style="display:none; flex-direction:column; gap:8px; align-items:center; position:absolute; right:calc(100% + 16px); top:50%; transform:translateY(-50%); z-index:1;">
+          <div class="kanji-drill-hw-canvas-panel">
+            <div id="kanji-hw-canvas-actions" class="kanji-drill-hw-panel-btns" style="display:none;">
               <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
             </div>
-
-            <!-- Canvas (Center) -->
             <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0; z-index:2;"></canvas>
-
-            <!-- Ruby & Hint (Right) -->
-            <div style="position:absolute; left:calc(100% + 16px); top:50%; transform:translateY(-50%); display:flex; flex-direction:row; align-items:center; gap:16px; z-index:1;">
-              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside" style="font-size:clamp(36px, 8vw, 56px); color:#c62828; font-weight:bold; white-space:nowrap; writing-mode:vertical-rl; text-orientation:upright; margin:0; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center; position:absolute; left:510px; top:174px;"></div>
-              
-              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint" style="font-size:20px; font-weight:bold; color:#666; margin:0; writing-mode:vertical-rl; text-orientation:upright; padding:10px; border:2px solid transparent; height:max-content; display:flex; align-items:center; justify-content:center; position:absolute; left:693px; top:174px;"></p>
+            <div class="kanji-drill-hw-panel-aside">
+              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside kanji-drill-hw-ruby-box"></div>
+              <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint kanji-drill-hw-hint-box"></p>
             </div>
           </div>
           <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
