@@ -2326,24 +2326,34 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       </div>`;
     }
     
-    function prefetchMaterials() {
-        if (materialsData.length > 0) return Promise.resolve();
-        const cacheKey = 'app_cached_materials';
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try {
-            const d = JSON.parse(cached);
+    const LS_APP_CACHED_MATERIALS = "app_cached_materials";
+    /** 教材一覧（英語・漢字共通）。メモリ → localStorage → GAS の順で取得（prefetch と同一キャッシュ）。 */
+    function ensureMaterialsListLoaded() {
+      if (materialsData.length > 0) return Promise.resolve(materialsData);
+      const cached = localStorage.getItem(LS_APP_CACHED_MATERIALS);
+      if (cached) {
+        try {
+          const d = JSON.parse(cached);
+          if (d.status === "success" && Array.isArray(d.materials)) {
             materialsData = d.materials;
-            return Promise.resolve();
-          } catch(e) {}
-        }
-        return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
-        .then(r=>r.json()).then(d => { 
-          if(d.status==="success") { 
-            materialsData = d.materials; 
-            localStorage.setItem(cacheKey, JSON.stringify(d));
-          } 
+            return Promise.resolve(materialsData);
+          }
+        } catch (e) {}
+      }
+      return fetch(GAS_API_URL, { method: "POST", body: JSON.stringify({ action: "get_materials_list" }) })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === "success") {
+            materialsData = Array.isArray(d.materials) ? d.materials : [];
+            try {
+              localStorage.setItem(LS_APP_CACHED_MATERIALS, JSON.stringify(d));
+            } catch (e) {}
+          }
+          return materialsData;
         });
+    }
+    function prefetchMaterials() {
+      return ensureMaterialsListLoaded().catch(() => {});
     }
 
     function switchSection(id) {
@@ -3354,7 +3364,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (kpCatalogState.loaded && kpCatalogState.materials.length) return;
       setKpStatus("教材を取得中...");
       const fromMaterialsCache = (() => {
-        const d = kpGetCachedJson('app_cached_materials');
+        const d = kpGetCachedJson(LS_APP_CACHED_MATERIALS);
         if (!d || d.status !== "success" || !Array.isArray(d.materials)) return null;
         return d.materials;
       })();
@@ -3376,7 +3386,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
         .then(r=>r.json()).then(d=>{
           if (d.status !== "success") throw new Error(d.message || "教材取得失敗");
-          kpSetCachedJson('app_cached_materials', d);
+          kpSetCachedJson(LS_APP_CACHED_MATERIALS, d);
           applyMaterials(d.materials);
           if (!kpCatalogState.materials.length) {
             setKpStatus("漢字教材が0件です（設定または分類を確認してください）。");
@@ -3620,38 +3630,42 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     function loadMaterialsByFilter(btn, category) {
       const origText = toggleBtnLoading(btn, true);
       document.getElementById('materials-container').innerHTML = "<p>よみこみ中...</p>";
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) }).then(r=>r.json()).then(d=>{
-        toggleBtnLoading(btn, false, origText);
-        if(d.status!=="success") return;
-        switchSection('section-materials');
-        const title = document.getElementById('materials-title');
-        if (title) title.innerText = category === "kanji" ? "漢字クイズに挑戦" : "英語の自由学習";
-        const c = document.getElementById('materials-container');
-        c.innerHTML = "";
-        const all = Array.isArray(d.materials) ? d.materials : [];
-        const list = all.filter(m => {
-          const cat = String(m.category || "").toLowerCase();
-          const name = String(m.modeName || "");
-          const isKanji = (cat === "kanji") || /漢字|かんじ|kanji/i.test(name);
-          return category === "kanji" ? isKanji : !isKanji;
-        });
-        if (list.length === 0) {
-          c.innerHTML = "<p>表示できる教材がありません。</p>";
-          return;
-        }
-        list.forEach(m => {
-          const t = document.createElement('h2');
-          t.innerText = `📁 ${m.modeName}`;
-          c.appendChild(t);
-          m.units.forEach(u => {
-            const b = document.createElement('button');
-            b.className="menu-btn btn-gray";
-            b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`;
-            b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u, category); };
-            c.appendChild(b);
+      ensureMaterialsListLoaded()
+        .then(() => {
+          toggleBtnLoading(btn, false, origText);
+          switchSection('section-materials');
+          const title = document.getElementById('materials-title');
+          if (title) title.innerText = category === "kanji" ? "漢字クイズに挑戦" : "英語の自由学習";
+          const c = document.getElementById('materials-container');
+          c.innerHTML = "";
+          const all = Array.isArray(materialsData) ? materialsData : [];
+          const list = all.filter(m => {
+            const cat = String(m.category || "").toLowerCase();
+            const name = String(m.modeName || "");
+            const isKanji = (cat === "kanji") || /漢字|かんじ|kanji/i.test(name);
+            return category === "kanji" ? isKanji : !isKanji;
           });
+          if (list.length === 0) {
+            c.innerHTML = "<p>表示できる教材がありません。</p>";
+            return;
+          }
+          list.forEach(m => {
+            const t = document.createElement('h2');
+            t.innerText = `📁 ${m.modeName}`;
+            c.appendChild(t);
+            m.units.forEach(u => {
+              const b = document.createElement('button');
+              b.className="menu-btn btn-gray";
+              b.innerText = `📄 ${formatUnitSheetDisplayLabel(u)}`;
+              b.onclick = () => { loadQuestionsForSettings(b, m.modeId, m.modeName, u, category); };
+              c.appendChild(b);
+            });
+          });
+        })
+        .catch(() => {
+          toggleBtnLoading(btn, false, origText);
+          document.getElementById('materials-container').innerHTML = "<p>よみこみに失敗しました。</p>";
         });
-      }).catch(e => toggleBtnLoading(btn, false, origText));
     }
     const LS_KANJI_QUIZ_FORMAT = 'app_kanji_quiz_format_v1';
     function getKanjiQuizFormatMode() {
@@ -3715,6 +3729,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         String(setId || "")
       );
     }
+    const __kanjiQuizSetsSessionCache = Object.create(null);
     function openKanjiQuizSets(modeId, modeName, unitName, btn, origText) {
       const title = document.getElementById('kanji-quiz-title');
       if (title) title.innerText = `【${modeName}】${formatUnitSheetDisplayLabel(unitName)}`;
@@ -3781,11 +3796,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           box.appendChild(b);
         });
       };
+      if (__kanjiQuizSetsSessionCache[setsCacheKey]) {
+        renderSetsButtons(__kanjiQuizSetsSessionCache[setsCacheKey]);
+        return;
+      }
       const cachedSets = localStorage.getItem(setsCacheKey);
       if (cachedSets) {
         try {
           const d = JSON.parse(cachedSets);
           if (d.status === "success") {
+            __kanjiQuizSetsSessionCache[setsCacheKey] = d;
             renderSetsButtons(d);
             return;
           }
@@ -3795,6 +3815,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       .then(r => r.json()).then(d => {
         if (d.status === "success") {
           try { localStorage.setItem(setsCacheKey, JSON.stringify(d)); } catch (e) {}
+          __kanjiQuizSetsSessionCache[setsCacheKey] = d;
         }
         renderSetsButtons(d);
       }).catch(e => {
