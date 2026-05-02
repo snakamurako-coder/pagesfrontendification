@@ -329,8 +329,8 @@
       letter-spacing: 0.04em;
     }
     body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-toggle {
-      writing-mode: horizontal-tb;
-      text-orientation: mixed;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
       display: flex;
       flex-direction: column;
       flex-wrap: nowrap;
@@ -349,12 +349,15 @@
       border: none;
       background: transparent;
       color: #444;
-      padding: 8px 14px;
+      padding: 10px 8px;
       border-radius: 0;
       cursor: pointer;
       font-size: clamp(13px, 2.8vw, 15px);
       font-weight: 700;
       font-family: inherit;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 0.06em;
       white-space: nowrap;
     }
     body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-toggle button:first-child {
@@ -376,8 +379,16 @@
       margin: 0;
     }
     body.kanji-study-mode #section-kanji-learning.active .kanji-study-menu-btns {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: stretch;
       margin-top: 10px;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      width: max-content;
+      max-width: min(100%, 420px);
+      box-sizing: border-box;
     }
     body.kanji-study-mode #section-kanji-learning.active .menu-btn,
     body.kanji-study-mode #section-kanji-learning.active .cancel-btn,
@@ -2563,11 +2574,13 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     // ★ 特訓ルートの読み込み処理を追加
     function showHome(user) {
       document.body.classList.remove('kanji-study-mode');
-      switchSection('section-home'); 
+      switchSection('section-home');
       document.getElementById('header-user-info').innerText = `ID: ${user.id} / ${user.name}`; document.getElementById('global-header').style.display = 'block';
-      document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points; 
+      document.getElementById('welcome-message').innerText = `${user.name} さん`; document.getElementById('user-points').innerText = user.points;
       renderHomeResumePanel();
       promptQuizResumeIfNeeded(user);
+      applyKanjiHwDominantHandToBody();
+      syncKanjiHwHandSwitchUI();
     }
 
     function toggleBtnLoading(btn, isLoading, originalText = "") { if(!btn) return ""; if(isLoading) { const text = btn.innerHTML; btn.innerHTML = "⏳ よみこみ中..."; btn.classList.add("btn-loading"); return text; } else { btn.innerHTML = originalText; btn.classList.remove("btn-loading"); } }
@@ -3175,9 +3188,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }).catch(() => { msg.innerText = "通信エラー"; });
     }
 
-    const LS_KANJI_HW_DOMINANT = 'kanji_quiz_hw_dominant_hand';
+    const USER_PREF_KANJI_HW_DOMINANT = 'kanji_quiz_hw_dominant_hand';
     function getKanjiHwDominantHand() {
-      return localStorage.getItem(LS_KANJI_HW_DOMINANT) === 'left' ? 'left' : 'right';
+      const v = getUserPref(USER_PREF_KANJI_HW_DOMINANT, null);
+      return v === 'left' ? 'left' : 'right';
     }
     function applyKanjiHwDominantHandToBody() {
       document.body.classList.toggle('kanji-hw-dominant-left', getKanjiHwDominantHand() === 'left');
@@ -3196,7 +3210,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
     }
     function setKanjiHwDominantHand(which) {
-      localStorage.setItem(LS_KANJI_HW_DOMINANT, which === 'left' ? 'left' : 'right');
+      setUserPref(USER_PREF_KANJI_HW_DOMINANT, which === 'left' ? 'left' : 'right');
       applyKanjiHwDominantHandToBody();
       syncKanjiHwHandSwitchUI();
     }
