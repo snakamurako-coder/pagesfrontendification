@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="ja">ああ
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -5057,6 +5057,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           questions,
           index: 0,
           totalEarned: 0,
+          newTotalPoints: null,
           logs: [],
           selectedChoice: null
         };
@@ -5121,7 +5122,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         trainingMenuId: ctx.trainingMenuId
       });
     }
-    function showKanjiQuizResult(totalEarned, logs, isTrainingMode) {
+    function showKanjiQuizResult(totalEarned, logs, isTrainingMode, newTotalPoints) {
       restoreKanjiPracticeFrameIfMoved();
       switchSection('section-result');
       const rc = document.getElementById('result-content');
@@ -5133,10 +5134,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const mark = v.isCorrect ? "○" : "×";
         return `「${escapeHtml(v.kanji || "")}」 ${mark} ${Number(v.score || 0)}点 → +${Number(v.earned || 0).toFixed(2)}Pt`;
       }).join("<br>");
+      const totalLine = (typeof newTotalPoints === "number" && !isNaN(newTotalPoints))
+        ? `<p style="margin-top:8px;">合計ポイント: ${Number(newTotalPoints).toFixed(2)}</p>`
+        : "";
       rc.innerHTML = `<h2 class="kanji-result-title">✨ 漢字セット完了！ ✨</h2>
         <p class="kanji-result-pts">かくとくポイント: <span class="kanji-result-pts-val">+${Number(totalEarned || 0).toFixed(2)}</span></p>
         <hr class="kanji-result-hr">
-        <div class="kanji-result-logs">${rows || "結果なし"}</div>`;
+        <div class="kanji-result-logs">${rows || "結果なし"}</div>
+        ${totalLine}`;
       retryBtn.style.display = "block";
       retryBtn.innerText = "🔄 同じセットでもう一度";
       retryBtn.onclick = restartLastKanjiQuizSet;
@@ -5256,6 +5261,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       .then(r => r.json()).then(d => {
         if (d.status !== "success") throw new Error(d.message || "保存に失敗");
         kanjiQuizSession.totalEarned += Number(d.earnedPoints || 0);
+        kanjiQuizSession.newTotalPoints = Number(d.newTotal);
         kanjiQuizSession.logs.push({
           kanji: q.kanji,
           score: scoreForServer,
@@ -5265,18 +5271,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         });
         user.points = d.newTotal;
         localStorage.setItem('app_kid_user', JSON.stringify(user));
+        const ptsEl = document.getElementById("user-points");
+        if (ptsEl) ptsEl.innerText = String(d.newTotal);
         kanjiQuizSession.index += 1;
         if (kanjiQuizSession.index >= kanjiQuizSession.questions.length) {
           const finished = {
             totalEarned: kanjiQuizSession.totalEarned,
             logs: kanjiQuizSession.logs.slice(),
-            isTrainingMode: !!kanjiQuizSession.isTrainingMode
+            isTrainingMode: !!kanjiQuizSession.isTrainingMode,
+            newTotalPoints: Number(kanjiQuizSession.newTotalPoints)
           };
           if (kanjiQuizSession.isTrainingMode) {
             fetchTrainingRoute(user.id);
           }
           kanjiQuizSession = null;
-          showKanjiQuizResult(finished.totalEarned, finished.logs, finished.isTrainingMode);
+          showKanjiQuizResult(finished.totalEarned, finished.logs, finished.isTrainingMode, finished.newTotalPoints);
           return;
         }
         renderKanjiQuizQuestion();
