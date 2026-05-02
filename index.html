@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -499,17 +499,13 @@
       box-sizing: border-box;
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-type-badge {
-      margin: 0 !important;
-      display: inline-block;
-      position: static !important;
-      writing-mode: horizontal-tb !important;
-      text-orientation: mixed !important;
+      margin: 6px 0 0 0 !important;
+      display: block;
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-title,
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-char,
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-prompt,
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-summary,
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-write-slot-hint {
+    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-summary {
       writing-mode: vertical-rl;
       text-orientation: upright;
       text-align: start;
@@ -583,106 +579,20 @@
     }
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
       flex: 1;
-      min-height: 0;
-      writing-mode: horizontal-tb !important;
-      text-orientation: mixed !important;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
       display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: flex-start;
-      gap: 0;
-      padding: 12px 20px 16px 20px;
+      flex-direction: column; 
+      align-items: flex-start; /* Ensure elements hang from the top of the vertical block */
+      justify-content: flex-start; 
+      padding: 20px 120px 20px 40px;
       overflow-x: auto;
-      overflow-y: auto;
+      overflow-y: auto; /* Allow vertical scrolling if sentence is very long */
       width: 100%;
       box-sizing: border-box;
       margin: 0;
       max-width: none;
       position: relative;
-    }
-    /* メタ行・本文・フッタを横書きで積む（重なり・隠れを防ぐ） */
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-meta-row,
-    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-meta-row {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px 18px;
-      writing-mode: horizontal-tb;
-      text-orientation: mixed;
-      width: 100%;
-      box-sizing: border-box;
-      flex-shrink: 0;
-      padding: 4px 0 10px 0;
-      margin: 0 0 8px 0;
-      border-bottom: 1px solid #e8e0d8;
-    }
-    .kanji-quiz-drill-badge {
-      display: inline-block;
-      color: #6d4c41;
-      font-size: 14px;
-      min-height: 1.2em;
-      margin: 0;
-      position: static;
-    }
-    .kanji-quiz-drill-progress-num {
-      display: inline-block;
-      font-size: 15px;
-      font-weight: 800;
-      color: #c62828;
-      background: #ffebee;
-      padding: 4px 12px;
-      border-radius: 8px;
-      border: 1px solid #ef9a9a;
-      margin: 0;
-    }
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-body-row,
-    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-body-row {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: flex-start;
-      gap: 12px;
-      flex: 1 1 auto;
-      min-height: 0;
-      width: 100%;
-      box-sizing: border-box;
-      writing-mode: horizontal-tb;
-    }
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-vertical-flow,
-    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-vertical-flow {
-      flex: 1 1 auto;
-      min-width: 0;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: flex-start;
-    }
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-footer-bar,
-    #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-footer-bar {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 16px;
-      justify-content: flex-start;
-      writing-mode: horizontal-tb;
-      flex-shrink: 0;
-      width: 100%;
-      box-sizing: border-box;
-      padding-top: 12px;
-      margin-top: 10px;
-      border-top: 1px solid #e8e0d8;
-    }
-    .kanji-quiz-drill-footer-actions {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: flex-end;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section.active {
       background: #fff !important;
@@ -695,26 +605,22 @@
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
       max-width: 720px;
       margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      box-sizing: border-box;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap {
-      position: static;
-      flex-shrink: 0;
+      position: absolute;
+      top: 30px;
+      right: 20px;
+      bottom: 30px;
       width: 72px;
-      min-height: 120px;
-      align-self: stretch;
       display: flex;
       align-items: flex-start;
-      justify-content: flex-start;
+      justify-content: center;
       writing-mode: vertical-rl;
       text-orientation: upright;
       border-left: 1px solid #d8d0c4;
       padding-left: 8px;
       box-sizing: border-box;
-      pointer-events: auto;
+      pointer-events: none;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap #kanji-play-title {
       margin: 0;
@@ -845,7 +751,7 @@
       background: transparent; /* Camouflage with background */
       padding: 0; /* No padding to bring it closer */
       box-sizing: border-box;
-      overflow: visible;
+      overflow: hidden;
       align-self: center;
     }
     .kanji-drill-hw-prefix-col {
@@ -854,12 +760,7 @@
     .kanji-drill-hw-suffix-col {
       justify-content: flex-start;
     }
-    .kanji-drill-q-marker {
-      margin: 0 0.15em 0 0;
-      color: #c62828;
-      font-weight: 900;
-      flex-shrink: 0;
-    }
+    .kanji-drill-q-marker { margin: 0 0.15em 0 0; }
     .kanji-drill-hw-actions { flex-shrink: 0; }
     .kanji-drill-penstrip {
       display: flex;
@@ -981,33 +882,8 @@
       align-items: center;
       justify-content: center;
     }
-    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
-      font-size: clamp(16px, 3.5vw, 20px);
-      font-weight: bold;
-      color: #666;
-      margin: 0;
-      padding: 10px 12px;
-      min-height: 160px;
-      box-sizing: border-box;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      border: 2px solid #cfd8dc;
-      border-radius: 8px;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #kanji-play-write-slot-hint {
-      font-size: clamp(16px, 3.5vw, 22px) !important;
-      color: #c62828 !important;
-      font-weight: bold;
-    }
-    #kanji-play-write-slot-hint.kanji-drill-hw-hint-box {
-      color: #666 !important;
-    }
     #kanji-play-char-handwriting,
-    #kanji-play-write-slot-hint {
+    #kanji-play-type-badge {
       pointer-events: none;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-drill-choice-btn {
@@ -1237,66 +1113,59 @@
     </div>
   </div>
   <div id="section-kanji-quiz-play" class="section kanji-quiz-drill-section">
+    <span id="kanji-play-type-badge" style="display:block;margin-top:4px;color:#6d4c41;font-size:14px;min-height:1.2em;position:absolute;"></span>
+    <div style="position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:16px; align-items:center; writing-mode:horizontal-tb; z-index:100;">
+      <div id="kanji-drill-pen-controls" style="display:none; flex-direction:column; gap:8px; align-items:center;">
+        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
+        <button type="button" class="kanji-drill-vbtn-small is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
+        <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
+      </div>
+      <div style="display:flex; flex-direction:row; gap:12px; align-items:flex-end;">
+        <button type="button" class="kanji-drill-vbtn-small" style="background:#f44336; color:#fff; border-color:#d32f2f;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
+        <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
+      </div>
+    </div>
     <div class="kanji-quiz-drill-wrap">
-      <div class="kanji-quiz-drill-meta-row">
-        <span id="kanji-play-type-badge" class="kanji-quiz-drill-badge"></span>
-        <span id="kanji-play-progress" class="kanji-quiz-drill-progress-num">1 / 1</span>
+      <span id="kanji-play-progress">1 / 1</span>
+      <div class="kanji-quiz-title-rail-wrap">
+        <h1 id="kanji-play-title">漢字ドリル</h1>
       </div>
-      <div class="kanji-quiz-drill-body-row">
-        <div class="kanji-quiz-drill-vertical-flow">
-          <div style="display:flex; flex-direction:column; justify-content:flex-start; margin-left:16px;">
-            <div>
-              <div class="kanji-quiz-drill-head" style="margin-left:0;">
-              </div>
+      <div style="display:flex; flex-direction:column; justify-content:flex-start; margin-left:16px;">
+        <div>
+          <div class="kanji-quiz-drill-head" style="margin-left:0;">
+          </div>
+        </div>
+      </div>
+      <div class="kanji-quiz-drill-reading" id="kanji-play-char"></div>
+      <div id="kanji-play-prompt"></div>
+      <div id="kanji-play-detail"></div>
+      <div id="kanji-play-choices" class="kanji-quiz-ui-horizontal" style="display:none;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:stretch;"></div>
+      <div id="kanji-play-typing-wrap" class="kanji-quiz-ui-horizontal" style="margin-top:12px;display:none;">
+        <input type="text" id="kanji-play-input" inputmode="text" autocomplete="off" lang="ja" placeholder="よみを入力" style="width:100%;max-width:400px;padding:14px;border-radius:8px;box-sizing:border-box;">
+        <p style="font-size:15px;color:#555;margin:8px 0 0;">音は<strong>カタカナ</strong>、訓は<strong>ひらがな</strong></p>
+      </div>
+      <div id="kanji-quiz-drill-handwriting" style="display:none;">
+        <div class="kanji-drill-hw-row">
+          <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
+            <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
+          </div>
+          <div class="kanji-drill-hw-canvas-panel">
+            <div id="kanji-hw-canvas-actions" class="kanji-drill-hw-panel-btns" style="display:none;">
+              <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
+              <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
+              <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
+            </div>
+            <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0; z-index:2;"></canvas>
+            <div class="kanji-drill-hw-panel-aside">
+              <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside kanji-drill-hw-ruby-box"></div>
             </div>
           </div>
-          <div class="kanji-quiz-drill-reading" id="kanji-play-char"></div>
-          <div id="kanji-play-prompt"></div>
-          <div id="kanji-play-detail"></div>
-          <div id="kanji-play-choices" class="kanji-quiz-ui-horizontal" style="display:none;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:stretch;"></div>
-          <div id="kanji-play-typing-wrap" class="kanji-quiz-ui-horizontal" style="margin-top:12px;display:none;">
-            <input type="text" id="kanji-play-input" inputmode="text" autocomplete="off" lang="ja" placeholder="よみを入力" style="width:100%;max-width:400px;padding:14px;border-radius:8px;box-sizing:border-box;">
-            <p style="font-size:15px;color:#555;margin:8px 0 0;">音は<strong>カタカナ</strong>、訓は<strong>ひらがな</strong></p>
+          <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
+            <span id="kanji-drill-ctx-suffix" class="kanji-drill-context-inline"></span>
           </div>
-          <div id="kanji-quiz-drill-handwriting" style="display:none;">
-            <div class="kanji-drill-hw-row">
-              <div class="kanji-drill-hw-prefix-col" id="kanji-drill-hw-prefix-col" aria-hidden="false">
-                <span class="kanji-drill-q-marker" id="kanji-drill-q-marker"></span><span id="kanji-drill-ctx-prefix" class="kanji-drill-context-inline"></span>
-              </div>
-              <div class="kanji-drill-hw-canvas-panel">
-                <div id="kanji-hw-canvas-actions" class="kanji-drill-hw-panel-btns" style="display:none;">
-                  <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
-                  <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
-                  <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
-                </div>
-                <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0;"></canvas>
-                <div class="kanji-drill-hw-panel-aside">
-                  <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside kanji-drill-hw-ruby-box"></div>
-                  <p id="kanji-play-write-slot-hint" class="kanji-drill-slot-hint kanji-drill-hw-hint-box"></p>
-                </div>
-              </div>
-              <div class="kanji-drill-hw-suffix-col" id="kanji-drill-hw-suffix-col" aria-hidden="false">
-                <span id="kanji-drill-ctx-suffix" class="kanji-drill-context-inline"></span>
-              </div>
-            </div>
-          </div>
-          <div id="kanji-play-summary"></div>
-        </div>
-        <div class="kanji-quiz-title-rail-wrap">
-          <h1 id="kanji-play-title">漢字ドリル</h1>
         </div>
       </div>
-      <div class="kanji-quiz-drill-footer-bar">
-        <div id="kanji-drill-pen-controls" style="display:none; flex-direction:column; gap:8px; align-items:center;">
-          <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-thick" onclick="kanjiQuizSetPenWidth(14)">ふとい</button>
-          <button type="button" class="kanji-drill-vbtn-small is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
-          <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
-        </div>
-        <div class="kanji-quiz-drill-footer-actions">
-          <button type="button" class="kanji-drill-vbtn-small" style="background:#f44336; color:#fff; border-color:#d32f2f;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
-          <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
-        </div>
-      </div>
+      <div id="kanji-play-summary"></div>
     </div>
   </div>
   
@@ -3971,8 +3840,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizSession.lastHandScore = null;
       const nextCh = targets[slot + 1];
       if (!selectKanjiCharInQuizFrame(nextCh)) return;
-      const hint = document.getElementById("kanji-play-write-slot-hint");
-      if (hint) hint.innerText = "だい " + (slot + 2) + " もじ／" + targets.length;
       const sum = document.getElementById("kanji-play-summary");
       if (sum) sum.innerHTML = "";
       kanjiQuizClearWritePad(true);
@@ -4150,8 +4017,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (subBtn) subBtn.style.display = "none";
       const summary = document.getElementById("kanji-play-summary");
       if (summary) summary.innerHTML = "";
-      const hint = document.getElementById("kanji-play-write-slot-hint");
-      if (hint) hint.innerText = "";
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       if (drillHand) drillHand.style.display = "none";
       const penCtrls = document.getElementById("kanji-drill-pen-controls");
@@ -4237,8 +4102,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           alert("手書き対象の漢字が見つかりません。");
           return;
         }
-        const hint = document.getElementById("kanji-play-write-slot-hint");
-        if (hint) hint.innerText = "だい 1 もじ／" + targets.length;
         const ctxDrill = parseMaskedForDrill(q.maskedSentence);
         const qn = kanjiQuizCircledQuestionNum(kanjiQuizSession.index + 1);
         if (markerEl) markerEl.textContent = qn;
@@ -6047,9 +5910,3 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
   <div id="kp-pro-frame-quiz-hidden" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:4px;height:4px;overflow:hidden;clip:rect(0,0,0,0);pointer-events:none;"></div>
 </body>
 </html>
-
-
-
-
-
-
