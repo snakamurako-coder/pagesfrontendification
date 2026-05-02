@@ -3795,6 +3795,17 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           };
           box.appendChild(b);
         });
+        try {
+          if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(function () {
+              ensureKanjiPracticeFrameReady();
+            }, { timeout: 2500 });
+          } else {
+            setTimeout(function () {
+              ensureKanjiPracticeFrameReady();
+            }, 120);
+          }
+        } catch (e) {}
       };
       if (__kanjiQuizSetsSessionCache[setsCacheKey]) {
         renderSetsButtons(__kanjiQuizSetsSessionCache[setsCacheKey]);
@@ -4355,7 +4366,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return false;
       }
     }
-    /** 正解漢字それぞれの KanjiVG 参照を裏で先読み（採点・手書き用） */
+    /** 現在マスの漢字だけ KanjiVG を初期化（全文字ループは省略して初回表示を高速化） */
     function preloadKanjiQuizTargetsInFrame(targets, activeChar) {
       const frame = document.getElementById("kp-pro-frame");
       const win = frame && frame.contentWindow;
@@ -4370,13 +4381,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
             return false;
           }
-          sel.value = ch;
-          if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         }
-        if (activeChar) {
-          sel.value = activeChar;
-          if (typeof win.initTargetKanji === "function") win.initTargetKanji();
-        }
+        const tActive = activeChar || targets[0];
+        sel.value = tActive;
+        if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
       } catch (e) {
@@ -4591,18 +4599,35 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizSetPenWidth(8);
         kanjiQuizClearWritePad(false);
         kanjiQuizSetupWriteCanvas();
+        if (summary) {
+          summary.innerHTML =
+            "<span style=\"color:#607d8b;font-size:clamp(12px,3vw,14px);\">さいてんようの データを じゅんびしています…</span>";
+        }
         ensureKanjiHwFrameReadyOnce().then(function () {
           const sec = document.getElementById("section-kanji-quiz-play");
-          if (!sec || !sec.classList.contains("active")) return;
-          if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) return;
+          if (!sec || !sec.classList.contains("active")) {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
+          if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
           const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
-          if (!qNow || qNow.type !== "ruby_to_kanji") return;
+          if (!qNow || qNow.type !== "ruby_to_kanji") {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
           ensureKanjiFrameForQuizEval();
-          if (!preloadKanjiQuizTargetsInFrame(targets, t0)) return;
+          if (!preloadKanjiQuizTargetsInFrame(targets, t0)) {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
           if (charHand) charHand.textContent = qNow.readingDisplay || "";
           kanjiQuizSetPenWidth(8);
           kanjiQuizClearWritePad(true);
           kanjiQuizSetupWriteCanvas();
+          if (summary) summary.innerHTML = "";
         });
       } else {
         restoreKanjiPracticeFrameIfMoved();
@@ -4668,7 +4693,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
     }
     function startKanjiQuizPlay(ctx) {
-      clearKanjiHwFrameReadyCache();
       const mode = ctx.formatMode != null ? ctx.formatMode : getKanjiQuizFormatMode();
       let questions;
       if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
@@ -4688,11 +4712,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         Array.isArray(ctx.allQuestions) && ctx.allQuestions.length
           ? ctx.allQuestions
           : questions.slice();
-      const hasHandwriting = questions.some(function (qq) {
-        return qq.type === "ruby_to_kanji";
-      });
-      const firstIsHandwriting =
-        questions[0] && questions[0].type === "ruby_to_kanji";
       const proceed = function () {
         kanjiQuizSession = {
           modeId: ctx.modeId,
@@ -4723,11 +4742,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         switchSection("section-kanji-quiz-play");
         renderKanjiQuizQuestion();
       };
-      if (hasHandwriting && firstIsHandwriting) {
-        ensureKanjiHwFrameReadyOnce().then(proceed);
-      } else {
-        proceed();
-      }
+      proceed();
     }
     function restartLastKanjiQuizSet() {
       const ctx = lastKanjiQuizContext;

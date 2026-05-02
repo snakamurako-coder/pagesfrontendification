@@ -1318,14 +1318,42 @@ function buildKanjiQuizProblemList_(group) {
   });
 }
 
+/** 同一シートの解析結果を短時間キャッシュし、get_kanji_quiz_sets → get_kanji_quiz_questions の連続で Spreadsheet 再読みを避ける */
+function kanjiQuizSheetParsedCacheKey_(modeId, unitName) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.MD5,
+    String(modeId) + "\x1f" + String(unitName),
+    Utilities.Charset.UTF_8
+  );
+  return "kq_sh_" + Utilities.base64EncodeWebSafe(digest).slice(0, 36);
+}
+
+function getKanjiQuizParsedFromSpreadsheet_(modeId, unitName) {
+  const cache = CacheService.getScriptCache();
+  const key = kanjiQuizSheetParsedCacheKey_(modeId, unitName);
+  const hit = cache.get(key);
+  if (hit) {
+    try {
+      return { parsed: JSON.parse(hit), sheetMissing: false };
+    } catch (e) {}
+  }
+  const sheet = SpreadsheetApp.openById(modeId).getSheetByName(unitName);
+  if (!sheet) return { parsed: null, sheetMissing: true };
+  const parsed = parseKanjiQuizSheet_(sheet);
+  try {
+    cache.put(key, JSON.stringify(parsed), 300);
+  } catch (e) {}
+  return { parsed: parsed, sheetMissing: false };
+}
+
 function handleGetKanjiQuizSets(req) {
   const modeId = String(req.modeId || "").trim();
   const unitName = String(req.unitName || "").trim();
   if (!modeId || !unitName) return sendResponse({ status: "error", message: "modeId と unitName が必要です。" });
   try {
-    const sheet = SpreadsheetApp.openById(modeId).getSheetByName(unitName);
-    if (!sheet) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
-    const parsed = parseKanjiQuizSheet_(sheet);
+    const got = getKanjiQuizParsedFromSpreadsheet_(modeId, unitName);
+    if (got.sheetMissing) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+    const parsed = got.parsed;
     const sets = parsed.groups.map(g => ({
       setId: g.setId,
       count: g.items.length,
@@ -1343,9 +1371,9 @@ function handleGetKanjiQuizQuestions(req) {
   const setId = String(req.setId || "").trim();
   if (!modeId || !unitName || !setId) return sendResponse({ status: "error", message: "modeId / unitName / setId が必要です。" });
   try {
-    const sheet = SpreadsheetApp.openById(modeId).getSheetByName(unitName);
-    if (!sheet) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
-    const parsed = parseKanjiQuizSheet_(sheet);
+    const got = getKanjiQuizParsedFromSpreadsheet_(modeId, unitName);
+    if (got.sheetMissing) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+    const parsed = got.parsed;
     const group = parsed.groups.find(g => String(g.setId) === setId);
     if (!group) return sendResponse({ status: "error", message: "指定セットが見つかりません。" });
     const questions = buildKanjiQuizProblemList_(group);
