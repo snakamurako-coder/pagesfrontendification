@@ -4824,19 +4824,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           function check() {
             patchKanjiFrameForQuizPostMessage(frame);
             const kd = win.KANJI_DATA;
-            if (kd && typeof kd === "object" && Object.keys(kd).length > 0) {
-              finish();
-              return true;
-            }
-            return false;
+            return !!(kd && typeof kd === "object" && Object.keys(kd).length > 0);
           }
 
-          if (check()) return;
+          if (check()) {
+            finish();
+            return;
+          }
 
           let n = 0;
           pollId = setInterval(function () {
             n++;
-            if (check()) return;
+            if (check()) {
+              finish();
+              return;
+            }
             if (n >= 60) finish();
           }, 80);
         }
