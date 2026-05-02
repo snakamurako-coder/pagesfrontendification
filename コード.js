@@ -340,6 +340,8 @@ function doPost(e) {
     else if (action === "get_kanji_data_from_sheet") return handleGetKanjiDataFromSheet(requestData);
     else if (action === "get_kanji_quiz_sets") return handleGetKanjiQuizSets(requestData);
     else if (action === "get_kanji_quiz_questions") return handleGetKanjiQuizQuestions(requestData);
+    else if (action === "append_kanji_weak_signals") return handleAppendKanjiWeakSignals(requestData);
+    else if (action === "get_kanji_weak_review_plan") return handleGetKanjiWeakReviewPlan(requestData);
     
     // ★ 特訓ルート用のAPI
     else if (action === "get_training_route") return handleGetTrainingRoute(requestData);
@@ -1397,4 +1399,313 @@ function handleGetKanjiQuizQuestions(req) {
   } catch (e) {
     return sendResponse({ status: "error", message: "漢字問題取得に失敗しました: " + e.message });
   }
+}
+
+// ==========================================
+// 漢字ニガテ（弱みシグナル・復習プラン）
+// ==========================================
+var KANJI_WEAK_MAX_KEYS_ = 120;
+var KANJI_WEAK_RECENT_MAX_ = 6;
+
+function kanjiWeakEntryKey_(modeId, unitName, setId, kanji) {
+  return String(modeId) + "\x1f" + String(unitName) + "\x1f" + String(setId) + "\x1f" + String(kanji);
+}
+
+function trimKanjiWeakEntries_(weakRoot) {
+  if (!weakRoot || typeof weakRoot !== "object") return;
+  var ent = weakRoot.entries;
+  if (!ent || typeof ent !== "object") return;
+  var keys = Object.keys(ent);
+  if (keys.length <= KANJI_WEAK_MAX_KEYS_) return;
+  var scored = keys.map(function (k) {
+    var e = ent[k] || {};
+    var sum =
+      (Number(e.w_strokeOrder) || 0) +
+      (Number(e.w_brush) || 0) +
+      (Number(e.w_strokeCount) || 0) +
+      (Number(e.w_reading) || 0);
+    return { k: k, s: sum };
+  });
+  scored.sort(function (a, b) {
+    return a.s - b.s;
+  });
+  var drop = keys.length - KANJI_WEAK_MAX_KEYS_;
+  for (var i = 0; i < drop && i < scored.length; i++) {
+    delete ent[scored[i].k];
+  }
+}
+
+/** 中央 KanjiVG シートから画数マップ（1文字→画数） */
+function loadKanjiVgStrokeCounts_() {
+  var prop = PropertiesService.getScriptProperties();
+  var sheetId = prop.getProperty("KANJI_SHEET_ID");
+  if (!sheetId) {
+    var folderId = prop.getProperty("KANJI_MATERIALS_FOLDER_ID");
+    if (folderId) {
+      try {
+        var files = DriveApp.getFolderById(folderId).getFilesByType(MimeType.GOOGLE_SHEETS);
+        if (files.hasNext()) sheetId = files.next().getId();
+      } catch (_) {}
+    }
+  }
+  var out = {};
+  if (!sheetId) return out;
+  try {
+    var ss = SpreadsheetApp.openById(sheetId);
+    var sheet = ss.getSheetByName("KanjiVG.txt");
+    if (!sheet) return out;
+    var values = sheet.getDataRange().getValues();
+    for (var i = 0; i < values.length; i++) {
+      var kanji = values[i][0];
+      if (!kanji || String(kanji).trim().length !== 1) continue;
+      var paths = [];
+      for (var j = 2; j < values[i].length; j++) {
+        var cellValue = values[i][j];
+        if (!cellValue) continue;
+        var strVal = String(cellValue).trim();
+        if (!strVal) continue;
+        if (strVal.indexOf("|") >= 0) {
+          strVal.split("|").forEach(function (p) {
+            var cleaned = String(p || "").trim();
+            if (cleaned && (cleaned.charAt(0) === "M" || cleaned.charAt(0) === "m")) paths.push(cleaned);
+          });
+        } else if (strVal.charAt(0) === "M" || strVal.charAt(0) === "m") {
+          paths.push(strVal);
+        }
+      }
+      if (paths.length > 0) out[String(kanji).trim()] = paths.length;
+    }
+  } catch (_) {}
+  return out;
+}
+
+function buildStrokeCountQuizQuestion_(item, strokeN, qIndex, setId) {
+  var k = String(item.kanji || "");
+  if (!k || strokeN < 1) return null;
+  var pool = [];
+  for (var d = -4; d <= 4; d++) {
+    if (d === 0) continue;
+    var v = strokeN + d;
+    if (v >= 1 && v <= 40) pool.push(v);
+  }
+  pool = shuffleKanjiQuizArray_(pool).slice(0, 4);
+  var choices = shuffleKanjiQuizArray_([strokeN].concat(pool));
+  var uniq = [];
+  var seen = {};
+  choices.forEach(function (c) {
+    var s = String(c);
+    if (!seen[s]) {
+      seen[s] = true;
+      uniq.push(s);
+    }
+  });
+  if (uniq.indexOf(String(strokeN)) < 0) uniq[0] = String(strokeN);
+  return {
+    type: "stroke_count",
+    kanji: k,
+    rowIndex: item.rowIndex,
+    prompt: "この漢字は何画ですか？",
+    choices: uniq,
+    correctAnswer: String(strokeN),
+    searchText: k + " " + strokeN,
+    questionIndex: qIndex,
+    questionId: "KANJI_Q_" + String(setId) + "_" + item.rowIndex + "_stroke_count_" + qIndex
+  };
+}
+
+function handleAppendKanjiWeakSignals(req) {
+  var userId = req.userId;
+  var signals = req.signals;
+  if (!userId) return sendResponse({ status: "error", message: "userId が必要です。" });
+  if (!Array.isArray(signals) || signals.length === 0) {
+    return sendResponse({ status: "success", merged: 0 });
+  }
+  if (signals.length > 24) signals = signals.slice(0, 24);
+
+  var props = PropertiesService.getScriptProperties();
+  var adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  var usersSheet = adminSs.getSheetByName("users");
+  var data = usersSheet.getDataRange().getValues();
+  var targetRowIdx = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      targetRowIdx = i + 1;
+      break;
+    }
+  }
+  if (targetRowIdx === -1) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+
+  var historyJson = JSON.parse(data[targetRowIdx - 1][5] || "{}");
+  if (!historyJson.__kanjiWeak || typeof historyJson.__kanjiWeak !== "object") {
+    historyJson.__kanjiWeak = { v: 1, entries: {} };
+  }
+  var root = historyJson.__kanjiWeak;
+  if (!root.entries || typeof root.entries !== "object") root.entries = {};
+
+  var nowIso = new Date().toISOString();
+  var merged = 0;
+
+  signals.forEach(function (sig) {
+    var modeId = String(sig.modeId || "").trim();
+    var unitName = String(sig.unitName || "").trim();
+    var setId = String(sig.setId != null ? sig.setId : "").trim();
+    var kanji = String(sig.kanjiChar || sig.kanji || "").trim();
+    if (!modeId || !unitName || !setId || !kanji || kanji.length !== 1) return;
+    var key = kanjiWeakEntryKey_(modeId, unitName, setId, kanji);
+    var e = root.entries[key];
+    if (!e) {
+      e = {
+        modeId: modeId,
+        unitName: unitName,
+        setId: setId,
+        kanji: kanji,
+        w_strokeOrder: 0,
+        w_brush: 0,
+        w_strokeCount: 0,
+        w_reading: 0,
+        recent: []
+      };
+      root.entries[key] = e;
+    }
+    if (sig.hasStrokeOrderIssue === true) e.w_strokeOrder += 1;
+    if (sig.brushEndingAllOk === false) e.w_brush += 1;
+    if (sig.strokeCountMismatch === true) e.w_strokeCount += 1;
+    if (sig.readingMistake === true) e.w_reading += 1;
+    if (sig.strokeCountQuizWrong === true) e.w_strokeCount += 1;
+    e.updatedAt = nowIso;
+    var rec = {
+      at: sig.at || nowIso,
+      hso: !!sig.hasStrokeOrderIssue,
+      bak: sig.brushEndingAllOk !== false,
+      scm: !!sig.strokeCountMismatch,
+      rm: !!sig.readingMistake
+    };
+    if (!Array.isArray(e.recent)) e.recent = [];
+    e.recent.push(rec);
+    while (e.recent.length > KANJI_WEAK_RECENT_MAX_) e.recent.shift();
+    merged++;
+  });
+
+  trimKanjiWeakEntries_(root);
+  usersSheet.getRange(targetRowIdx, 6).setValue(JSON.stringify(historyJson));
+  return sendResponse({ status: "success", merged: merged, historyJson: historyJson });
+}
+
+function handleGetKanjiWeakReviewPlan(req) {
+  var userId = req.userId;
+  var modeId = String(req.modeId || "").trim();
+  var unitName = String(req.unitName || "").trim();
+  var setIds = Array.isArray(req.setIds) ? req.setIds.map(function (x) { return String(x); }) : [];
+  var axis = String(req.nigateAxis || "stroke_order").trim();
+  var limit = Math.max(1, Math.min(24, parseInt(req.limit, 10) || 12));
+
+  if (!userId || !modeId || !unitName) {
+    return sendResponse({ status: "error", message: "userId / modeId / unitName が必要です。" });
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  var usersSheet = adminSs.getSheetByName("users");
+  var data = usersSheet.getDataRange().getValues();
+  var historyJson = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      historyJson = JSON.parse(data[i][5] || "{}");
+      break;
+    }
+  }
+
+  var weakRoot = historyJson.__kanjiWeak;
+  var entries = weakRoot && weakRoot.entries ? weakRoot.entries : {};
+  var axisField =
+    axis === "brush"
+      ? "w_brush"
+      : axis === "stroke_count"
+        ? "w_strokeCount"
+        : axis === "reading"
+          ? "w_reading"
+          : "w_strokeOrder";
+
+  var scored = [];
+  Object.keys(entries).forEach(function (k) {
+    var e = entries[k];
+    if (!e) return;
+    if (String(e.modeId) !== modeId) return;
+    if (String(e.unitName) !== unitName) return;
+    if (setIds.length && setIds.indexOf(String(e.setId)) < 0) return;
+    var w = Number(e[axisField]) || 0;
+    if (w < 1) return;
+    scored.push({ e: e, w: w, kanji: String(e.kanji || "") });
+  });
+  scored.sort(function (a, b) {
+    return b.w - a.w;
+  });
+
+  if (!scored.length) {
+    return sendResponse({ status: "success", questions: [], message: "このスコープ・軸では弱みデータがありません。" });
+  }
+
+  var got = getKanjiQuizParsedFromSpreadsheet_(modeId, unitName);
+  if (got.sheetMissing) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+  var parsed = got.parsed;
+  var groups = (parsed.groups || []).filter(function (g) {
+    return !setIds.length || setIds.indexOf(String(g.setId)) >= 0;
+  });
+  if (!groups.length) return sendResponse({ status: "error", message: "セットが見つかりません。" });
+
+  var dummyPoolByKanji = {};
+  try {
+    var allItems = [];
+    groups.forEach(function (g) {
+      (g.items || []).forEach(function (it) {
+        allItems.push(it);
+      });
+    });
+    dummyPoolByKanji = collectOkuriganaDummyPoolByKanjiKanjiQuiz_(allItems);
+  } catch (_) {}
+
+  var strokeMap = axis === "stroke_count" ? loadKanjiVgStrokeCounts_() : {};
+
+  function findItemForKanji(kanji) {
+    for (var gi = 0; gi < groups.length; gi++) {
+      var g = groups[gi];
+      for (var ii = 0; ii < (g.items || []).length; ii++) {
+        if (String(g.items[ii].kanji) === String(kanji)) return { group: g, item: g.items[ii] };
+      }
+    }
+    return null;
+  }
+
+  var questions = [];
+  var qCounter = 0;
+  for (var si = 0; si < scored.length && questions.length < limit; si++) {
+    var kanji = scored[si].kanji;
+    if (!kanji || kanji.length !== 1) continue;
+    var found = findItemForKanji(kanji);
+    if (!found) continue;
+    var item = found.item;
+    var setId = String(found.group.setId);
+    var q = null;
+    if (axis === "stroke_order" || axis === "brush") {
+      q = buildRubyToKanjiQuizQuestion_(item);
+    } else if (axis === "reading") {
+      if (Math.random() < 0.5) q = buildSentenceToRubyQuizQuestion_(item);
+      else q = buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji);
+    } else if (axis === "stroke_count") {
+      var sn = strokeMap[kanji];
+      if (!sn) continue;
+      q = buildStrokeCountQuizQuestion_(item, sn, qCounter, setId);
+    }
+    if (!q) continue;
+    q.questionIndex = qCounter;
+    q.questionId =
+      q.questionId ||
+      "KANJI_NIGATE_" + axis + "_" + setId + "_" + item.rowIndex + "_" + qCounter;
+    q.nigateSourceSetId = setId;
+    qCounter++;
+    questions.push(q);
+  }
+
+  questions = shuffleKanjiQuizArray_(questions).slice(0, limit);
+  return sendResponse({ status: "success", questions: questions, nigateAxis: axis });
 }
