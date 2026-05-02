@@ -599,7 +599,10 @@ function handleSaveLearningSession(req) {
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
   let multiplier = 1.0;
-  const lastStudyTimeStr = userData.lastStudyJson[req.unitId];
+  // 漢字セットは教材＋セット単位で前回学習を参照。同一プレイ中の2問目以降は短間隔扱いにせず、直前の1問内の減衰を防ぐ
+  const lastStudyKey = String(req.kanjiSetScopeId || req.unitId || "");
+  let lastStudyTimeStr = lastStudyKey ? userData.lastStudyJson[lastStudyKey] : undefined;
+  if (req.kanjiSetContinuation) lastStudyTimeStr = null;
 
   // 時間経過による緩和（通常ポイント計算）
   if (lastStudyTimeStr) {
@@ -630,12 +633,21 @@ function handleSaveLearningSession(req) {
     if (!Array.isArray(cHist.highScoreDates)) cHist.highScoreDates = [];
     const recoveryRate = calcKanjiCharRecoveryRate_(cHist.highScoreDates, now, settings);
     sessionRawPoints = Math.round(basePt * recoveryRate * 100) / 100;
-    if (basePt >= 3) cHist.highScoreDates.push(now.toISOString());
+    // 手書きの実スコアなどで60未満なら高得点カウントしない（アプリ設定の「合格」相当）
+    if (score >= 60) cHist.highScoreDates.push(now.toISOString());
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     cHist.highScoreDates = cHist.highScoreDates
       .map(v => new Date(v))
       .filter(d => !isNaN(d.getTime()) && d >= weekAgo)
       .map(d => d.toISOString());
+    const qHistId = req.questionId;
+    if (qHistId) {
+      if (!unitHistory[qHistId]) unitHistory[qHistId] = { results: [], times: [] };
+      unitHistory[qHistId].results.push(req.questionCorrect === true ? 1 : 0);
+      if (unitHistory[qHistId].results.length > 10) unitHistory[qHistId].results.shift();
+      unitHistory[qHistId].times.push(typeof req.timeSec === "number" ? req.timeSec : 0);
+      if (unitHistory[qHistId].times.length > 10) unitHistory[qHistId].times.shift();
+    }
   } else {
 
     req.results.forEach(res => {
@@ -662,7 +674,7 @@ function handleSaveLearningSession(req) {
   
   userData.dailyPointsJson[todayStr] = (userData.dailyPointsJson[todayStr] || 0) + earnedPoints;
   userData.dailyPointsJson[todayStr] = Math.round(userData.dailyPointsJson[todayStr] * 100) / 100;
-  userData.lastStudyJson[req.unitId] = now.toISOString();
+  if (lastStudyKey) userData.lastStudyJson[lastStudyKey] = now.toISOString();
 
   // ★ 特訓ルートのステップをクリアした場合は、今日の進捗にチェックを入れる（メニューID別）
   if (req.trainingStepIndex) {

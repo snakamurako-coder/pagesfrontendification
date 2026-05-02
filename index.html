@@ -669,6 +669,62 @@
       max-width: none;
       position: relative;
     }
+    /* 縦持ちタブレット・狭い幅：横に詰めすぎない／固定100vhのクリップを避ける */
+    @media (max-width: 900px) {
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-drill-wrap {
+        padding: 12px 52px 14px 10px !important;
+      }
+      #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap {
+        right: 6px;
+        width: 48px;
+        top: 16px;
+        bottom: 16px;
+        padding-left: 4px;
+      }
+      #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-title-rail-wrap #kanji-play-title {
+        font-size: clamp(13px, 3.4vw, 18px);
+      }
+      body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.active {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        max-height: none;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      #section-kanji-quiz-play.kanji-quiz-drill-section.active {
+        min-height: 100dvh;
+      }
+      body.kanji-study-mode #section-result.active {
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        padding: 24px 12px;
+      }
+      body.kanji-study-mode #section-result.active button {
+        min-width: 0;
+        width: 100%;
+        max-width: min(280px, 88vw);
+      }
+      body.kanji-study-mode #section-kanji-learning.active,
+      body.kanji-study-mode #section-kanji-quiz-sets.active,
+      body.kanji-study-mode #section-materials.active {
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: stretch;
+      }
+      body.kanji-study-mode .kanji-result-logs {
+        max-width: min(92vw, 42rem);
+      }
+    }
     #section-kanji-quiz-play.kanji-quiz-drill-section.active {
       background: #fff !important;
       color: #1a1a1a !important;
@@ -4197,6 +4253,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return;
       }
       kanjiQuizHideWrongFeedback();
+      const scNum = Number(sc);
+      if (!isNaN(scNum)) {
+        const pm = kanjiQuizSession.rubyHandMinScore;
+        kanjiQuizSession.rubyHandMinScore = pm == null || isNaN(pm) ? scNum : Math.min(pm, scNum);
+      }
       const targets = kanjiQuizSession.rubyHandTargets || [];
       const slot = kanjiQuizSession.rubyHandSlot || 0;
       if (slot + 1 >= targets.length) {
@@ -4585,6 +4646,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizSession.rubyHandComplete = false;
         kanjiQuizSession.rubyHandKanjiVgPass = false;
         kanjiQuizSession.lastHandScore = null;
+        kanjiQuizSession.rubyHandMinScore = null;
         if (!targets.length) {
           alert("手書き対象の漢字が見つかりません。");
           return;
@@ -4870,7 +4932,17 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         isCorrect = normalizeKanjiQuizInput(userRaw) === normalizeKanjiQuizInput(q.correctAnswer);
       }
-      const score = isCorrect ? 100 : 0;
+      var scoreForServer = 0;
+      if (isCorrect) {
+        if (q.type === "ruby_to_kanji") {
+          const m = kanjiQuizSession.rubyHandMinScore;
+          const fall = Number(kanjiQuizSession.lastHandScore);
+          var v = m != null && !isNaN(m) ? m : (!isNaN(fall) && fall > 0 ? fall : 100);
+          scoreForServer = Math.max(0, Math.min(100, Math.round(v)));
+        } else {
+          scoreForServer = 100;
+        }
+      }
       kanjiQuizSession.selectedChoice = null;
       const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
       if (!user || !user.id) {
@@ -4881,6 +4953,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       __kanjiQuizSubmitInFlight = true;
       const qid = q.questionId || (`${q.kanji}_${kanjiQuizSession.index}_${q.type}`);
       const unitId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}_${qid}`;
+      const kanjiSetScopeId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}`;
       const payload = {
         action: "save_learning_session",
         userId: user.id,
@@ -4892,7 +4965,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         learningCategory: "kanji",
         challengeType: "score",
         kanjiChar: q.kanji,
-        score: score
+        score: scoreForServer,
+        questionId: qid,
+        questionCorrect: isCorrect,
+        kanjiSetScopeId: kanjiSetScopeId,
+        kanjiSetContinuation: kanjiQuizSession.index > 0
       };
       if (kanjiQuizSession.isTrainingMode) {
         payload.trainingStepIndex = kanjiQuizSession.trainingStepIndex;
@@ -4910,7 +4987,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizSession.totalEarned += Number(d.earnedPoints || 0);
         kanjiQuizSession.logs.push({
           kanji: q.kanji,
-          score: score,
+          score: scoreForServer,
           earned: Number(d.earnedPoints || 0),
           isCorrect: isCorrect,
           qType: q.type
