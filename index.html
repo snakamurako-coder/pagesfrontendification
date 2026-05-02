@@ -313,6 +313,55 @@
       margin: 0 0 0 10px;
       text-align: start;
     }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-setting {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      margin: 0 12px 0 0;
+      max-height: min(72vh, 480px);
+      text-align: start;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-setting-label {
+      display: block;
+      font-size: clamp(14px, 3vw, 17px);
+      color: #333;
+      font-weight: 700;
+      margin: 0 0 0 8px;
+      letter-spacing: 0.04em;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-toggle {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      display: inline-flex;
+      background: #fff;
+      border: 2px solid #a99880;
+      border-radius: 999px;
+      padding: 3px;
+      margin: 0 0 10px 0;
+      box-sizing: border-box;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-toggle button {
+      border: none;
+      background: transparent;
+      color: #444;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: clamp(13px, 2.8vw, 15px);
+      font-weight: 700;
+      font-family: inherit;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-toggle button.active {
+      background: #558b2f;
+      color: #fff;
+    }
+    body.kanji-study-mode #section-kanji-learning.active .kanji-hw-hand-setting-hint {
+      display: block;
+      font-size: clamp(11px, 2.5vw, 13px);
+      color: #666;
+      line-height: 1.55;
+      max-height: min(36vh, 14em);
+      margin: 0;
+    }
     body.kanji-study-mode #section-kanji-learning.active .kanji-study-menu-btns {
       display: block;
       margin-top: 10px;
@@ -538,8 +587,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       flex-wrap: nowrap;
-      gap: 12px;
+      gap: 3px;
       writing-mode: horizontal-tb;
       text-orientation: mixed;
       line-height: normal;
@@ -722,13 +772,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       flex-wrap: nowrap;
-      gap: 12px;
+      gap: 3px;
       writing-mode: horizontal-tb;
       text-orientation: mixed;
       direction: ltr;
-      margin-top: 12px;
+      margin-top: 0;
       width: 100%;
       box-sizing: border-box;
     }
@@ -827,7 +877,7 @@
       flex-shrink: 0;
     }
     #kanji-quiz-drill-handwriting {
-      margin-top: 16px;
+      margin-top: 0;
       writing-mode: horizontal-tb;
       text-orientation: mixed;
       width: 100%;
@@ -853,7 +903,7 @@
       align-self: center;
       flex-shrink: 0;
       max-width: 100%;
-      width: fit-content;
+      width: 550px;
       min-height: 0;
     }
     /* ルビ箱とおおよそ同じ横幅・最小高さで、キャンバスの左に縦並びボタンを収める */
@@ -870,6 +920,29 @@
       align-self: stretch;
       padding: 4px 0;
     }
+    #kanji-hw-canvas-actions {
+      flex-direction: row;
+      gap: 4px;
+      width: 110px;
+      min-width: 110px;
+      box-sizing: border-box;
+    }
+    /* 右利き：操作ボタン列＝左・ルビ＝右。左利き：ルビ＝左・ボタン＝右（誤タップ軽減） */
+    #kanji-quiz-drill-handwriting .kanji-drill-hw-canvas-panel #kanji-hw-canvas-actions {
+      order: 1;
+    }
+    #kanji-quiz-drill-handwriting .kanji-drill-hw-canvas-panel #kanji-quiz-write-canvas {
+      order: 2;
+    }
+    #kanji-quiz-drill-handwriting .kanji-drill-hw-canvas-panel .kanji-drill-hw-panel-aside {
+      order: 3;
+    }
+    body.kanji-hw-dominant-left #kanji-quiz-drill-handwriting .kanji-drill-hw-canvas-panel #kanji-hw-canvas-actions {
+      order: 3;
+    }
+    body.kanji-hw-dominant-left #kanji-quiz-drill-handwriting .kanji-drill-hw-canvas-panel .kanji-drill-hw-panel-aside {
+      order: 1;
+    }
     .kanji-drill-hw-panel-aside {
       display: flex;
       flex-direction: row;
@@ -880,6 +953,8 @@
       writing-mode: horizontal-tb;
       align-self: stretch;
       min-height: 160px;
+      width: 110px;
+      box-sizing: border-box;
     }
     #kanji-play-char-handwriting.kanji-drill-hw-ruby-box {
       font-size: clamp(36px, 8vw, 56px);
@@ -1064,6 +1139,14 @@
     <div class="kanji-study-vertical-wrap">
     <h1>漢字の自由学習</h1>
     <p class="kanji-study-lead">やりたい学習をえらんでね</p>
+    <div class="kanji-hw-hand-setting" id="kanji-hw-hand-setting">
+      <span class="kanji-hw-hand-setting-label" id="kanji-hw-hand-label">かんじをかいてこたえるときの利き手</span>
+      <div class="kanji-hw-hand-toggle" role="group" aria-labelledby="kanji-hw-hand-label">
+        <button type="button" id="kanji-hw-hand-right" class="active" aria-pressed="true" onclick="setKanjiHwDominantHand('right')">みぎきき</button>
+        <button type="button" id="kanji-hw-hand-left" aria-pressed="false" onclick="setKanjiHwDominantHand('left')">ひだりきき</button>
+      </div>
+      <span class="kanji-hw-hand-setting-hint">みぎきき：よみのルビが右、さぎょうボタンが左。ひだりきき：ルビが左、ボタンが右。てのうごきでまちがえておさないためです。</span>
+    </div>
     <div class="kanji-study-menu-btns">
       <button class="menu-btn btn-red" onclick="loadKanjiMaterials(this)">漢字クイズに挑戦</button>
       <button class="menu-btn btn-blue" onclick="openKanjiPractice()">漢字練習をする</button>
@@ -1142,8 +1225,8 @@
         <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
       </div>
     </div>
+    <span id="kanji-play-progress">1 / 1</span>
     <div class="kanji-quiz-drill-wrap">
-      <span id="kanji-play-progress">1 / 1</span>
       <div class="kanji-quiz-title-rail-wrap">
         <h1 id="kanji-play-title">漢字ドリル</h1>
       </div>
@@ -1845,6 +1928,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const saved = localStorage.getItem('app_kid_user'); 
         if (inputMethodMode !== 'pen' && inputMethodMode !== 'keyboard') inputMethodMode = 'keyboard';
         initKeyboardAndSoundSettings();
+        applyKanjiHwDominantHandToBody();
+        syncKanjiHwHandSwitchUI();
         if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); prefetchMaterials(); }
         else fetchUsers(); 
     };
@@ -3002,9 +3087,37 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }).catch(() => { msg.innerText = "通信エラー"; });
     }
 
+    const LS_KANJI_HW_DOMINANT = 'kanji_quiz_hw_dominant_hand';
+    function getKanjiHwDominantHand() {
+      return localStorage.getItem(LS_KANJI_HW_DOMINANT) === 'left' ? 'left' : 'right';
+    }
+    function applyKanjiHwDominantHandToBody() {
+      document.body.classList.toggle('kanji-hw-dominant-left', getKanjiHwDominantHand() === 'left');
+    }
+    function syncKanjiHwHandSwitchUI() {
+      const lefty = getKanjiHwDominantHand() === 'left';
+      const bR = document.getElementById('kanji-hw-hand-right');
+      const bL = document.getElementById('kanji-hw-hand-left');
+      if (bR) {
+        bR.classList.toggle('active', !lefty);
+        bR.setAttribute('aria-pressed', !lefty ? 'true' : 'false');
+      }
+      if (bL) {
+        bL.classList.toggle('active', lefty);
+        bL.setAttribute('aria-pressed', lefty ? 'true' : 'false');
+      }
+    }
+    function setKanjiHwDominantHand(which) {
+      localStorage.setItem(LS_KANJI_HW_DOMINANT, which === 'left' ? 'left' : 'right');
+      applyKanjiHwDominantHandToBody();
+      syncKanjiHwHandSwitchUI();
+    }
+
     // （いつもの学習のロード関連）
     function openKanjiLearningMenu() {
       switchSection('section-kanji-learning');
+      applyKanjiHwDominantHandToBody();
+      syncKanjiHwHandSwitchUI();
     }
     function loadEnglishMaterials(btn) {
       currentMaterialsCategory = "english";
