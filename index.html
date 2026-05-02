@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="ja">
+<html lang="ja">ああ
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1470,6 +1470,9 @@
         <div id="kanji-quiz-wrong-red-chars" class="kanji-quiz-wrong-red-chars"></div>
         <p class="kanji-quiz-hw-wrong-stroke-label">かきじゅん（みょうじ）</p>
         <div id="kanji-quiz-wrong-model-wrap" class="kanji-quiz-wrong-model-wrap"></div>
+        <div style="margin-top:12px;">
+          <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizSkipHandwritingQuestion()">⏭️ 次へ（このもんだいは ふせいかい）</button>
+        </div>
       </div>
     </div>
   </div>
@@ -4366,6 +4369,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (sum) sum.innerHTML = "";
       kanjiQuizClearWritePad(true);
     }
+    function kanjiQuizSkipHandwritingQuestion() {
+      if (!kanjiQuizSession) return;
+      const secHand = document.getElementById("section-kanji-quiz-play");
+      if (!secHand || !secHand.classList.contains("active")) return;
+      const q = kanjiQuizSession.questions[kanjiQuizSession.index];
+      if (!q || q.type !== "ruby_to_kanji") return;
+
+      // 不正解として確定し、保存して次の問題へ進む。
+      kanjiQuizSession.rubyHandComplete = true;
+      kanjiQuizSession.rubyHandKanjiVgPass = false;
+      kanjiQuizSession.lastHandScore = 0;
+      kanjiQuizSession.rubyHandMinScore = 0;
+      kanjiQuizHideWrongFeedback();
+      submitKanjiQuizScore();
+    }
     function isKanjiQuizHanChar(ch) {
       if (!ch || ch.length === 0) return false;
       const cp = ch.codePointAt(0);
@@ -4668,11 +4686,60 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         frame.style.minHeight = "";
       }
     }
+    function kanjiQuizMountWrongModelFrameForChar(ch) {
+      const modelWrap = document.getElementById("kanji-quiz-wrong-model-wrap");
+      const frame = document.getElementById("kp-pro-frame");
+      if (!modelWrap || !frame || !ch) return;
+      function mountAndPlayDemo() {
+        if (frame.parentElement !== modelWrap) {
+          modelWrap.innerHTML = "";
+          modelWrap.appendChild(frame);
+        }
+        frame.style.width = "100%";
+        frame.style.maxWidth = "100%";
+        frame.style.minHeight = "320px";
+        frame.style.height = "360px";
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 80);
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 400);
+        setTimeout(function () {
+          try {
+            if (frame.contentWindow) {
+              frame.contentWindow.postMessage({ type: "quizPlayStrokeOrderDemo" }, "*");
+            }
+          } catch (e) {}
+        }, 150);
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 550);
+      }
+      function trySelectWithRetry() {
+        if (selectKanjiCharInQuizFrame(ch)) {
+          mountAndPlayDemo();
+          return;
+        }
+        // iframe側の候補再構築タイミングと競合するため、短い間隔で再試行する。
+        setTimeout(function () {
+          if (selectKanjiCharInQuizFrame(ch)) mountAndPlayDemo();
+        }, 140);
+        setTimeout(function () {
+          if (selectKanjiCharInQuizFrame(ch)) mountAndPlayDemo();
+        }, 360);
+      }
+      ensureKanjiHwFrameReadyOnce().then(trySelectWithRetry);
+    }
     function kanjiQuizShowHandwritingWrongFeedback(sc) {
       const panel = document.getElementById("kanji-quiz-hw-wrong-panel");
       const redWrap = document.getElementById("kanji-quiz-wrong-red-chars");
-      const modelWrap = document.getElementById("kanji-quiz-wrong-model-wrap");
-      const frame = document.getElementById("kp-pro-frame");
       if (!kanjiQuizSession || !panel || !redWrap) return;
       const headEl = document.getElementById("kanji-quiz-hw-wrong-heading");
       if (headEl) {
@@ -4707,41 +4774,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       redWrap.innerHTML = html || "<span class=\"kanji-quiz-wrong-char-main\">（データなし）</span>";
       panel.style.display = "block";
-      if (modelWrap && ch && frame) {
-        if (!selectKanjiCharInQuizFrame(ch)) {
-          return;
-        }
-        if (frame.parentElement !== modelWrap) {
-          modelWrap.innerHTML = "";
-          modelWrap.appendChild(frame);
-        }
-        frame.style.width = "100%";
-        frame.style.maxWidth = "100%";
-        frame.style.minHeight = "320px";
-        frame.style.height = "360px";
-        setTimeout(function () {
-          try {
-            kpResizeFrameToContent();
-          } catch (e) {}
-        }, 80);
-        setTimeout(function () {
-          try {
-            kpResizeFrameToContent();
-          } catch (e) {}
-        }, 400);
-        setTimeout(function () {
-          try {
-            if (frame.contentWindow) {
-              frame.contentWindow.postMessage({ type: "quizPlayStrokeOrderDemo" }, "*");
-            }
-          } catch (e) {}
-        }, 150);
-        setTimeout(function () {
-          try {
-            kpResizeFrameToContent();
-          } catch (e) {}
-        }, 550);
-      }
+      if (ch) kanjiQuizMountWrongModelFrameForChar(ch);
       try {
         if (panel) panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
       } catch (e) {}
