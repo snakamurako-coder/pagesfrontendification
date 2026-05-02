@@ -923,7 +923,7 @@
       max-width: min(480px, 100%);
       margin: 0 auto;
       min-height: 280px;
-      max-height: min(60vh, 620px);
+      max-height: min(72vh, 760px);
       border: 2px solid #e57373;
       border-radius: 10px;
       overflow: auto;
@@ -3470,7 +3470,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function kpComputeFrameHeight_(frame, bodyH, htmlH) {
       if (kpFrameInWrongModelWrap_(frame)) {
-        const cap = Math.min(window.innerHeight * 0.5, 520);
+        const cap = Math.min(window.innerHeight * 0.72, 760);
         return Math.min(Math.max(bodyH, htmlH, 260), cap) + 8;
       }
       return Math.max(bodyH, htmlH, 620) + 8;
@@ -4344,9 +4344,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const slot = kanjiQuizSession ? kanjiQuizSession.rubyHandSlot || 0 : 0;
         const q = kanjiQuizSession ? kanjiQuizSession.questions[kanjiQuizSession.index] : null;
         const fallbackTargets = kanjiQuizHanOnlyChars((q && (q.correctAnswer || q.kanji)) || "");
-        const expectedChar = targets[slot] || fallbackTargets[slot] || fallbackTargets[0] || "";
+      const qKanjiTargets = kanjiQuizHanOnlyChars((q && q.kanji) || "");
+      const expectedChar = targets[slot] || qKanjiTargets[slot] || qKanjiTargets[0] || fallbackTargets[slot] || fallbackTargets[0] || "";
         if (expectedChar && (!targets.length || targets[slot] !== expectedChar)) {
-          kanjiQuizSession.rubyHandTargets = fallbackTargets.length ? fallbackTargets : [expectedChar];
+          kanjiQuizSession.rubyHandTargets = qKanjiTargets.length ? qKanjiTargets : (fallbackTargets.length ? fallbackTargets : [expectedChar]);
           kanjiQuizSession.rubyHandSlot = Math.max(0, Math.min(slot, kanjiQuizSession.rubyHandTargets.length - 1));
         }
         if (expectedChar) {
@@ -4547,12 +4548,24 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const doc = win.document;
         const sel = doc.getElementById("target-kanji");
         if (!sel) return false;
-        const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
+        const target = String(ch || "");
+        if (!target) return false;
+        let ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === target; });
+        if (!ok && win.KANJI_DATA && typeof win.KANJI_DATA === "object" && win.KANJI_DATA[target]) {
+          const op = doc.createElement("option");
+          op.value = target;
+          op.textContent = target;
+          sel.appendChild(op);
+          ok = true;
+        }
         if (!ok) {
-          alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+          alert("「" + target + "」は KanjiVG.txt にないため、手書きできません。");
           return false;
         }
-        sel.value = ch;
+        sel.value = target;
+        if (String(sel.value) !== target) {
+          return false;
+        }
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
@@ -4616,9 +4629,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const slot = kanjiQuizSession.rubyHandSlot || 0;
       const q = kanjiQuizSession.questions[kanjiQuizSession.index];
       const fallbackTargets = kanjiQuizHanOnlyChars((q && (q.correctAnswer || q.kanji)) || "");
-      const ch = targets[slot] || fallbackTargets[slot] || fallbackTargets[0] || "";
+      const qKanjiTargets = kanjiQuizHanOnlyChars((q && q.kanji) || "");
+      const ch = targets[slot] || qKanjiTargets[slot] || qKanjiTargets[0] || fallbackTargets[slot] || fallbackTargets[0] || "";
       if (ch) {
-        kanjiQuizSession.rubyHandTargets = fallbackTargets.length ? fallbackTargets : [ch];
+        kanjiQuizSession.rubyHandTargets = qKanjiTargets.length ? qKanjiTargets : (fallbackTargets.length ? fallbackTargets : [ch]);
         kanjiQuizSession.rubyHandSlot = Math.max(0, Math.min(slot, kanjiQuizSession.rubyHandTargets.length - 1));
       }
       const fullStr = q && q.correctAnswer != null ? String(q.correctAnswer) : "";
