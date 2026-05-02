@@ -3775,7 +3775,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       switchSection('section-kanji-practice');
       openKanjiPracticePro();
       initKanjiPracticeCatalog();
-      ensureKanjiPracticeFrameReady();
+      ensureKanjiPracticeFrameReady().catch(function () {});
     }
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
@@ -4448,11 +4448,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         try {
           if (typeof requestIdleCallback === "function") {
             requestIdleCallback(function () {
-              ensureKanjiPracticeFrameReady();
+              ensureKanjiPracticeFrameReady().catch(function () {});
             }, { timeout: 2500 });
           } else {
             setTimeout(function () {
-              ensureKanjiPracticeFrameReady();
+              ensureKanjiPracticeFrameReady().catch(function () {});
             }, 120);
           }
         } catch (e) {}
@@ -4571,7 +4571,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function ensureKanjiHwFrameReadyOnce() {
       if (!__kanjiQuizHwFrameReadyP) {
-        __kanjiQuizHwFrameReadyP = ensureKanjiPracticeFrameReady();
+        __kanjiQuizHwFrameReadyP = ensureKanjiPracticeFrameReady().catch(function (err) {
+          clearKanjiHwFrameReadyCache();
+          return Promise.reject(err || new Error("kanjiVgFrameReadyFailed"));
+        });
       }
       return __kanjiQuizHwFrameReadyP;
     }
@@ -4923,14 +4926,20 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }, 90);
         return true;
       }
-      ensureKanjiHwFrameReadyOnce().then(function () {
-        const frame = document.getElementById("kp-pro-frame");
-        if (frame) patchKanjiFrameForQuizPostMessage(frame);
-        ensureKanjiFrameForQuizEval();
-        if (!postEvalToFrame()) {
-          alert("さいてんようのびゅうが みつかりません。");
-        }
-      });
+      ensureKanjiHwFrameReadyOnce()
+        .then(function () {
+          const frame = document.getElementById("kp-pro-frame");
+          if (frame) patchKanjiFrameForQuizPostMessage(frame);
+          ensureKanjiFrameForQuizEval();
+          if (!postEvalToFrame()) {
+            alert("さいてんようのびゅうが みつかりません。");
+          }
+        })
+        .catch(function () {
+          alert(
+            "漢字データ（KanjiVG.txt）の準備が間に合いませんでした。\n少し待ってから、もう一度「かんがえる」や手書きを試してください。"
+          );
+        });
     }
     function kanjiQuizOnHandwritingScored(sc) {
       if (!kanjiQuizSession) return;
@@ -4992,6 +5001,18 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const v = String(o.value || "");
         return v && v !== "データなし";
       }).length;
+    }
+    /** iframe 内: KANJI_DATA が埋まり、#target-kanji に実オプションが付いているか（親のアラ判定と整合） */
+    function kpFrameKanjiVgDomReady(win) {
+      try {
+        if (!win || !win.document) return false;
+        const kd = win.KANJI_DATA;
+        if (!kd || typeof kd !== "object" || Object.keys(kd).length === 0) return false;
+        const sel = win.document.getElementById("target-kanji");
+        return kanjiQuizKanjiVgEffectiveOptionCount(sel) > 0;
+      } catch (e) {
+        return false;
+      }
     }
     /** @returns {string|null} 一致する option.value（KANJI_DATA のキー表記） */
     function kanjiQuizResolveKanjiVgOptionValue(sel, ch) {
@@ -5057,7 +5078,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
     }
     function ensureKanjiPracticeFrameReady() {
-      return new Promise(function (resolve) {
+      var VG_READY_MAX_POLL = 100;
+      var VG_READY_POLL_MS = 200;
+      return new Promise(function (resolve, reject) {
         openKanjiPracticePro();
         kanjiQuizEnsureScoreListener();
         const frame = document.getElementById("kp-pro-frame");
@@ -5067,26 +5090,28 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         function tryPoll() {
           patchKanjiFrameForQuizPostMessage(frame);
-          const win = frame.contentWindow;
-          if (!win) {
-            resolve();
-            return;
-          }
           let n = 0;
           const id = setInterval(function () {
             n++;
             patchKanjiFrameForQuizPostMessage(frame);
-            const kd = win.KANJI_DATA;
-            if (kd && typeof kd === "object" && Object.keys(kd).length > 0) {
+            const win = frame.contentWindow;
+            if (!win) {
+              if (n >= VG_READY_MAX_POLL) {
+                clearInterval(id);
+                reject(new Error("kanjiPracticeNoContentWindow"));
+              }
+              return;
+            }
+            if (kpFrameKanjiVgDomReady(win)) {
               clearInterval(id);
               resolve();
               return;
             }
-            if (n >= 50) {
+            if (n >= VG_READY_MAX_POLL) {
               clearInterval(id);
-              resolve();
+              reject(new Error("kanjiVgDataOrSelectorTimeout"));
             }
-          }, 180);
+          }, VG_READY_POLL_MS);
         }
         if (frame.dataset.kpLoaded === "1" && frame.contentDocument && frame.contentDocument.readyState === "complete") {
           setTimeout(tryPoll, 80);
@@ -5146,6 +5171,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const resolved = kanjiQuizResolveKanjiVgOptionValue(sel, ch);
         if (!resolved) {
           if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
+            clearKanjiHwFrameReadyCache();
             alert(
               "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度試してください。\n（つながりが不安定なときは、ページの再読み込みもためしてください）"
             );
@@ -5174,6 +5200,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           const ch = targets[i];
           if (!kanjiQuizResolveKanjiVgOptionValue(sel, ch)) {
             if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
+              clearKanjiHwFrameReadyCache();
               alert(
                 "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度このセットを開いてください。"
               );
@@ -5438,32 +5465,41 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           summary.innerHTML =
             "<span style=\"color:#607d8b;font-size:clamp(12px,3vw,14px);\">さいてんようの データを じゅんびしています…</span>";
         }
-        ensureKanjiHwFrameReadyOnce().then(function () {
-          const sec = document.getElementById("section-kanji-quiz-play");
-          if (!sec || !sec.classList.contains("active")) {
+        ensureKanjiHwFrameReadyOnce()
+          .then(function () {
+            const sec = document.getElementById("section-kanji-quiz-play");
+            if (!sec || !sec.classList.contains("active")) {
+              if (summary) summary.innerHTML = "";
+              return;
+            }
+            if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) {
+              if (summary) summary.innerHTML = "";
+              return;
+            }
+            const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
+            if (!qNow || qNow.type !== "ruby_to_kanji") {
+              if (summary) summary.innerHTML = "";
+              return;
+            }
+            ensureKanjiFrameForQuizEval();
+            if (!preloadKanjiQuizTargetsInFrame(targets, t0)) {
+              if (summary) summary.innerHTML = "";
+              return;
+            }
+            if (charHand) charHand.textContent = qNow.readingDisplay || "";
+            kanjiQuizSetPenWidth(8);
+            kanjiQuizClearWritePad(true);
+            kanjiQuizSetupWriteCanvas();
             if (summary) summary.innerHTML = "";
-            return;
-          }
-          if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) {
+          })
+          .catch(function () {
             if (summary) summary.innerHTML = "";
-            return;
-          }
-          const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
-          if (!qNow || qNow.type !== "ruby_to_kanji") {
-            if (summary) summary.innerHTML = "";
-            return;
-          }
-          ensureKanjiFrameForQuizEval();
-          if (!preloadKanjiQuizTargetsInFrame(targets, t0)) {
-            if (summary) summary.innerHTML = "";
-            return;
-          }
-          if (charHand) charHand.textContent = qNow.readingDisplay || "";
-          kanjiQuizSetPenWidth(8);
-          kanjiQuizClearWritePad(true);
-          kanjiQuizSetupWriteCanvas();
-          if (summary) summary.innerHTML = "";
-        });
+            var secPlay = document.getElementById("section-kanji-quiz-play");
+            if (!secPlay || !secPlay.classList.contains("active")) return;
+            alert(
+              "漢字データ（KanjiVG.txt）の読み込みに時間がかかりすぎています。\nネットやサーバーの状態を確認し、ページの再読み込みのあとにもう一度お試しください。"
+            );
+          });
       } else {
         restoreKanjiPracticeFrameIfMoved();
         if (drillHand) drillHand.style.display = "none";
