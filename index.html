@@ -919,18 +919,38 @@
     }
     .kanji-quiz-wrong-model-wrap {
       width: 100%;
-      max-width: 320px;
+      max-width: min(480px, 100%);
       margin: 0 auto;
-      min-height: 300px;
+      min-height: 280px;
+      max-height: min(52vh, 520px);
       border: 2px solid #e57373;
       border-radius: 10px;
-      overflow: hidden;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       background: #fff;
+      box-sizing: border-box;
     }
     .kanji-quiz-wrong-model-wrap iframe {
       display: block;
       width: 100% !important;
+      max-width: 100% !important;
       border: none !important;
+      box-sizing: border-box;
+    }
+    /* 誤答お手本ブロック：親 .kanji-quiz-drill-wrap が vertical-rl のため、横書き＋全幅で隔離 */
+    body.kanji-study-mode .kanji-quiz-drill-wrap #kanji-quiz-hw-wrong-panel {
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+      direction: ltr;
+      width: 100%;
+      max-width: min(520px, calc(100vw - 24px));
+      min-width: 0;
+      margin-left: auto;
+      margin-right: auto;
+      flex: 0 0 auto;
+      align-self: stretch;
+      position: relative;
+      z-index: 4;
     }
     .kanji-drill-hw-prefix-col,
     .kanji-drill-hw-suffix-col {
@@ -1583,7 +1603,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
   </script>
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままで大丈夫） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw87WAMgikcs2RVeznWMmInzzeGrBDyOy5tuJ95bsHKFF8OtgqE4wzIELUpOllhePVD7A/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx-IAMRVPyaVKmP8sf8mviWVUMngSfjwuECn-wU0dIJsmwV76noGCVI37huAaoQoBEHsg/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -3390,6 +3410,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       setTimeout(kpResizeFrameToContent, 120);
       setTimeout(kpResizeFrameToContent, 700);
     }
+    function kpFrameInWrongModelWrap_(frame) {
+      return frame && frame.parentElement && frame.parentElement.id === "kanji-quiz-wrong-model-wrap";
+    }
+    function kpComputeFrameHeight_(frame, bodyH, htmlH) {
+      if (kpFrameInWrongModelWrap_(frame)) {
+        const cap = Math.min(window.innerHeight * 0.5, 520);
+        return Math.min(Math.max(bodyH, htmlH, 260), cap) + 8;
+      }
+      return Math.max(bodyH, htmlH, 620) + 8;
+    }
     function kpResizeFrameToContent() {
       const frame = document.getElementById('kp-pro-frame');
       if (!frame || !frame.contentWindow || !frame.contentWindow.document) return;
@@ -3397,14 +3427,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const doc = frame.contentWindow.document;
         const bodyH = doc.body ? doc.body.scrollHeight : 0;
         const htmlH = doc.documentElement ? doc.documentElement.scrollHeight : 0;
-        const h = Math.max(bodyH, htmlH, 620);
-        frame.style.height = `${h + 8}px`;
+        const h = kpComputeFrameHeight_(frame, bodyH, htmlH);
+        frame.style.height = `${h}px`;
         if (!frame.dataset.kpObserved) {
           const ro = new ResizeObserver(() => {
             const bH = doc.body ? doc.body.scrollHeight : 0;
             const dH = doc.documentElement ? doc.documentElement.scrollHeight : 0;
-            const nextH = Math.max(bH, dH, 620);
-            frame.style.height = `${nextH + 8}px`;
+            const nextH = kpComputeFrameHeight_(frame, bH, dH);
+            frame.style.height = `${nextH}px`;
           });
           if (doc.body) ro.observe(doc.body);
           if (doc.documentElement) ro.observe(doc.documentElement);
@@ -4461,6 +4491,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (frame && hid && wrap && frame.parentElement === wrap) {
         hid.appendChild(frame);
         frame.style.width = "";
+        frame.style.maxWidth = "";
         frame.style.height = "";
         frame.style.minHeight = "";
       }
@@ -4507,8 +4538,19 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           modelWrap.appendChild(frame);
         }
         frame.style.width = "100%";
-        frame.style.height = "340px";
-        frame.style.minHeight = "340px";
+        frame.style.maxWidth = "100%";
+        frame.style.minHeight = "260px";
+        frame.style.height = "300px";
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 80);
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 400);
         setTimeout(function () {
           try {
             if (frame.contentWindow) {
@@ -4516,6 +4558,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             }
           } catch (e) {}
         }, 150);
+        setTimeout(function () {
+          try {
+            kpResizeFrameToContent();
+          } catch (e) {}
+        }, 550);
       }
       try {
         if (panel) panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
