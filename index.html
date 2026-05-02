@@ -3388,57 +3388,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       initKanjiPracticeScoreListener();
       initKanjiPracticeCatalog();
     }
+    /** 漢字練習画面用: iframe 採点メッセージの受け口は initKanjiParentKanjiQuizScoredBridge と共有 */
     function initKanjiPracticeScoreListener() {
-      if (__kanjiPracticeScoreListenerAdded) return;
-      __kanjiPracticeScoreListenerAdded = true;
-      window.addEventListener("message", function (ev) {
-        if (!ev || !ev.data || ev.data.type !== "kanjiQuizScored") return;
-        const sec = document.getElementById("section-kanji-practice");
-        if (!sec || !sec.classList.contains("active")) return;
-        const score = Math.max(0, Math.min(100, Number(ev.data.score) || 0));
-        const kanjiChar = String(ev.data.kanjiChar || "");
-        if (!kanjiChar) return;
-        const now = Date.now();
-        const key = kanjiChar + ":" + score;
-        if (key === __kanjiPracticeLastSubmitKey && now - __kanjiPracticeLastSubmitAt < 6000) return;
-        __kanjiPracticeLastSubmitKey = key;
-        __kanjiPracticeLastSubmitAt = now;
-        const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
-        if (!user || !user.id) return;
-        const modeId = document.getElementById("kp-book-select")?.value || "KANJI_PRACTICE";
-        const unitName = document.getElementById("kp-sheet-select")?.value || "KANJI_PRACTICE";
-        const setId = document.getElementById("kp-set-select")?.value || "PRACTICE";
-        const unitScope = `KP_${modeId}_${unitName}_${setId}`;
-        const payload = {
-          action: "save_learning_session",
-          userId: user.id,
-          unitId: `${unitScope}_${kanjiChar}_${now}`,
-          unitSheetName: unitName,
-          isReviewMode: false,
-          isRandom: true,
-          results: [],
-          learningCategory: "kanji",
-          challengeType: "score",
-          kanjiChar: kanjiChar,
-          score: score,
-          questionId: `${unitScope}_${kanjiChar}`,
-          questionCorrect: score >= KANJI_QUIZ_HAND_PASS,
-          kanjiSetScopeId: unitScope,
-          kanjiSetContinuation: true
-        };
-        fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
-          .then(function (r) { return r.json(); })
-          .then(function (d) {
-            if (!d || d.status !== "success") return;
-            if (typeof d.newTotal === "number") {
-              user.points = d.newTotal;
-              localStorage.setItem("app_kid_user", JSON.stringify(user));
-              const pts = document.getElementById("user-points");
-              if (pts) pts.innerText = String(d.newTotal);
-            }
-          })
-          .catch(function () {});
-      });
+      initKanjiParentKanjiQuizScoredBridge();
     }
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
@@ -3996,7 +3948,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     let __kanjiQuizWriteCanvasBound = false;
     let __kanjiQuizHwFrameReadyP = null;
     let __kanjiQuizScrollGuardBound = false;
-    let __kanjiPracticeScoreListenerAdded = false;
     let __kanjiPracticeLastSubmitAt = 0;
     let __kanjiPracticeLastSubmitKey = "";
     function clearKanjiHwFrameReadyCache() {
@@ -4527,18 +4478,86 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       setTimeout(kpResizeFrameToContent, 80);
     }
-    function kanjiQuizEnsureScoreListener() {
-      if (window.__kanjiQuizScoreListenerAdded) return;
-      window.__kanjiQuizScoreListenerAdded = true;
+    /** KP iframe の kanjiQuizScored を1リスナで処理（クイズ優先、その後のみ練習の GAS 保存） */
+    function initKanjiParentKanjiQuizScoredBridge() {
+      if (window.__kanjiParentKanjiQuizScoredBridgeBound) return;
+      window.__kanjiParentKanjiQuizScoredBridgeBound = true;
       window.addEventListener("message", function (ev) {
-        if (!kanjiQuizSession || !ev.data || ev.data.type !== "kanjiQuizScored") return;
-        const sec = document.getElementById("section-kanji-quiz-play");
-        if (!sec || !sec.classList.contains("active")) return;
-        kanjiQuizSession.lastHandScore = ev.data.score;
-        const sum = document.getElementById("kanji-play-summary");
-        if (sum) sum.innerHTML = "<span style=\"color:#b8860b;font-weight:700;\">さいてん: " + ev.data.score + " てん</span>";
-        kanjiQuizOnHandwritingScored(ev.data.score);
+        if (!ev || !ev.data || ev.data.type !== "kanjiQuizScored") return;
+
+        var quizSec = document.getElementById("section-kanji-quiz-play");
+        if (quizSec && quizSec.classList.contains("active") && kanjiQuizSession) {
+          kanjiQuizSession.lastHandScore = ev.data.score;
+          var quizSum = document.getElementById("kanji-play-summary");
+          if (quizSum) {
+            quizSum.innerHTML =
+              "<span style=\"color:#b8860b;font-weight:700;\">さいてん: " + ev.data.score + " てん</span>";
+          }
+          kanjiQuizOnHandwritingScored(ev.data.score);
+          return;
+        }
+
+        var pracSec = document.getElementById("section-kanji-practice");
+        if (!pracSec || !pracSec.classList.contains("active")) return;
+
+        var score = Math.max(0, Math.min(100, Number(ev.data.score) || 0));
+        var kanjiChar = String(ev.data.kanjiChar || "");
+        if (!kanjiChar) return;
+
+        var nowMs = Date.now();
+        var dedupeKey = kanjiChar + ":" + score;
+        if (dedupeKey === __kanjiPracticeLastSubmitKey && nowMs - __kanjiPracticeLastSubmitAt < 6000) return;
+        __kanjiPracticeLastSubmitKey = dedupeKey;
+        __kanjiPracticeLastSubmitAt = nowMs;
+
+        var kidUser = JSON.parse(localStorage.getItem("app_kid_user") || "null");
+        if (!kidUser || !kidUser.id) return;
+
+        var bEl = document.getElementById("kp-book-select");
+        var uEl = document.getElementById("kp-sheet-select");
+        var sEl = document.getElementById("kp-set-select");
+        var mid = (bEl && bEl.value) || "KANJI_PRACTICE";
+        var unm = (uEl && uEl.value) || "KANJI_PRACTICE";
+        var sid = (sEl && sEl.value) || "PRACTICE";
+        var unitScope = "KP_" + mid + "_" + unm + "_" + sid;
+
+        fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "save_learning_session",
+            userId: kidUser.id,
+            unitId: unitScope + "_" + kanjiChar + "_" + nowMs,
+            unitSheetName: unm,
+            isReviewMode: false,
+            isRandom: true,
+            results: [],
+            learningCategory: "kanji",
+            challengeType: "score",
+            kanjiChar: kanjiChar,
+            score: score,
+            questionId: unitScope + "_" + kanjiChar,
+            questionCorrect: score >= KANJI_QUIZ_HAND_PASS,
+            kanjiSetScopeId: unitScope,
+            kanjiSetContinuation: true
+          })
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (d) {
+            if (!d || d.status !== "success") return;
+            if (typeof d.newTotal === "number") {
+              kidUser.points = d.newTotal;
+              localStorage.setItem("app_kid_user", JSON.stringify(kidUser));
+              var pts = document.getElementById("user-points");
+              if (pts) pts.innerText = String(d.newTotal);
+            }
+          })
+          .catch(function () {});
       });
+    }
+    function kanjiQuizEnsureScoreListener() {
+      initKanjiParentKanjiQuizScoredBridge();
     }
     function selectKanjiCharInQuizFrame(ch) {
       const frame = document.getElementById("kp-pro-frame");
