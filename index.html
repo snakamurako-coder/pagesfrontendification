@@ -4706,10 +4706,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!frame || !frame.contentWindow) return false;
         const targets = kanjiQuizSession ? kanjiQuizSession.rubyHandTargets || [] : [];
         const slot = kanjiQuizSession ? kanjiQuizSession.rubyHandSlot || 0 : 0;
-        const expectedChar = targets[slot];
+        let expectedChar = targets[slot];
         if (expectedChar) {
-          selectKanjiCharInQuizFrame(expectedChar);
+          if (!selectKanjiCharInQuizFrame(expectedChar)) return false;
         }
+        const selAfter = frame.contentWindow.document.getElementById("target-kanji");
+        if (selAfter && selAfter.value) expectedChar = selAfter.value;
         const payload = {
           type: "quizEvalParentStrokes",
           expectedChar: expectedChar,
@@ -4775,6 +4777,37 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function kanjiQuizHanOnlyChars(str) {
       return Array.from(String(str || "")).filter(isKanjiQuizHanChar);
+    }
+    /** KanjiVG の <option value> と問題文の文字を、NFC・異体字セレクタ等を揃えて比較する */
+    function kanjiQuizNormalizeForVgMatch(s) {
+      try {
+        let t = String(s || "")
+          .replace(/[\u200B-\u200D\uFEFF]/g, "")
+          .normalize("NFC");
+        t = t.replace(/[\uFE00-\uFE0F\uE0100-\uE01EF]/g, "");
+        return t;
+      } catch (e) {
+        return String(s || "").replace(/[\uFE00-\uFE0F\uE0100-\uE01EF]/g, "");
+      }
+    }
+    function kanjiQuizKanjiVgEffectiveOptionCount(sel) {
+      return Array.from(sel.options || []).filter(function (o) {
+        const v = String(o.value || "");
+        return v && v !== "データなし";
+      }).length;
+    }
+    /** @returns {string|null} 一致する option.value（KANJI_DATA のキー表記） */
+    function kanjiQuizResolveKanjiVgOptionValue(sel, ch) {
+      if (!sel) return null;
+      const want = kanjiQuizNormalizeForVgMatch(ch);
+      if (!want) return null;
+      const opts = Array.from(sel.options || []);
+      for (let i = 0; i < opts.length; i++) {
+        const v = String(opts[i].value || "");
+        if (!v || v === "データなし") continue;
+        if (kanjiQuizNormalizeForVgMatch(v) === want) return v;
+      }
+      return null;
     }
     function patchKanjiFrameForQuizPostMessage(frame) {
       try {
@@ -4906,12 +4939,18 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const doc = win.document;
         const sel = doc.getElementById("target-kanji");
         if (!sel) return false;
-        const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
-        if (!ok) {
-          alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+        const resolved = kanjiQuizResolveKanjiVgOptionValue(sel, ch);
+        if (!resolved) {
+          if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
+            alert(
+              "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度試してください。\n（つながりが不安定なときは、ページの再読み込みもためしてください）"
+            );
+          } else {
+            alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+          }
           return false;
         }
-        sel.value = ch;
+        sel.value = resolved;
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
@@ -4929,14 +4968,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!sel) return false;
         for (let i = 0; i < targets.length; i++) {
           const ch = targets[i];
-          const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
-          if (!ok) {
-            alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+          if (!kanjiQuizResolveKanjiVgOptionValue(sel, ch)) {
+            if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
+              alert(
+                "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度このセットを開いてください。"
+              );
+            } else {
+              alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
+            }
             return false;
           }
         }
         const tActive = activeChar || targets[0];
-        sel.value = tActive;
+        const activeResolved = kanjiQuizResolveKanjiVgOptionValue(sel, tActive);
+        if (!activeResolved) return false;
+        sel.value = activeResolved;
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
