@@ -1,10 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>学習アプリ</title>
-  <script src="kanji-vg.js"></script>
   <style>
     body { font-family: 'Hiragino Maru Gothic ProN', sans-serif; background-color: #141414; color: white; text-align: center; margin: 0; padding: 30px 20px 60px 20px; min-height: 100vh; position: relative;}
     h1, h2, h3 { color: #fff; } h2 { color: var(--vk-font-px); } .section { display: none; } .active { display: block; }
@@ -670,12 +669,6 @@
       max-width: none;
       position: relative;
     }
-    /* 手書き：描画中〜ストローク直後はパームや慣性でスクロールしない */
-    body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.kanji-hw-scroll-suppress .kanji-quiz-drill-wrap {
-      overflow: hidden !important;
-      overscroll-behavior: none;
-      touch-action: none;
-    }
     /* 縦持ちタブレット・狭い幅：横に詰めすぎない／固定100vhのクリップを避ける */
     @media (max-width: 900px) {
       html {
@@ -702,11 +695,6 @@
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-      }
-      body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section.active.kanji-hw-scroll-suppress {
-        overflow: hidden !important;
-        overscroll-behavior-y: none;
-        touch-action: none;
       }
       #section-kanji-quiz-play.kanji-quiz-drill-section.active {
         min-height: 100dvh;
@@ -1358,41 +1346,8 @@
     <div class="kanji-study-menu-btns">
       <button class="menu-btn btn-red" onclick="loadKanjiMaterials(this)">漢字クイズに挑戦</button>
       <button class="menu-btn btn-blue" onclick="openKanjiPractice()">漢字練習をする</button>
-      <button class="menu-btn btn-purple" onclick="openKanjiNigateTraining()">漢字ニガテ特訓（4モード）</button>
     </div>
     <button class="cancel-btn" style="margin-top:20px;" onclick="showHome(JSON.parse(localStorage.getItem('app_kid_user')))">ホームにもどる</button>
-    </div>
-  </div>
-  <div id="section-kanji-nigate" class="section">
-    <div class="kanji-study-vertical-wrap">
-      <h1>漢字ニガテ特訓</h1>
-      <p class="kanji-study-lead">よわみデータから ふくしゅうします（スコープを しぼることもできます）</p>
-      <div style="max-width:520px;margin:0 auto 16px;text-align:left;background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:14px;font-size:14px;color:#333;">
-        <div style="margin-bottom:10px;">
-          <label for="nigate-book-select" style="display:block;font-weight:600;margin-bottom:4px;">ブック</label>
-          <select id="nigate-book-select" onchange="nigateOnBookChange()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #bbb;"></select>
-          <span style="font-size:12px;color:#666;">「（すべてのブック）」＝ スコープしぼりなし</span>
-        </div>
-        <div style="margin-bottom:10px;">
-          <span style="display:block;font-weight:600;margin-bottom:4px;">シート（複数可・空＝そのブックの全シート）</span>
-          <select id="nigate-sheet-ms" multiple size="5" disabled style="width:100%;padding:8px;border-radius:8px;border:1px solid #bbb;"></select>
-        </div>
-        <button type="button" class="submit-btn btn-gray" style="width:100%;margin-bottom:10px;" onclick="nigateLoadSetMultiselect()">セット一覧を読み込み</button>
-        <div style="margin-bottom:10px;">
-          <span style="display:block;font-weight:600;margin-bottom:4px;">セット（複数可・空＝読み込んだ範囲のすべて）</span>
-          <select id="nigate-set-ms" multiple size="6" style="width:100%;padding:8px;border-radius:8px;border:1px solid #bbb;"></select>
-        </div>
-        <div style="margin-bottom:12px;">
-          <span style="display:block;font-weight:600;margin-bottom:6px;">特訓モード</span>
-          <label style="display:block;margin:4px 0;"><input type="radio" name="nigate-train-mode" value="stroke_order" checked> ① 書き順（よみ→かんじ しゅどく）</label>
-          <label style="display:block;margin:4px 0;"><input type="radio" name="nigate-train-mode" value="brush"> ③ とめ・はね・はらい（同じしゅどく、しゅうせいのねらいを ちがうだけ）</label>
-          <label style="display:block;margin:4px 0;"><input type="radio" name="nigate-train-mode" value="stroke_count"> ② 画数（かくすうの ミニもん）</label>
-          <label style="display:block;margin:4px 0;"><input type="radio" name="nigate-train-mode" value="reading"> ④ 読み（おくりがな／よみタイピング）</label>
-        </div>
-        <button type="button" class="menu-btn btn-purple" style="width:100%;" onclick="startNigateKanjiTrainingFlow()">この条件で特訓をはじめる</button>
-        <p id="nigate-scope-status" style="margin-top:10px;font-size:12px;color:#607d8b;min-height:18px;"></p>
-      </div>
-      <button class="cancel-btn" style="margin-top:12px;" onclick="openKanjiLearningMenu()">漢字の自由学習にもどる</button>
     </div>
   </div>
   <div id="section-kanji-practice" class="section" style="background:#ffffff;color:#222;min-height:100vh;">
@@ -1644,11 +1599,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script>
-window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n  <link href=\"https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap\" rel=\"stylesheet\">\n  \n  <style>\n    body { font-family: 'Klee One', sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; overflow-x: hidden; }\n    h2 { color: #333; margin-bottom: 5px; }\n    canvas { touch-action: none; background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px); background-size: 50% 50%; }\n    #canvas { background-color: #fff; border: 2px solid #333; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: crosshair; }\n    #result-box { margin-top: 15px; padding: 15px; background: #fff; border-radius: 8px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }\n    .score { font-size: 38px; font-weight: bold; color: #e53935; }\n    .msg { font-size: 13px; color: #555; margin-top: 10px; font-weight: bold; line-height: 1.5; }\n    button { padding: 10px 20px; border-radius: 20px; border: none; background: #1a73e8; color: white; font-weight: bold; cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n    button:active { transform: translateY(1px); box-shadow: none; }\n    .hidden { display: none !important; }\n    .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }\n    \n    #kanji-selector-area { margin-bottom: 12px; display:flex; flex-direction: column; align-items:center; gap: 10px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: bold; width: 100%; max-width: 350px; box-sizing: border-box; }\n    .selector-row { display: flex; gap: 8px; width: 100%; justify-content: center; align-items: center; }\n    select, input[type=\"text\"] { padding: 8px; border-radius: 6px; border: 2px solid #1a73e8; font-family: 'Klee One'; font-size: 14px; outline: none; flex: 1; background: #fff;}\n    \n    #loading-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index: 1000; font-family: 'Klee One'; font-size: 18px; color: #1a73e8; }\n    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }\n    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\n\n    /* モーダル汎用 */\n    .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }\n    .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }\n    .modal-content h3 { margin: 0 0 15px 0; color: #1a73e8; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; font-size: 16px; }\n\n    /* 設定用 */\n    .slider-group { margin-bottom: 12px; }\n    .slider-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }\n    .slider-group input[type=range] { width: 100%; cursor: pointer; margin: 0; }\n    #preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; background: #f0f2f5; padding: 10px; border-radius: 8px; }\n    .preview-box { background: #fff; border: 1px solid #ddd; border-radius: 4px; position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; }\n    .preview-canvas { width: 100%; height: 100%; background: transparent; }\n    .preview-label { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #999; font-weight: bold; }\n\n    /* ウィザード用 */\n    #wizard-canvas { background-color: #fff; border: 2px dashed #aaa; border-radius: 4px; cursor: crosshair; margin: 10px auto; display: block; }\n    .wiz-btn-group { display: flex; gap: 5px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; }\n    .wiz-btn { flex: 1 1 30%; padding: 8px 5px; font-size: 12px; background: #fff; color: #333; border: 2px solid #ccc; font-weight: bold; }\n    .wiz-btn-ignore { flex: 1 1 100%; padding: 8px; font-size: 12px; background: #e0e0e0; color: #555; border: 2px solid #bbb; font-weight: bold; }\n    .wiz-stats { background: #f9f9f9; padding: 10px; border-radius: 6px; font-size: 12px; color: #555; }\n    .profile-slot { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }\n    .profile-slot input { flex: 1; font-size: 12px; padding: 6px; }\n    .profile-slot button { font-size: 11px; padding: 6px 10px; border-radius: 4px; }\n  </style>\n</head>\n<body>\n\n  <div id=\"loading-overlay\"><div class=\"loader\"></div><span>準備中...</span></div>\n\n  <h2>漢字練習・設定調整</h2>\n\n  <div id=\"kanji-selector-area\" class=\"hidden\">\n    <select id=\"sheet-selector\"></select>\n    <select id=\"target-kanji\" onchange=\"initTargetKanji()\"></select>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:6px; margin-bottom:8px;\">\n    <button style=\"background:#1a73e8;\" onclick=\"switchMode('demo')\">お手本表示</button>\n    <button style=\"background:#6a1b9a;\" onclick=\"switchMode('demo'); playAnimation();\">書き順デモ再生</button>\n  </div>\n\n  <div id=\"mode-msg\" style=\"font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight: bold;\">正確に書いてください</div>\n\n  <canvas id=\"canvas\"></canvas>\n\n  <div id=\"score-controls\" class=\"controls\">\n    <button onclick=\"evaluateKanji(false)\">採点する</button>\n    <button style=\"background:#8e8e93;\" onclick=\"clearCanvas()\">クリア</button>\n  </div>\n  \n  <div id=\"trace-controls\" class=\"controls hidden\">\n    <button style=\"background:#e53935;\" onclick=\"evaluateKanji(true)\">なぞりを採点</button>\n    <button style=\"background:#8e8e93;\" onclick=\"clearCanvas()\">書き直す</button>\n    <button style=\"background:#333;\" onclick=\"switchMode('score')\">戻る</button>\n  </div>\n\n  <div id=\"demo-controls\" class=\"controls hidden\">\n    <button style=\"background:#1a73e8;\" onclick=\"playAnimation()\">再生</button>\n    <button style=\"background:#e53935;\" onclick=\"switchMode('trace')\">なぞり練習</button>\n    <button style=\"background:#333;\" onclick=\"switchMode('score')\">戻る</button>\n  </div>\n\n  <div id=\"result-box\">\n    <div id=\"score\" class=\"score\">- 点</div>\n    <div id=\"msg\" class=\"msg\">書いて「採点する」を押してください</div>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:10px;\">\n    <button onclick=\"syncData()\" style=\"margin:0; background:#34a853; padding:6px 12px; font-size:12px;\">KanjiVG.txt 更新</button>\n    <select id=\"active-profile-select\" onchange=\"switchProfile(this.value)\" style=\"flex: 1.2; font-size:12px; padding: 8px; max-width:220px;\"></select>\n    <button onclick=\"toggleWizard(true)\" style=\"margin:0; background:#e91e63; padding:6px 10px; font-size:12px;\">🎯 調整</button>\n    <button onclick=\"toggleSettings(true)\" style=\"margin:0; background:#7b1fa2; padding:6px 10px; font-size:12px;\">🖋 設定</button>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:8px;\">\n    <label style=\"font-size:12px; font-weight:bold; color:#1a73e8; display:flex; align-items:center; cursor:pointer; background:#e8f0fe; padding:5px 10px; border-radius:15px;\">\n      <input type=\"checkbox\" id=\"cb-strict-mode\" style=\"margin-right:5px; transform: scale(1.2);\"> ☑ 厳密採点 (とめ・はね・はらい判定)\n    </label>\n    <button style=\"background:#ff9800; padding:5px 10px; font-size:12px; border-radius:15px; box-shadow:none;\" onclick=\"removeLastEffect()\">直前画の飾りを消す</button>\n  </div>\n\n  <div id=\"settings-modal\" class=\"modal-overlay hidden\">\n    <div class=\"modal-content\">\n      <h3>🖋 ペン・エフェクト表現設定</h3>\n      <div class=\"slider-group\">\n        <label>基本の太さ <span id=\"val-baseWidth\"></span></label>\n        <input type=\"range\" id=\"sl-baseWidth\" min=\"4\" max=\"18\" step=\"0.5\" oninput=\"updateParam('baseWidth', this.value)\">\n      </div>\n      <div style=\"background:#fff3e0; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #ff9800;\">\n        <label style=\"font-size:11px; color:#ef6c00; display:block; margin-bottom:5px;\">【とめ】インク溜まり</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-tomeStart\"></span></label>\n          <input type=\"range\" id=\"sl-tomeStart\" min=\"0.5\" max=\"0.95\" step=\"0.05\" oninput=\"updateParam('tomeStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>膨張率 <span id=\"val-tomeScale\"></span></label>\n          <input type=\"range\" id=\"sl-tomeScale\" min=\"1.0\" max=\"2.0\" step=\"0.1\" oninput=\"updateParam('tomeScale', this.value)\">\n        </div>\n      </div>\n      <div style=\"background:#e8f5e9; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #4caf50;\">\n        <label style=\"font-size:11px; color:#2e7d32; display:block; margin-bottom:5px;\">【はね】跳ね上げ</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-haneStart\"></span></label>\n          <input type=\"range\" id=\"sl-haneStart\" min=\"0.5\" max=\"0.95\" step=\"0.05\" oninput=\"updateParam('haneStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>先端の鋭さ <span id=\"val-haneSharp\"></span></label>\n          <input type=\"range\" id=\"sl-haneSharp\" min=\"0.5\" max=\"1.0\" step=\"0.05\" oninput=\"updateParam('haneSharp', this.value)\">\n        </div>\n      </div>\n      <div style=\"background:#e3f2fd; padding:10px; border-radius:8px; border-left: 4px solid #2196f3;\">\n        <label style=\"font-size:11px; color:#1565c0; display:block; margin-bottom:5px;\">【はらい】</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-haraiStart\"></span></label>\n          <input type=\"range\" id=\"sl-haraiStart\" min=\"0.3\" max=\"0.9\" step=\"0.05\" oninput=\"updateParam('haraiStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>先端の鋭さ <span id=\"val-haraiSharp\"></span></label>\n          <input type=\"range\" id=\"sl-haraiSharp\" min=\"0.5\" max=\"1.0\" step=\"0.05\" oninput=\"updateParam('haraiSharp', this.value)\">\n        </div>\n      </div>\n      <div id=\"preview-grid\">\n        <div class=\"preview-box\"><span class=\"preview-label\">永</span><canvas id=\"pre-永\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">校</span><canvas id=\"pre-校\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">木</span><canvas id=\"pre-木\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">文</span><canvas id=\"pre-文\" class=\"preview-canvas\"></canvas></div>\n      </div>\n      <div class=\"controls\" style=\"margin-top:20px;\">\n        <button onclick=\"resetParams()\" style=\"background:#8e8e93; font-size:13px;\">リセット</button>\n        <button onclick=\"toggleSettings(false)\">完了</button>\n      </div>\n    </div>\n  </div>\n\n  <div id=\"wizard-modal\" class=\"modal-overlay hidden\">\n    <div class=\"modal-content\" style=\"max-width: 350px;\">\n      <h3>🎯 自動キャリブレーション</h3>\n      <p style=\"font-size:11px; color:#555; margin-top:0;\">文字をなぞって「今の画はどれですか？」とシステムに教えてください。あなたのペンの判定基準を学習します。</p>\n      \n      <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:10px;\">\n        <span style=\"font-size:12px; font-weight:bold;\">下敷き:</span>\n        <select id=\"wiz-kanji-select\" onchange=\"drawWizGuide()\"></select>\n      </div>\n\n      <canvas id=\"wizard-canvas\"></canvas>\n\n      <div id=\"wiz-prompt-area\" class=\"hidden\">\n        <div style=\"text-align:center; font-weight:bold; font-size:13px; margin-bottom:6px; color:#e91e63;\">いま書いた画の意図は？</div>\n        <div class=\"wiz-btn-group\">\n          <button class=\"wiz-btn\" onclick=\"submitWizData('tome')\">とめ</button>\n          <button class=\"wiz-btn\" onclick=\"submitWizData('hane')\">はね</button>\n          <button class=\"wiz-btn\" onclick=\"submitWizData('harai')\">はらい</button>\n          <button class=\"wiz-btn-ignore\" onclick=\"submitWizData('ignore')\">いずれでもない（無視・消去）</button>\n        </div>\n      </div>\n\n      <div class=\"wiz-stats\" style=\"margin-top:10px;\">\n        <div style=\"font-weight:bold; margin-bottom:3px;\">📊 学習データ記録数</div>\n        <div id=\"wiz-counts\">とめ: 0 / はね: 0 / はらい: 0</div>\n        <hr style=\"border:0; border-top:1px solid #ddd; margin:8px 0;\">\n        <div style=\"font-weight:bold; margin-bottom:3px;\">⚙️ 計算されたしきい値</div>\n        <div id=\"wiz-thresholds\" style=\"font-family:monospace; color:#1a73e8; font-size:11px;\">未計算</div>\n      </div>\n\n      <hr style=\"border:0; border-top:2px solid #eee; margin:15px 0;\">\n      <div style=\"font-size:12px; font-weight:bold; margin-bottom:8px;\">💾 プロフィール保存先</div>\n      <div id=\"profile-slots-area\"></div>\n\n      <div class=\"controls\" style=\"margin-top:15px;\">\n        <button onclick=\"resetWizard()\" style=\"background:#f44336; font-size:12px;\">記録リセット</button>\n        <button onclick=\"toggleWizard(false)\" style=\"background:#8e8e93; font-size:12px;\">キャンセル</button>\n      </div>\n    </div>\n  </div>\n\n<script>\n  const GAS_API_URL = \"https://script.google.com/macros/s/AKfycbx54AwkrkwduMiONu74v70kXslg4g80oGs26_fjZAWcNFh8CXB7y4SyMtoDAX3Wl1SL2Q/exec\";\n  function postKanjiApi(action, payload = {}) {\n    return fetch(GAS_API_URL, {\n      method: 'POST',\n      body: JSON.stringify({ action, ...payload })\n    }).then(r => r.json());\n  }\n\n  // ==========================================\n  // 1. 高解像度Canvasセットアップ機構\n  // ==========================================\n  function setupHighDPICanvas(canvasId, logicalWidth, logicalHeight) {\n    const canvas = document.getElementById(canvasId);\n    if (!canvas) return null;\n    const dpr = window.devicePixelRatio || 1;\n    canvas.width = logicalWidth * dpr;\n    canvas.height = logicalHeight * dpr;\n    canvas.style.width = logicalWidth + 'px';\n    canvas.style.height = logicalHeight + 'px';\n    \n    const context = canvas.getContext('2d');\n    context.scale(dpr, dpr);\n    context.lineCap = 'round';\n    context.lineJoin = 'round';\n    return context;\n  }\n\n  const CANVAS_SIZE = 300;\n  const WIZ_CANVAS_SIZE = 280;\n  const PREVIEW_SIZE = 120;\n\n  const canvas = document.getElementById('canvas');\n  const ctx = setupHighDPICanvas('canvas', CANVAS_SIZE, CANVAS_SIZE);\n  const wizCanvas = document.getElementById('wizard-canvas');\n  const wctx = setupHighDPICanvas('wizard-canvas', WIZ_CANVAS_SIZE, WIZ_CANVAS_SIZE);\n\n  // ==========================================\n  // 2. グローバル変数宣言\n  // ==========================================\n  let KANJI_DATA = {};\n  const NUM_SAMPLES = 45; \n  let referenceStrokes = []; \n  let userStrokes = [];       \n  let mode = 'score';\n  let animationId = null; \n\n  const TEST_KANJI = {\n    '永': ['M45.5,13.25c5.12,2.4,8.62,5.75,10.75,9','M31.75,37.25c1.88,0.75,4.12,1,6.07,0.55c3.62-0.83,9.41-2.51,13.04-3.35c3-0.7,5.16,0.8,5.16,4.05c0,14.5-0.26,45.45-0.26,50c0,12-7.02,2.84-8.52,1.7','M14.25,58.68c1.75,0.45,3.46,0.3,5-0.02c2.5-0.53,12.84-3.54,15.34-4.49c2.5-0.95,4.65,0.77,3.75,2.85C33.5,68.25,25.75,79.75,16,86.37','M81.22,36.52c-0.1,1.11-0.78,2.03-1.52,2.7c-4.83,4.38-13.96,9.73-21.46,11.92','M58,52.74c9.88,9.52,20.02,18.85,29.07,24.84c2.01,1.33,4.05,2.66,6.43,3.56'],\n    '校': ['M11.53,40.68c1.1,0.32,2.6,0.45,4.53,0.32c5.4-0.35,16.57-3,23.14-4.04c1.25-0.2,2.3-0.18,3.07,0','M28.99,17.25c1.07,1.07,1.76,3.25,1.76,5.25c0,0.77-0.03,48.09-0.18,65.25c-0.03,3.03-0.05,5.16-0.07,6','M30.25,40.75c0,1.25-0.49,2.66-0.96,3.77C25.28,53.91,20.88,62.25,15,70','M33.75,51.25c2.75,1.5,6,5.25,7.25,7.75','M66.39,15.5c0.99,0.99,1.38,1.88,1.38,3.62c0,4.25-0.02,7.62-0.08,10.41','M48.12,31.71c2.3,0.29,3.9,0.44,6.09,0.2c10.28-1.16,20.32-2.66,32.45-3.53c2.35-0.17,4.03-0.01,5.33,0.32','M59.24,38.93c0.2,0.53,0.06,2.27-0.4,3.14C57,45.5,53.75,49.5,50,52.5','M79.27,38.5c4.34,3.07,8.73,8.68,10.9,12.41','M79.15,49.18c0.35,1.32,0.17,2.62-0.54,4.18C72.25,67.25,58.75,83.25,44,91.25','M55.95,55.88c6.3,3.37,21.64,22.12,31.45,30.33c2.64,2.21,5.07,4.15,8.6,4.44'],\n    '木': ['M19.5,39.86c2.45,0.57,5.23,0.8,8.04,0.57C40.75,39.38,63,36.5,79.78,36.15c2.8-0.06,4.54,0.1,7.34,0.5','M51.75,10.5c1.19,1.19,2,3,2,5c0,8.65,0,55.15-0.14,74.75c-0.03,4.19-0.07,7.15-0.11,8.25','M50.75,39.5c0,1.12-0.61,2.44-1.42,3.95C41.75,57.5,26.7,73.93,15.75,80.25','M54.5,39c4.62,6,23,25.75,31.76,34.61c2.27,2.29,4.61,4.39,7.49,5.64'],\n    '文': ['M51.62,12.75c1.06,1.06,1.73,2.5,1.73,4.01c0,4.32-0.11,7.61-0.11,12.15','M16.88,32.72c2.7,0.66,5.71,0.86,8.6,0.54c15.77-1.76,40.15-5.01,56.42-6.1c3.67-0.25,6.15,0.05,8.88,0.69','M69.89,32.5c0.36,2.12,0.06,3.82-0.93,6.27C61.62,57,43.75,80.25,18.75,93.75','M31,43.75c6,0,27.27,26.79,49.26,42.1c4.13,2.87,7.49,4.77,11.49,6.04']\n  };\n\n  // ==========================================\n  // 3. ストレージとプロファイル管理\n  // ==========================================\n  const SafeStorage = {\n    get: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },\n    set: function(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },\n    remove: function(k) { try { localStorage.removeItem(k); } catch(e) {} },\n    clearData: function() { try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith('kanjiData_')) localStorage.removeItem(k); } } catch(e) {} }\n  };\n\n  // 表現パラメータ\n  const DEFAULT_PARAMS = { baseWidth: 11.0, tomeStart: 0.90, tomeScale: 1.3, haneStart: 0.90, haneSharp: 0.55, haraiStart: 0.65, haraiSharp: 0.80 };\n  let STROKE_PARAMS = { ...DEFAULT_PARAMS };\n  const savedEff = SafeStorage.get('kanjiStrokeParamsV2');\n  if (savedEff) { try { STROKE_PARAMS = { ...DEFAULT_PARAMS, ...JSON.parse(savedEff) }; } catch(e) {} }\n\n  // 判定しきい値プロファイル\n  const DEFAULT_THRESHOLDS = { minVelocity: 1.2, hookAngleDiff: 0.6 };\n  let USER_PROFILES = [\n    { id: 0, name: \"汎用ペン (デフォルト)\", thresholds: { ...DEFAULT_THRESHOLDS }, isEmpty: false },\n    { id: 1, name: \"未登録 1\", thresholds: null, isEmpty: true },\n    { id: 2, name: \"未登録 2\", thresholds: null, isEmpty: true }\n  ];\n  let ACTIVE_PROFILE_ID = 0;\n\n  const savedProfiles = SafeStorage.get('kanjiPenProfiles');\n  if (savedProfiles) {\n    try { \n      const parsed = JSON.parse(savedProfiles);\n      USER_PROFILES = parsed.profiles || USER_PROFILES;\n      ACTIVE_PROFILE_ID = parsed.activeId !== undefined ? parsed.activeId : 0;\n    } catch(e) {}\n  }\n\n  function getActiveThresholds() {\n    const prof = USER_PROFILES[ACTIVE_PROFILE_ID];\n    return prof.thresholds ? prof.thresholds : DEFAULT_THRESHOLDS;\n  }\n\n  function updateProfileSelectUI() {\n    const sel = document.getElementById('active-profile-select');\n    sel.innerHTML = USER_PROFILES.map(p => `<option value=\"${p.id}\" ${p.id === ACTIVE_PROFILE_ID ? 'selected' : ''}>${p.isEmpty ? '(未登録)' : '🖋 ' + p.name}</option>`).join('');\n  }\n\n  function switchProfile(id) {\n    ACTIVE_PROFILE_ID = parseInt(id);\n    const prof = USER_PROFILES[ACTIVE_PROFILE_ID];\n    if (prof.isEmpty) alert(\"このスロットは未登録です。「ペン調整」から設定を記録してください。\");\n    SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));\n    if (referenceStrokes.length > 0) redrawAllUserStrokes(); \n  }\n\n  // ==========================================\n  // 4. 表現設定UIロジック\n  // ==========================================\n  const previewContexts = {}; \n\n  function toggleSettings(show) {\n    const modal = document.getElementById('settings-modal');\n    if (show) {\n      Object.keys(STROKE_PARAMS).forEach(k => {\n        const el = document.getElementById(`sl-${k}`);\n        if(el) { el.value = STROKE_PARAMS[k]; document.getElementById(`val-${k}`).innerText = STROKE_PARAMS[k]; }\n      });\n      modal.classList.remove('hidden'); updateAllPreviews();\n    } else {\n      modal.classList.add('hidden');\n      if (referenceStrokes.length > 0) redrawAllUserStrokes(); \n    }\n  }\n\n  function updateParam(k, v) { STROKE_PARAMS[k] = parseFloat(v); document.getElementById(`val-${k}`).innerText = v; SafeStorage.set('kanjiStrokeParamsV2', JSON.stringify(STROKE_PARAMS)); updateAllPreviews(); }\n  function resetParams() { if(confirm(\"エフェクト設定を初期化しますか？\")) { STROKE_PARAMS = { ...DEFAULT_PARAMS }; toggleSettings(true); } }\n\n  // ==========================================\n  // 5. キャリブレーション・ウィザード機能\n  // ==========================================\n  let wizDrawing = false, wizCurrentPoints = [], wizLastTime = 0, wizStats = null;\n  let wizHistory = { tome: [], hane: [], harai: [] };\n\n  function toggleWizard(show) {\n    const modal = document.getElementById('wizard-modal');\n    if (show) {\n      const sel = document.getElementById('wiz-kanji-select');\n      const loadedKeys = Object.keys(KANJI_DATA);\n      const keysToUse = loadedKeys.length > 0 ? loadedKeys : Object.keys(TEST_KANJI);\n      sel.innerHTML = `<option value=\"\">(なし・自由書き)</option>` + keysToUse.map(k => `<option value=\"${k}\">${k}</option>`).join('');\n      \n      wizHistory = { tome: [], hane: [], harai: [] };\n      renderProfileSaveSlots(); updateWizUI();\n      modal.classList.remove('hidden'); drawWizGuide();\n    } else {\n      modal.classList.add('hidden'); updateProfileSelectUI();\n    }\n  }\n\n  function drawWizGuide() {\n    wctx.clearRect(0, 0, WIZ_CANVAS_SIZE, WIZ_CANVAS_SIZE);\n    const char = document.getElementById('wiz-kanji-select').value;\n    if (!char) return;\n    let paths = TEST_KANJI[char] || KANJI_DATA[char];\n    if (!paths) return;\n\n    let strokes = paths.map(p => sampleSvgPath(p, 30));\n    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;\n    strokes.forEach(s => s.forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }));\n    \n    const pad = 30, scale = Math.min((WIZ_CANVAS_SIZE - pad * 2) / Math.max(1, maxX - minX), (WIZ_CANVAS_SIZE - pad * 2) / Math.max(1, maxY - minY));\n    const offX = (WIZ_CANVAS_SIZE - (maxX - minX) * scale) / 2 - minX * scale, offY = (WIZ_CANVAS_SIZE - (maxY - minY) * scale) / 2 - minY * scale;\n\n    wctx.fillStyle = '#e0e0e0';\n    strokes.forEach(s => { s.forEach(pt => { wctx.beginPath(); wctx.arc(pt.x * scale + offX, pt.y * scale + offY, 4, 0, Math.PI * 2); wctx.fill(); }); });\n  }\n\n  function clearWizCanvas() { wizCurrentPoints = []; wizStats = null; document.getElementById('wiz-prompt-area').classList.add('hidden'); drawWizGuide(); }\n\n  wizCanvas.addEventListener('pointerdown', e => {\n    wizCanvas.setPointerCapture(e.pointerId); wizDrawing = true; wizCurrentPoints = [];\n    const r = wizCanvas.getBoundingClientRect();\n    const pt = { x: (e.clientX - r.left)*(WIZ_CANVAS_SIZE/r.width), y: (e.clientY - r.top)*(WIZ_CANVAS_SIZE/r.height) };\n    wizCurrentPoints.push(pt); wizLastTime = Date.now();\n    wctx.fillStyle = '#e53935'; wctx.beginPath(); wctx.arc(pt.x, pt.y, STROKE_PARAMS.baseWidth/2, 0, Math.PI * 2); wctx.fill();\n    document.getElementById('wiz-prompt-area').classList.add('hidden');\n  });\n\n  wizCanvas.addEventListener('pointermove', e => {\n    if (!wizDrawing) return;\n    const r = wizCanvas.getBoundingClientRect();\n    const pt = { x: (e.clientX - r.left)*(WIZ_CANVAS_SIZE/r.width), y: (e.clientY - r.top)*(WIZ_CANVAS_SIZE/r.height) };\n    const last = wizCurrentPoints[wizCurrentPoints.length-1];\n    fillBetween(wctx, last, pt, STROKE_PARAMS.baseWidth); wizCurrentPoints.push(pt);\n  });\n\n  wizCanvas.addEventListener('pointerup', e => {\n    if (!wizDrawing) return;\n    wizDrawing = false;\n    if (wizCurrentPoints.length < 3) { clearWizCanvas(); return; }\n\n    const n = wizCurrentPoints.length, pStart = wizCurrentPoints[Math.max(0, n - 6)], pEnd = wizCurrentPoints[n - 1];\n    const velocity = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y) / ((Date.now() - wizLastTime) || 1) * 10;\n    const pMid = wizCurrentPoints[Math.floor(n * 0.5)], pPre = wizCurrentPoints[Math.floor(n * 0.85)];\n    const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n    let angleDiff = Math.abs(angleTip - angleMain); if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;\n\n    wizStats = { v: velocity, a: angleDiff };\n    document.getElementById('wiz-prompt-area').classList.remove('hidden');\n  });\n\n  function submitWizData(type) {\n    if (type === 'ignore') { clearWizCanvas(); return; }\n    if (!wizStats) return;\n    wizHistory[type].push(wizStats); recalcThresholds(); updateWizUI(); clearWizCanvas();\n  }\n\n  let TEMPORARY_THRESHOLDS = { ...DEFAULT_THRESHOLDS };\n  function recalcThresholds() {\n    let maxTomeV = 0, minHaneHaraiV = 999;\n    if (wizHistory.tome.length > 0) maxTomeV = Math.max(...wizHistory.tome.map(d => d.v));\n    const hhArray = wizHistory.hane.concat(wizHistory.harai);\n    if (hhArray.length > 0) minHaneHaraiV = Math.min(...hhArray.map(d => d.v));\n\n    let newMinV = DEFAULT_THRESHOLDS.minVelocity;\n    if (wizHistory.tome.length > 0 && hhArray.length > 0) newMinV = (maxTomeV + minHaneHaraiV) / 2;\n    else if (wizHistory.tome.length > 0) newMinV = maxTomeV * 1.2; else if (hhArray.length > 0) newMinV = minHaneHaraiV * 0.8;\n\n    let newAngleDiff = DEFAULT_THRESHOLDS.hookAngleDiff;\n    if (wizHistory.hane.length > 0) newAngleDiff = Math.max(0.2, Math.min(...wizHistory.hane.map(d => d.a)) * 0.75); \n    \n    TEMPORARY_THRESHOLDS.minVelocity = parseFloat(newMinV.toFixed(2)); TEMPORARY_THRESHOLDS.hookAngleDiff = parseFloat(newAngleDiff.toFixed(2));\n  }\n\n  function updateWizUI() {\n    document.getElementById('wiz-counts').innerText = `とめ: ${wizHistory.tome.length} / はね: ${wizHistory.hane.length} / はらい: ${wizHistory.harai.length}`;\n    const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;\n    document.getElementById('wiz-thresholds').innerHTML = `v >= ${t.minVelocity} で「払・跳」<br>a >= ${t.hookAngleDiff} で「跳ね」`;\n  }\n\n  function resetWizard() {\n    if (confirm(\"学習データをクリアしますか？\")) {\n      wizHistory = { tome: [], hane: [], harai: [] }; TEMPORARY_THRESHOLDS = { ...DEFAULT_THRESHOLDS };\n      updateWizUI(); clearWizCanvas();\n    }\n  }\n\n  function renderProfileSaveSlots() {\n    const area = document.getElementById('profile-slots-area');\n    area.innerHTML = USER_PROFILES.map(p => `\n      <div class=\"profile-slot\">\n        <input type=\"text\" id=\"prof-name-${p.id}\" value=\"${p.isEmpty ? '' : p.name}\" placeholder=\"ペン・端末名 (未登録)\">\n        <button style=\"background:${p.isEmpty ? '#4caf50' : '#f4b400'}; color:#fff;\" onclick=\"saveProfileToSlot(${p.id})\">${p.isEmpty ? 'ここに保存' : '上書き保存'}</button>\n      </div>`).join('');\n  }\n\n  function saveProfileToSlot(id) {\n    const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;\n    const nameInput = document.getElementById(`prof-name-${id}`).value.trim() || `ペン設定 ${id+1}`;\n    if (!USER_PROFILES[id].isEmpty) if (!confirm(`「${USER_PROFILES[id].name}」に上書き保存しますか？\\\n(以前の判定設定は消去されます)`)) return;\n    \n    USER_PROFILES[id] = { id: id, name: nameInput, thresholds: { ...t }, isEmpty: false };\n    ACTIVE_PROFILE_ID = id;\n    SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));\n    alert(`「${nameInput}」として保存し、現在のペンに設定しました。`);\n    renderProfileSaveSlots(); updateProfileSelectUI();\n  }\n\n  // ==========================================\n  // 6. アプリケーション初期化 (安全対策済)\n  // ==========================================\n  function showLoading(show, msg = \"ロード中...\") {\n    const overlay = document.getElementById('loading-overlay');\n    if (overlay) { overlay.style.display = show ? 'flex' : 'none'; if(show) overlay.querySelector('span').textContent = msg; }\n  }\n\n  window.onload = () => {\n    updateProfileSelectUI();\n    showLoading(true, \"初期化中...\");\n    postKanjiApi(\"get_kanji_init_data\")\n      .then(initData => {\n        if (!initData || initData.status !== \"success\") throw new Error((initData && initData.message) || \"初期化に失敗しました\");\n        showLoading(false); // エラーが起きる前に絶対に隠す\n        try {\n          const cachedBook = SafeStorage.get('kanjiBookName');\n          if (cachedBook !== initData.bookName) { SafeStorage.clearData(); SafeStorage.set('kanjiBookName', initData.bookName); }\n          const sheetSelect = document.getElementById('sheet-selector');\n          sheetSelect.innerHTML = initData.sheets.map(s => `<option value=\"${s}\">${s}</option>`).join('');\n          loadKanjiData();\n        } catch(e) { alert(\"初期化エラー: \" + e.message); }\n      })\n      .catch(e => { alert(\"サーバー接続エラー: \" + (e && e.message ? e.message : e)); showLoading(false); });\n  };\n\n  function syncData() { const name = 'KanjiVG.txt'; SafeStorage.remove(`kanjiData_${name}`); loadKanjiData(); }\n\n  function loadKanjiData() {\n    const name = 'KanjiVG.txt';\n    if (!name) { showLoading(false); return; }\n    const cached = SafeStorage.get(`kanjiData_${name}`);\n    \n    if (cached) { \n      try { \n        KANJI_DATA = JSON.parse(cached); populateKanjiSelector(); showLoading(false); return; \n      } catch(e) { SafeStorage.remove(`kanjiData_${name}`); } \n    }\n\n    showLoading(true, `${name} を読込中...`);\n    postKanjiApi(\"get_kanji_data_from_sheet\", { sheetName: name })\n      .then(res => {\n        if (!res || res.status !== \"success\") throw new Error((res && res.message) || \"データ取得に失敗しました\");\n        const data = res.data || {};\n        showLoading(false); \n        try { KANJI_DATA = data; SafeStorage.set(`kanjiData_${name}`, JSON.stringify(data)); populateKanjiSelector(); } \n        catch(e) { alert(\"データ展開中にエラー: \" + e.message); } \n      })\n      .catch(e => { alert(\"データ取得失敗: \" + (e && e.message ? e.message : e)); showLoading(false); });\n  }\n\n  function populateKanjiSelector() {\n    const select = document.getElementById('target-kanji');\n    const prev = select ? String(select.value || '') : '';\n    const keys = Object.keys(KANJI_DATA);\n    select.innerHTML = keys.length ? keys.map(k => `<option value=\"${k}\">${k}</option>`).join('') : '<option>データなし</option>';\n    if (prev && keys.indexOf(prev) >= 0) select.value = prev;\n    initTargetKanji();\n  }\n\n  function initTargetKanji() {\n    const char = document.getElementById('target-kanji').value;\n    if(!char || !KANJI_DATA[char]) return;\n    try {\n      referenceStrokes = KANJI_DATA[char].map(p => {\n        const points = sampleSvgPath(p, NUM_SAMPLES);\n        return { type: detectStrokeType(points, false), points: points };\n      });\n      switchMode('score');\n    } catch(e) {\n      console.warn(\"SVG解析スキップ:\", char);\n    }\n  }\n\n  // ==========================================\n  // 7. 解析と描画エンジン (ゼロ除算保護済)\n  // ==========================================\n  function sampleSvgPath(d, n) {\n    if (!d || typeof d !== 'string' || d.trim() === '') return Array(n).fill({x:0, y:0});\n    try {\n      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); const len = p.getTotalLength();\n      if (len === 0) return Array(n).fill({x:0, y:0});\n      return Array.from({length: n}, (_, i) => { const pt = p.getPointAtLength(i * len / (Math.max(1, n - 1))); return {x: pt.x, y: pt.y}; });\n    } catch(e) { return Array(n).fill({x:0, y:0}); }\n  }\n\n  function detectStrokeType(points, isUser = false, terminalInfo = null) {\n    if (points.length < 5) return 'tome';\n    const n = points.length, thr = getActiveThresholds(); \n    \n    if (!isUser) {\n        const pMid = points[Math.floor(n * 0.5)], pPre = points[Math.floor(n * 0.85)], pEnd = points[n - 1];\n        const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n        let diff = Math.abs(angleTip - angleMain); if (diff > Math.PI) diff = 2 * Math.PI - diff;\n        if (diff > thr.hookAngleDiff) return 'hane';\n        const deg = angleMain * 180 / Math.PI;\n        if ((deg > 10 && deg < 85) || (deg > 95 && deg < 170)) return 'harai';\n        return 'tome';\n    } \n    \n    if (terminalInfo) {\n        const { velocity, dy, angleDiff } = terminalInfo;\n        if (velocity < thr.minVelocity) return 'tome';\n        if (dy < 0 || angleDiff > thr.hookAngleDiff) return 'hane';\n        return 'harai';\n    }\n    return 'tome';\n  }\n\n  function renderStrokeWithEffect(context, points, type, color, scale = 1.0) {\n    if (points.length === 0) return;\n    context.fillStyle = color;\n    const bW = STROKE_PARAMS.baseWidth * scale;\n    if (points.length === 1) { context.beginPath(); context.arc(points[0].x, points[0].y, bW / 2, 0, Math.PI * 2); context.fill(); return; }\n\n    const n = points.length;\n    for (let i = 0; i < n - 1; i++) {\n      const ratio = i / (n - 1);\n      let w = bW;\n      \n      // ★ ゼロ除算・NaN対策\n      if (type === 'harai' && ratio > STROKE_PARAMS.haraiStart) {\n        const denom = (1 - STROKE_PARAMS.haraiStart) || 0.001;\n        w *= Math.max(0.1, 1 - STROKE_PARAMS.haraiSharp * ((ratio - STROKE_PARAMS.haraiStart) / denom));\n      } else if (type === 'hane' && ratio > STROKE_PARAMS.haneStart) {\n        const denom = (1 - STROKE_PARAMS.haneStart) || 0.001;\n        w *= Math.max(0.1, 1 - STROKE_PARAMS.haneSharp * ((ratio - STROKE_PARAMS.haneStart) / denom));\n      } else if (type === 'tome' && ratio > STROKE_PARAMS.tomeStart) {\n        const denom = (1 - STROKE_PARAMS.tomeStart) || 0.001;\n        w *= (1 + (STROKE_PARAMS.tomeScale - 1) * ((ratio - STROKE_PARAMS.tomeStart) / denom));\n      }\n      fillBetween(context, points[i], points[i+1], Math.max(0.5, w));\n    }\n  }\n\n  function fillBetween(context, start, end, width) {\n    const dist = Math.hypot(end.x - start.x, end.y - start.y); \n    const steps = Math.max(1, Math.ceil(dist * 2.5)); \n    for (let i = 0; i <= steps; i++) {\n      const t = i / steps; context.beginPath(); context.arc(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t, width / 2, 0, Math.PI * 2); context.fill();\n    }\n  }\n\n  // ==========================================\n  // 8. 手書き処理（メインキャンバス）\n  // ==========================================\n  let isDrawingMain = false, currentPointsMain = [], mainLastTime = 0, mainLastPos = null;\n\n  function getMainXY(e) {\n    const r = canvas.getBoundingClientRect();\n    return { x: (e.clientX - r.left) * (CANVAS_SIZE / r.width), y: (e.clientY - r.top) * (CANVAS_SIZE / r.height), t: Date.now(), p: e.pressure || 0.5 };\n  }\n\n  canvas.addEventListener('pointerdown', e => {\n    if (mode === 'demo') return;\n    canvas.setPointerCapture(e.pointerId);\n    isDrawingMain = true; currentPointsMain = []; mainLastPos = getMainXY(e); mainLastTime = Date.now();\n    currentPointsMain.push({x: mainLastPos.x, y: mainLastPos.y});\n    ctx.fillStyle = (mode === 'trace' ? '#e53935' : '#333');\n    ctx.beginPath(); ctx.arc(mainLastPos.x, mainLastPos.y, STROKE_PARAMS.baseWidth / 2, 0, Math.PI * 2); ctx.fill();\n  });\n\n  canvas.addEventListener('pointermove', e => {\n    if (!isDrawingMain) return;\n    const pos = getMainXY(e);\n    ctx.fillStyle = (mode === 'trace' ? '#e53935' : '#333');\n    fillBetween(ctx, mainLastPos, pos, STROKE_PARAMS.baseWidth); \n    currentPointsMain.push({x: pos.x, y: pos.y}); mainLastPos = pos;\n  });\n\n  canvas.addEventListener('pointerup', e => {\n    if (!isDrawingMain) return;\n    isDrawingMain = false;\n    if (currentPointsMain.length < 3) { \n      userStrokes.push({ type: 'tome', points: [...currentPointsMain] }); redrawAllUserStrokes(); return; \n    }\n\n    const n = currentPointsMain.length, pStart = currentPointsMain[Math.max(0, n - 6)], pEnd = currentPointsMain[n - 1];\n    const velocity = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y) / ((Date.now() - mainLastTime) || 1) * 10;\n    const dy = pEnd.y - pStart.y;\n    const pMid = currentPointsMain[Math.floor(n * 0.5)], pPre = currentPointsMain[Math.floor(n * 0.85)];\n    const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n    let angleDiff = Math.abs(angleTip - angleMain); if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;\n\n    const type = detectStrokeType(currentPointsMain, true, { velocity, dy, angleDiff });\n    userStrokes.push({ type, points: [...currentPointsMain] });\n    redrawAllUserStrokes();\n  });\n\n  function redrawAllUserStrokes() {\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n    if (mode === 'trace') drawTraceGuide();\n    userStrokes.forEach(s => { renderStrokeWithEffect(ctx, s.points, s.type, (mode === 'trace' ? '#e53935' : '#333')); });\n  }\n\n  function removeLastEffect() {\n    if (userStrokes.length > 0) {\n      userStrokes[userStrokes.length - 1].type = 'none';\n      redrawAllUserStrokes();\n    }\n  }\n\n  function updateAllPreviews() {\n    ['永', '校', '木', '文'].forEach(char => {\n      if (!previewContexts[char]) { previewContexts[char] = setupHighDPICanvas(`pre-${char}`, PREVIEW_SIZE, PREVIEW_SIZE); }\n      const pctx = previewContexts[char]; if (!pctx) return;\n      pctx.clearRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);\n      const paths = TEST_KANJI[char]; if (!paths) return;\n      const strokes = paths.map(p => { return { type: detectStrokeType(sampleSvgPath(p, NUM_SAMPLES), false), points: sampleSvgPath(p, NUM_SAMPLES) }; });\n      const off = 10; strokes.forEach(s => { const scaledPoints = s.points.map(pt => ({x: pt.x + off, y: pt.y + off})); renderStrokeWithEffect(pctx, scaledPoints, s.type, \"#333\", 0.4); });\n    });\n  }\n\n  // ==========================================\n  // 9. モード切替と採点エンジン（厳密判定対応）\n  // ==========================================\n  function switchMode(m) {\n    mode = m; const msg = document.getElementById('mode-msg');\n    ['score-controls', 'trace-controls', 'demo-controls'].forEach(id => document.getElementById(id).classList.add('hidden'));\n    document.getElementById(`${mode}-controls`).classList.remove('hidden');\n    if (mode === 'demo') document.getElementById('result-box').classList.add('hidden'); else document.getElementById('result-box').classList.remove('hidden');\n    \n    clearCanvas();\n    if(mode==='trace') msg.innerHTML = \"お手本を<span style='color:#e53935'>赤ペン</span>でなぞってください\";\n    else if(mode==='demo') { msg.innerText = \"お手本（完成したかたち）を表示しています。書き順は「書き順デモ再生」または下の「再生」で確認できます。\"; drawDemoStaticReference(); }\n    else msg.innerText = \"正確に書いてください\";\n  }\n\n  function clearCanvas() {\n    if(animationId) cancelAnimationFrame(animationId);\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE); userStrokes = [];\n    if(mode === 'trace') drawTraceGuide();\n    document.getElementById('score').innerText = \"- 点\"; document.getElementById('msg').innerText = \"書いて「採点する」を押してください\";\n  }\n\n  function getScaledRefs() {\n    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;\n    referenceStrokes.forEach(s => { s.points.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    const pad = 40, scale = Math.min((CANVAS_SIZE - pad * 2) / Math.max(1, maxX - minX), (CANVAS_SIZE - pad * 2) / Math.max(1, maxY - minY));\n    const offX = (CANVAS_SIZE - (maxX - minX) * scale) / 2 - minX * scale, offY = (CANVAS_SIZE - (maxY - minY) * scale) / 2 - minY * scale;\n    return referenceStrokes.map(s => ({ type: s.type, points: s.points.map(p => ({x: p.x * scale + offX, y: p.y * scale + offY})) }));\n  }\n\n  function drawTraceGuide() { getScaledRefs().forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#f0f0f0\")); }\n\n  function drawDemoStaticReference() {\n    if(animationId) cancelAnimationFrame(animationId);\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n    const refs = getScaledRefs();\n    refs.forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#757575\"));\n  }\n\n  function playAnimation() {\n    if(animationId) cancelAnimationFrame(animationId);\n    const refs = getScaledRefs(); let sIdx = 0, pIdx = 0;\n    function frame() {\n      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n      refs.forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#f5f5f5\"));\n      for (let i = 0; i < sIdx; i++) renderStrokeWithEffect(ctx, refs[i].points, refs[i].type, \"#9e9e9e\");\n      if (sIdx < refs.length) {\n        renderStrokeWithEffect(ctx, refs[sIdx].points.slice(0, pIdx + 1), refs[sIdx].type, \"#9e9e9e\");\n        const cur = refs[sIdx].points[pIdx]; ctx.beginPath(); ctx.arc(cur.x, cur.y, STROKE_PARAMS.baseWidth/2, 0, Math.PI * 2); ctx.fillStyle = '#e53935'; ctx.fill();\n        pIdx++;\n        if (pIdx >= refs[sIdx].points.length) { sIdx++; pIdx = 0; setTimeout(() => { if (mode === 'demo') animationId = requestAnimationFrame(frame); }, 400); return; }\n      } else return;\n      if (mode === 'demo') animationId = requestAnimationFrame(frame);\n    }\n    frame();\n  }\n\n  // ==========================================\n  // 9b. 採点用ヘルパ（リサンプル・正規化・DTW・交差・サイズ）\n  // ==========================================\n  // 採点をやや易しくする都合: 重み（軌道の比重↓・サイズ↓をやや緩和寄り）と下記スケールを併用\n  const SCORE_WEIGHTS = { trajectory: 0.40, startEnd: 0.22, structure: 0.13, size: 0.25 };\n\n  function resamplePolyline(sArray, n) {\n    const s = [...sArray];\n    if (s.length < 2) return Array(n).fill(s[0] || {x:0, y:0});\n    let len = 0; for (let i = 1; i < s.length; i++) len += Math.hypot(s[i].x - s[i-1].x, s[i].y - s[i-1].y);\n    const step = len / (n - 1), res = [s[0]]; let d = 0, i = 1;\n    while (i < s.length && res.length < n) {\n      const seg = Math.hypot(s[i].x - s[i-1].x, s[i].y - s[i-1].y);\n      if (d + seg >= step) { const t = (step - d) / Math.max(0.1, seg); res.push({ x: s[i-1].x + (s[i].x - s[i-1].x) * t, y: s[i-1].y + (s[i].y - s[i-1].y) * t }); s.splice(i, 0, res[res.length - 1]); d = 0; }\n      else { d += seg; i++; }\n    }\n    while (res.length < n) res.push(s[s.length - 1]); return res;\n  }\n\n  function normalizeStrokesToUnitSquare(strokes) {\n    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;\n    strokes.forEach(s => { s.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    const scale = Math.max(maxX - minX, maxY - minY) || 1;\n    return strokes.map(s => s.map(p => ({x: (p.x - minX) / scale, y: (p.y - minY) / scale})));\n  }\n\n  function dtwMeanDistance(a, b) {\n    const n = a.length, m = b.length;\n    if (n === 0 || m === 0) return 1;\n    const inf = 1e12;\n    const dtw = Array(n + 1);\n    for (let i = 0; i <= n; i++) {\n      dtw[i] = new Float64Array(m + 1);\n      dtw[i].fill(inf);\n    }\n    dtw[0][0] = 0;\n    for (let i = 1; i <= n; i++) {\n      for (let j = 1; j <= m; j++) {\n        const cost = Math.hypot(a[i - 1].x - b[j - 1].x, a[i - 1].y - b[j - 1].y);\n        dtw[i][j] = cost + Math.min(dtw[i - 1][j], dtw[i][j - 1], dtw[i - 1][j - 1]);\n      }\n    }\n    const pathLen = n + m - 1;\n    return dtw[n][m] / Math.max(1, pathLen);\n  }\n\n  function distTo100(meanDist, scale) {\n    return Math.max(0, Math.min(100, Math.round(100 * (1 - meanDist / scale))));\n  }\n\n  function calcTrajectoryScoreDtw(uN, rN) {\n    let sum = 0;\n    for (let i = 0; i < rN.length; i++) {\n      const m = dtwMeanDistance(uN[i], rN[i]);\n      sum += distTo100(m, 0.18);\n    }\n    return Math.round(sum / rN.length);\n  }\n\n  function calcStartEndScore(uN, rN) {\n    let total = 0, count = 0;\n    for (let i = 0; i < rN.length; i++) {\n      const us = uN[i][0], ue = uN[i][uN[i].length - 1], rs = rN[i][0], re = rN[i][rN[i].length - 1];\n      const dS = Math.hypot(us.x - rs.x, us.y - rs.y), dE = Math.hypot(ue.x - re.x, ue.y - re.y);\n      // 正規化座標上の先端/末端差。スケールを大きいほうが同じ距離で得点が上がる（易しい）\n      const pairMean = (dS + dE) / 2;\n      total += distTo100(pairMean, 0.30);\n      count++;\n    }\n    return count ? Math.round(total / count) : 0;\n  }\n\n  function cross2(ax, ay, bx, by) { return ax * by - ay * bx; }\n  function sub(a, b) { return {x: a.x - b.x, y: a.y - b.y}; }\n  function segIntersects(p1, p2, p3, p4) {\n    const r = sub(p2, p1), s = sub(p4, p3);\n    const cr = cross2(r.x, r.y, s.x, s.y);\n    if (Math.abs(cr) < 1e-9) return false;\n    const t = cross2(sub(p3, p1).x, sub(p3, p1).y, s.x, s.y) / cr;\n    const u = cross2(sub(p3, p1).x, sub(p3, p1).y, r.x, r.y) / cr;\n    return t >= 0 && t <= 1 && u >= 0 && u <= 1;\n  }\n\n  function strokePolylinesIntersect(A, B) {\n    for (let i = 0; i < A.length - 1; i++) {\n      for (let j = 0; j < B.length - 1; j++) {\n        if (segIntersects(A[i], A[i + 1], B[j], B[j + 1])) return true;\n      }\n    }\n    return false;\n  }\n\n  function collectIntersectingStrokePairs(polys) {\n    const pairs = new Set();\n    for (let i = 0; i < polys.length; i++) {\n      for (let j = i + 1; j < polys.length; j++) {\n        if (strokePolylinesIntersect(polys[i], polys[j])) {\n          const key = i * 256 + j;\n          pairs.add(key);\n        }\n      }\n    }\n    return pairs;\n  }\n\n  function calcStructureScore(uN, rN) {\n    const refPolys = rN, userPolys = uN;\n    const refSet = collectIntersectingStrokePairs(refPolys);\n    if (refSet.size === 0) return 100;\n    let matches = 0;\n    for (const key of refSet) {\n      const j = key % 256, i = (key - j) / 256;\n      if (strokePolylinesIntersect(userPolys[i], userPolys[j])) matches++;\n    }\n    // 交差の一致度に最低点を与え、わずかな不一致で大きく落ちにくくする\n    return Math.min(100, Math.round(22 + 78 * (matches / refSet.size)));\n  }\n\n  function boundingBoxFromStrokesInCanvas(strokes) {\n    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;\n    let any = false;\n    strokes.forEach(s => { s.forEach(p => { any = true; minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    if (!any) return { w: 1, h: 1, area: 1 };\n    const w = Math.max(0.1, maxX - minX), h = Math.max(0.1, maxY - minY);\n    return { w, h, area: w * h };\n  }\n\n  function calcSizeScoreCanvas(userStrokesResampled, scaledRefStrokes) {\n    const uB = boundingBoxFromStrokesInCanvas(userStrokesResampled);\n    const rB = boundingBoxFromStrokesInCanvas(scaledRefStrokes.map(s => s.points));\n    const areaRatio = uB.area / rB.area;\n    const lo0 = 0.50, lo1 = 0.63, hi1 = 1.40, hi2 = 1.68, lo2 = 0.32, hi3 = 2.1;\n    if (areaRatio >= lo1 && areaRatio <= hi1) return 100;\n    if (areaRatio >= lo0 && areaRatio < lo1) return Math.round(90 + 10 * (areaRatio - lo0) / (lo1 - lo0));\n    if (areaRatio > hi1 && areaRatio <= hi2) return Math.round(90 + 10 * (hi2 - areaRatio) / (hi2 - hi1));\n    if (areaRatio < lo0 && areaRatio >= lo2) return Math.round(60 + 30 * (areaRatio - lo2) / (lo0 - lo2));\n    if (areaRatio > hi2 && areaRatio < hi3) return Math.round(60 + 30 * (hi3 - areaRatio) / (hi3 - hi2));\n    if (areaRatio < lo2) return Math.max(0, 40 - Math.min(40, Math.round(80 * (lo2 - areaRatio) / lo2)));\n    if (areaRatio > hi3) return Math.max(0, 40 - Math.min(40, Math.round(20 * (areaRatio - hi3))));\n    return 40;\n  }\n\n  function evaluateKanji(isTrace) {\n    const sEl = document.getElementById('score'), mEl = document.getElementById('msg');\n    if (userStrokes.length !== referenceStrokes.length) {\n    sEl.innerText = \"0 点\";\n    mEl.innerText = `画数が違います（正解：${referenceStrokes.length}画）`;\n    try {\n      if (window.parent && window.parent !== window) {\n        window.parent.postMessage({ type: \"kanjiQuizHandAnalytics\", handScore: 0, passedThreshold: false, referenceStrokeCount: referenceStrokes.length, hasStrokeOrderIssue: false, strokeCountMismatch: true, brushTypeMismatches: -1, brushEndingAllOk: false }, \"*\");\n      }\n    } catch (e) {}\n    return;\n  }\n\n    const userResampled = userStrokes.map(s => resamplePolyline(s.points, NUM_SAMPLES));\n    const uN = normalizeStrokesToUnitSquare(userResampled);\n    const rN = normalizeStrokesToUnitSquare(referenceStrokes.map(s => s.points));\n\n    const trajS = calcTrajectoryScoreDtw(uN, rN);\n    const seS = calcStartEndScore(uN, rN);\n    const strS = calcStructureScore(uN, rN);\n    const scaledRefs = getScaledRefs();\n    const sizeS = calcSizeScoreCanvas(userResampled, scaledRefs);\n\n    let score = Math.round(\n      SCORE_WEIGHTS.trajectory * trajS + SCORE_WEIGHTS.startEnd * seS + SCORE_WEIGHTS.structure * strS + SCORE_WEIGHTS.size * sizeS\n    );\n    score = Math.max(0, Math.min(100, score));\n\n    const isStrict = document.getElementById('cb-strict-mode').checked;\n    let typeErrors = 0;\n    if (isStrict) {\n      for (let i = 0; i < rN.length; i++) {\n        const rType = referenceStrokes[i].type;\n        const uType = userStrokes[i].type;\n        // はね・はらいがあるべき場所にない場合は減点\n        if (rType === 'hane' && uType !== 'hane') {\n          typeErrors++; score = Math.max(0, score - 6);\n        } else if (rType === 'harai' && uType !== 'harai') {\n          typeErrors++; score = Math.max(0, score - 6);\n        }\n        // とめ(rType === 'tome')の箇所に不要なはね・はらいが存在しても減点しない\n      }\n    }\n\n    const uB2 = boundingBoxFromStrokesInCanvas(userResampled);\n    const rB2 = boundingBoxFromStrokesInCanvas(scaledRefs.map(s => s.points));\n    const areaRatio = (uB2.area / rB2.area) || 1;\n    const sizeLabel = (areaRatio >= 0.63 && areaRatio <= 1.4) ? '大きさは適正' : (areaRatio < 0.63 && areaRatio > 0.38) ? '少し小さい' : (areaRatio < 0.38) ? '小さすぎ' : (areaRatio <= 1.68) ? 'やや大きい' : '大きすぎ';\n\n    sEl.innerText = score + \" 点\";\n    mEl.style.color = '#555';\n    let brushTypeMismatches = 0;\n    for (let ai = 0; ai < Math.min(userStrokes.length, referenceStrokes.length); ai++) {\n      const rT = referenceStrokes[ai].type;\n      const uT = userStrokes[ai].type;\n      if (rT === 'hane' && uT !== 'hane') brushTypeMismatches++;\n      else if (rT === 'harai' && uT !== 'harai') brushTypeMismatches++;\n    }\n    const hasStrokeOrderIssue = strS < 42;\n    try {\n      if (window.parent && window.parent !== window) {\n        window.parent.postMessage({\n          type: \"kanjiQuizHandAnalytics\",\n          handScore: score,\n          passedThreshold: score >= 60,\n          referenceStrokeCount: referenceStrokes.length,\n          hasStrokeOrderIssue: hasStrokeOrderIssue,\n          strokeCountMismatch: false,\n          brushTypeMismatches: brushTypeMismatches,\n          brushEndingAllOk: brushTypeMismatches === 0\n        }, \"*\");\n      }\n    } catch (e) {}\n    const subLine = `内訳: 軌道${trajS} 始終${seS} 構造${strS} 大きさ${sizeS}（${sizeLabel}）`;\n    if (isStrict && typeErrors > 0) {\n      mEl.style.color = '#e91e63';\n      mEl.innerText = `形は書けていますが、\\\nとめ・はね・はらいのミスが ${typeErrors} 箇所あります。\\\n` + subLine;\n    } else {\n      if (score > 85) mEl.innerText = \"素晴らしい！完璧に近いです。\\\n\" + subLine;\n      else if (score > 65) mEl.innerText = `良い感じです。${sizeLabel}。お手本の形に近づけましょう。\\\n` + subLine;\n      else mEl.innerText = `もう一歩。${sizeLabel}。ゆっくりなぞると形が安定しやすいです。\\\n` + subLine;\n    }\n  }\n<\\/script>\n\n<script>\n  // KanjiVG: parent inject via KanjiVg.fetchMap (single fetch, repo KanjiVG.txt).\n  (function () {\n    window.syncData = function () {\n      try {\n        if (window.parent !== window && typeof window.parent.clearParentKanjiVgCache === \"function\")\n          window.parent.clearParentKanjiVgCache();\n      } catch (_) {}\n      try {\n        SafeStorage.remove(\"kanjiData_KanjiVG.txt\");\n      } catch (_) {}\n      window.loadKanjiData();\n    };\n    window.loadKanjiData = function () {\n      var p = window.parent;\n      showLoading(true, \"KanjiVG を読込中...\");\n      if (p !== window && typeof p.injectKanjiVgIntoChildFrame === \"function\") {\n        p.injectKanjiVgIntoChildFrame(window).catch(function (e) {\n          alert(\"KanjiVG の読込に失敗: \" + (e && e.message ? e.message : e));\n          showLoading(false);\n        });\n        return;\n      }\n      alert(\"親ページから開いてください（KanjiVG を読込できません）。\");\n      showLoading(false);\n    };\n    var hook = window.onload;\n    window.onload = function () {\n      if (typeof hook === \"function\") hook();\n      updateProfileSelectUI();\n      showLoading(true, \"初期化中...\");\n      window.loadKanjiData();\n    };\n  })();\n\u003c/script>\n</body>\n</html>"};
+window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n  <link href=\"https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap\" rel=\"stylesheet\">\n  \n  <style>\n    body { font-family: 'Klee One', sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; overflow-x: hidden; }\n    h2 { color: #333; margin-bottom: 5px; }\n    canvas { touch-action: none; background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px); background-size: 50% 50%; }\n    #canvas { background-color: #fff; border: 2px solid #333; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: crosshair; }\n    #result-box { margin-top: 15px; padding: 15px; background: #fff; border-radius: 8px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }\n    .score { font-size: 38px; font-weight: bold; color: #e53935; }\n    .msg { font-size: 13px; color: #555; margin-top: 10px; font-weight: bold; line-height: 1.5; }\n    button { padding: 10px 20px; border-radius: 20px; border: none; background: #1a73e8; color: white; font-weight: bold; cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n    button:active { transform: translateY(1px); box-shadow: none; }\n    .hidden { display: none !important; }\n    .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }\n    \n    #kanji-selector-area { margin-bottom: 12px; display:flex; flex-direction: column; align-items:center; gap: 10px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: bold; width: 100%; max-width: 350px; box-sizing: border-box; }\n    .selector-row { display: flex; gap: 8px; width: 100%; justify-content: center; align-items: center; }\n    select, input[type=\"text\"] { padding: 8px; border-radius: 6px; border: 2px solid #1a73e8; font-family: 'Klee One'; font-size: 14px; outline: none; flex: 1; background: #fff;}\n    \n    #loading-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index: 1000; font-family: 'Klee One'; font-size: 18px; color: #1a73e8; }\n    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }\n    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\n\n    /* モーダル汎用 */\n    .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }\n    .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }\n    .modal-content h3 { margin: 0 0 15px 0; color: #1a73e8; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; font-size: 16px; }\n\n    /* 設定用 */\n    .slider-group { margin-bottom: 12px; }\n    .slider-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }\n    .slider-group input[type=range] { width: 100%; cursor: pointer; margin: 0; }\n    #preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; background: #f0f2f5; padding: 10px; border-radius: 8px; }\n    .preview-box { background: #fff; border: 1px solid #ddd; border-radius: 4px; position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; }\n    .preview-canvas { width: 100%; height: 100%; background: transparent; }\n    .preview-label { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #999; font-weight: bold; }\n\n    /* ウィザード用 */\n    #wizard-canvas { background-color: #fff; border: 2px dashed #aaa; border-radius: 4px; cursor: crosshair; margin: 10px auto; display: block; }\n    .wiz-btn-group { display: flex; gap: 5px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; }\n    .wiz-btn { flex: 1 1 30%; padding: 8px 5px; font-size: 12px; background: #fff; color: #333; border: 2px solid #ccc; font-weight: bold; }\n    .wiz-btn-ignore { flex: 1 1 100%; padding: 8px; font-size: 12px; background: #e0e0e0; color: #555; border: 2px solid #bbb; font-weight: bold; }\n    .wiz-stats { background: #f9f9f9; padding: 10px; border-radius: 6px; font-size: 12px; color: #555; }\n    .profile-slot { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }\n    .profile-slot input { flex: 1; font-size: 12px; padding: 6px; }\n    .profile-slot button { font-size: 11px; padding: 6px 10px; border-radius: 4px; }\n  </style>\n</head>\n<body>\n\n  <div id=\"loading-overlay\"><div class=\"loader\"></div><span>準備中...</span></div>\n\n  <h2>漢字練習・設定調整</h2>\n\n  <div id=\"kanji-selector-area\" class=\"hidden\">\n    <select id=\"sheet-selector\"></select>\n    <select id=\"target-kanji\" onchange=\"initTargetKanji()\"></select>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:6px; margin-bottom:8px;\">\n    <button style=\"background:#1a73e8;\" onclick=\"switchMode('demo')\">お手本表示</button>\n    <button style=\"background:#6a1b9a;\" onclick=\"switchMode('demo'); playAnimation();\">書き順デモ再生</button>\n  </div>\n\n  <div id=\"mode-msg\" style=\"font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight: bold;\">正確に書いてください</div>\n\n  <canvas id=\"canvas\"></canvas>\n\n  <div id=\"score-controls\" class=\"controls\">\n    <button onclick=\"evaluateKanji(false)\">採点する</button>\n    <button style=\"background:#8e8e93;\" onclick=\"clearCanvas()\">クリア</button>\n  </div>\n  \n  <div id=\"trace-controls\" class=\"controls hidden\">\n    <button style=\"background:#e53935;\" onclick=\"evaluateKanji(true)\">なぞりを採点</button>\n    <button style=\"background:#8e8e93;\" onclick=\"clearCanvas()\">書き直す</button>\n    <button style=\"background:#333;\" onclick=\"switchMode('score')\">戻る</button>\n  </div>\n\n  <div id=\"demo-controls\" class=\"controls hidden\">\n    <button style=\"background:#1a73e8;\" onclick=\"playAnimation()\">再生</button>\n    <button style=\"background:#e53935;\" onclick=\"switchMode('trace')\">なぞり練習</button>\n    <button style=\"background:#333;\" onclick=\"switchMode('score')\">戻る</button>\n  </div>\n\n  <div id=\"result-box\">\n    <div id=\"score\" class=\"score\">- 点</div>\n    <div id=\"msg\" class=\"msg\">書いて「採点する」を押してください</div>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:10px;\">\n    <button onclick=\"syncData()\" style=\"margin:0; background:#34a853; padding:6px 12px; font-size:12px;\">KanjiVG.txt 更新</button>\n    <select id=\"active-profile-select\" onchange=\"switchProfile(this.value)\" style=\"flex: 1.2; font-size:12px; padding: 8px; max-width:220px;\"></select>\n    <button onclick=\"toggleWizard(true)\" style=\"margin:0; background:#e91e63; padding:6px 10px; font-size:12px;\">🎯 調整</button>\n    <button onclick=\"toggleSettings(true)\" style=\"margin:0; background:#7b1fa2; padding:6px 10px; font-size:12px;\">🖋 設定</button>\n  </div>\n\n  <div class=\"controls\" style=\"margin-top:8px;\">\n    <label style=\"font-size:12px; font-weight:bold; color:#1a73e8; display:flex; align-items:center; cursor:pointer; background:#e8f0fe; padding:5px 10px; border-radius:15px;\">\n      <input type=\"checkbox\" id=\"cb-strict-mode\" style=\"margin-right:5px; transform: scale(1.2);\"> ☑ 厳密採点 (とめ・はね・はらい判定)\n    </label>\n    <button style=\"background:#ff9800; padding:5px 10px; font-size:12px; border-radius:15px; box-shadow:none;\" onclick=\"removeLastEffect()\">直前画の飾りを消す</button>\n  </div>\n\n  <div id=\"settings-modal\" class=\"modal-overlay hidden\">\n    <div class=\"modal-content\">\n      <h3>🖋 ペン・エフェクト表現設定</h3>\n      <div class=\"slider-group\">\n        <label>基本の太さ <span id=\"val-baseWidth\"></span></label>\n        <input type=\"range\" id=\"sl-baseWidth\" min=\"4\" max=\"18\" step=\"0.5\" oninput=\"updateParam('baseWidth', this.value)\">\n      </div>\n      <div style=\"background:#fff3e0; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #ff9800;\">\n        <label style=\"font-size:11px; color:#ef6c00; display:block; margin-bottom:5px;\">【とめ】インク溜まり</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-tomeStart\"></span></label>\n          <input type=\"range\" id=\"sl-tomeStart\" min=\"0.5\" max=\"0.95\" step=\"0.05\" oninput=\"updateParam('tomeStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>膨張率 <span id=\"val-tomeScale\"></span></label>\n          <input type=\"range\" id=\"sl-tomeScale\" min=\"1.0\" max=\"2.0\" step=\"0.1\" oninput=\"updateParam('tomeScale', this.value)\">\n        </div>\n      </div>\n      <div style=\"background:#e8f5e9; padding:10px; border-radius:8px; margin-bottom:10px; border-left: 4px solid #4caf50;\">\n        <label style=\"font-size:11px; color:#2e7d32; display:block; margin-bottom:5px;\">【はね】跳ね上げ</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-haneStart\"></span></label>\n          <input type=\"range\" id=\"sl-haneStart\" min=\"0.5\" max=\"0.95\" step=\"0.05\" oninput=\"updateParam('haneStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>先端の鋭さ <span id=\"val-haneSharp\"></span></label>\n          <input type=\"range\" id=\"sl-haneSharp\" min=\"0.5\" max=\"1.0\" step=\"0.05\" oninput=\"updateParam('haneSharp', this.value)\">\n        </div>\n      </div>\n      <div style=\"background:#e3f2fd; padding:10px; border-radius:8px; border-left: 4px solid #2196f3;\">\n        <label style=\"font-size:11px; color:#1565c0; display:block; margin-bottom:5px;\">【はらい】</label>\n        <div class=\"slider-group\">\n          <label>開始位置 <span id=\"val-haraiStart\"></span></label>\n          <input type=\"range\" id=\"sl-haraiStart\" min=\"0.3\" max=\"0.9\" step=\"0.05\" oninput=\"updateParam('haraiStart', this.value)\">\n        </div>\n        <div class=\"slider-group\">\n          <label>先端の鋭さ <span id=\"val-haraiSharp\"></span></label>\n          <input type=\"range\" id=\"sl-haraiSharp\" min=\"0.5\" max=\"1.0\" step=\"0.05\" oninput=\"updateParam('haraiSharp', this.value)\">\n        </div>\n      </div>\n      <div id=\"preview-grid\">\n        <div class=\"preview-box\"><span class=\"preview-label\">永</span><canvas id=\"pre-永\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">校</span><canvas id=\"pre-校\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">木</span><canvas id=\"pre-木\" class=\"preview-canvas\"></canvas></div>\n        <div class=\"preview-box\"><span class=\"preview-label\">文</span><canvas id=\"pre-文\" class=\"preview-canvas\"></canvas></div>\n      </div>\n      <div class=\"controls\" style=\"margin-top:20px;\">\n        <button onclick=\"resetParams()\" style=\"background:#8e8e93; font-size:13px;\">リセット</button>\n        <button onclick=\"toggleSettings(false)\">完了</button>\n      </div>\n    </div>\n  </div>\n\n  <div id=\"wizard-modal\" class=\"modal-overlay hidden\">\n    <div class=\"modal-content\" style=\"max-width: 350px;\">\n      <h3>🎯 自動キャリブレーション</h3>\n      <p style=\"font-size:11px; color:#555; margin-top:0;\">文字をなぞって「今の画はどれですか？」とシステムに教えてください。あなたのペンの判定基準を学習します。</p>\n      \n      <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:10px;\">\n        <span style=\"font-size:12px; font-weight:bold;\">下敷き:</span>\n        <select id=\"wiz-kanji-select\" onchange=\"drawWizGuide()\"></select>\n      </div>\n\n      <canvas id=\"wizard-canvas\"></canvas>\n\n      <div id=\"wiz-prompt-area\" class=\"hidden\">\n        <div style=\"text-align:center; font-weight:bold; font-size:13px; margin-bottom:6px; color:#e91e63;\">いま書いた画の意図は？</div>\n        <div class=\"wiz-btn-group\">\n          <button class=\"wiz-btn\" onclick=\"submitWizData('tome')\">とめ</button>\n          <button class=\"wiz-btn\" onclick=\"submitWizData('hane')\">はね</button>\n          <button class=\"wiz-btn\" onclick=\"submitWizData('harai')\">はらい</button>\n          <button class=\"wiz-btn-ignore\" onclick=\"submitWizData('ignore')\">いずれでもない（無視・消去）</button>\n        </div>\n      </div>\n\n      <div class=\"wiz-stats\" style=\"margin-top:10px;\">\n        <div style=\"font-weight:bold; margin-bottom:3px;\">📊 学習データ記録数</div>\n        <div id=\"wiz-counts\">とめ: 0 / はね: 0 / はらい: 0</div>\n        <hr style=\"border:0; border-top:1px solid #ddd; margin:8px 0;\">\n        <div style=\"font-weight:bold; margin-bottom:3px;\">⚙️ 計算されたしきい値</div>\n        <div id=\"wiz-thresholds\" style=\"font-family:monospace; color:#1a73e8; font-size:11px;\">未計算</div>\n      </div>\n\n      <hr style=\"border:0; border-top:2px solid #eee; margin:15px 0;\">\n      <div style=\"font-size:12px; font-weight:bold; margin-bottom:8px;\">💾 プロフィール保存先</div>\n      <div id=\"profile-slots-area\"></div>\n\n      <div class=\"controls\" style=\"margin-top:15px;\">\n        <button onclick=\"resetWizard()\" style=\"background:#f44336; font-size:12px;\">記録リセット</button>\n        <button onclick=\"toggleWizard(false)\" style=\"background:#8e8e93; font-size:12px;\">キャンセル</button>\n      </div>\n    </div>\n  </div>\n\n<script>\n  const GAS_API_URL = \"https://script.google.com/macros/s/AKfycbwkBV8EywGeyaqCYws803BOUXBAGXMHlYfEj-kRXZkQXUsVbz8Q0Ldjh9Z9vSdEreVhjA/exec\";\n  function postKanjiApi(action, payload = {}) {\n    return fetch(GAS_API_URL, {\n      method: 'POST',\n      body: JSON.stringify({ action, ...payload })\n    }).then(r => r.json());\n  }\n\n  // ==========================================\n  // 1. 高解像度Canvasセットアップ機構\n  // ==========================================\n  function setupHighDPICanvas(canvasId, logicalWidth, logicalHeight) {\n    const canvas = document.getElementById(canvasId);\n    if (!canvas) return null;\n    const dpr = window.devicePixelRatio || 1;\n    canvas.width = logicalWidth * dpr;\n    canvas.height = logicalHeight * dpr;\n    canvas.style.width = logicalWidth + 'px';\n    canvas.style.height = logicalHeight + 'px';\n    \n    const context = canvas.getContext('2d');\n    context.scale(dpr, dpr);\n    context.lineCap = 'round';\n    context.lineJoin = 'round';\n    return context;\n  }\n\n  const CANVAS_SIZE = 300;\n  const WIZ_CANVAS_SIZE = 280;\n  const PREVIEW_SIZE = 120;\n\n  const canvas = document.getElementById('canvas');\n  const ctx = setupHighDPICanvas('canvas', CANVAS_SIZE, CANVAS_SIZE);\n  const wizCanvas = document.getElementById('wizard-canvas');\n  const wctx = setupHighDPICanvas('wizard-canvas', WIZ_CANVAS_SIZE, WIZ_CANVAS_SIZE);\n\n  // ==========================================\n  // 2. グローバル変数宣言\n  // ==========================================\n  let KANJI_DATA = {};\n  const NUM_SAMPLES = 45; \n  let referenceStrokes = []; \n  let userStrokes = [];       \n  let mode = 'score';\n  let animationId = null; \n\n  const TEST_KANJI = {\n    '永': ['M45.5,13.25c5.12,2.4,8.62,5.75,10.75,9','M31.75,37.25c1.88,0.75,4.12,1,6.07,0.55c3.62-0.83,9.41-2.51,13.04-3.35c3-0.7,5.16,0.8,5.16,4.05c0,14.5-0.26,45.45-0.26,50c0,12-7.02,2.84-8.52,1.7','M14.25,58.68c1.75,0.45,3.46,0.3,5-0.02c2.5-0.53,12.84-3.54,15.34-4.49c2.5-0.95,4.65,0.77,3.75,2.85C33.5,68.25,25.75,79.75,16,86.37','M81.22,36.52c-0.1,1.11-0.78,2.03-1.52,2.7c-4.83,4.38-13.96,9.73-21.46,11.92','M58,52.74c9.88,9.52,20.02,18.85,29.07,24.84c2.01,1.33,4.05,2.66,6.43,3.56'],\n    '校': ['M11.53,40.68c1.1,0.32,2.6,0.45,4.53,0.32c5.4-0.35,16.57-3,23.14-4.04c1.25-0.2,2.3-0.18,3.07,0','M28.99,17.25c1.07,1.07,1.76,3.25,1.76,5.25c0,0.77-0.03,48.09-0.18,65.25c-0.03,3.03-0.05,5.16-0.07,6','M30.25,40.75c0,1.25-0.49,2.66-0.96,3.77C25.28,53.91,20.88,62.25,15,70','M33.75,51.25c2.75,1.5,6,5.25,7.25,7.75','M66.39,15.5c0.99,0.99,1.38,1.88,1.38,3.62c0,4.25-0.02,7.62-0.08,10.41','M48.12,31.71c2.3,0.29,3.9,0.44,6.09,0.2c10.28-1.16,20.32-2.66,32.45-3.53c2.35-0.17,4.03-0.01,5.33,0.32','M59.24,38.93c0.2,0.53,0.06,2.27-0.4,3.14C57,45.5,53.75,49.5,50,52.5','M79.27,38.5c4.34,3.07,8.73,8.68,10.9,12.41','M79.15,49.18c0.35,1.32,0.17,2.62-0.54,4.18C72.25,67.25,58.75,83.25,44,91.25','M55.95,55.88c6.3,3.37,21.64,22.12,31.45,30.33c2.64,2.21,5.07,4.15,8.6,4.44'],\n    '木': ['M19.5,39.86c2.45,0.57,5.23,0.8,8.04,0.57C40.75,39.38,63,36.5,79.78,36.15c2.8-0.06,4.54,0.1,7.34,0.5','M51.75,10.5c1.19,1.19,2,3,2,5c0,8.65,0,55.15-0.14,74.75c-0.03,4.19-0.07,7.15-0.11,8.25','M50.75,39.5c0,1.12-0.61,2.44-1.42,3.95C41.75,57.5,26.7,73.93,15.75,80.25','M54.5,39c4.62,6,23,25.75,31.76,34.61c2.27,2.29,4.61,4.39,7.49,5.64'],\n    '文': ['M51.62,12.75c1.06,1.06,1.73,2.5,1.73,4.01c0,4.32-0.11,7.61-0.11,12.15','M16.88,32.72c2.7,0.66,5.71,0.86,8.6,0.54c15.77-1.76,40.15-5.01,56.42-6.1c3.67-0.25,6.15,0.05,8.88,0.69','M69.89,32.5c0.36,2.12,0.06,3.82-0.93,6.27C61.62,57,43.75,80.25,18.75,93.75','M31,43.75c6,0,27.27,26.79,49.26,42.1c4.13,2.87,7.49,4.77,11.49,6.04']\n  };\n\n  // ==========================================\n  // 3. ストレージとプロファイル管理\n  // ==========================================\n  const SafeStorage = {\n    get: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },\n    set: function(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },\n    remove: function(k) { try { localStorage.removeItem(k); } catch(e) {} },\n    clearData: function() { try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith('kanjiData_')) localStorage.removeItem(k); } } catch(e) {} }\n  };\n\n  // 表現パラメータ\n  const DEFAULT_PARAMS = { baseWidth: 11.0, tomeStart: 0.90, tomeScale: 1.3, haneStart: 0.90, haneSharp: 0.55, haraiStart: 0.65, haraiSharp: 0.80 };\n  let STROKE_PARAMS = { ...DEFAULT_PARAMS };\n  const savedEff = SafeStorage.get('kanjiStrokeParamsV2');\n  if (savedEff) { try { STROKE_PARAMS = { ...DEFAULT_PARAMS, ...JSON.parse(savedEff) }; } catch(e) {} }\n\n  // 判定しきい値プロファイル\n  const DEFAULT_THRESHOLDS = { minVelocity: 1.2, hookAngleDiff: 0.6 };\n  let USER_PROFILES = [\n    { id: 0, name: \"汎用ペン (デフォルト)\", thresholds: { ...DEFAULT_THRESHOLDS }, isEmpty: false },\n    { id: 1, name: \"未登録 1\", thresholds: null, isEmpty: true },\n    { id: 2, name: \"未登録 2\", thresholds: null, isEmpty: true }\n  ];\n  let ACTIVE_PROFILE_ID = 0;\n\n  const savedProfiles = SafeStorage.get('kanjiPenProfiles');\n  if (savedProfiles) {\n    try { \n      const parsed = JSON.parse(savedProfiles);\n      USER_PROFILES = parsed.profiles || USER_PROFILES;\n      ACTIVE_PROFILE_ID = parsed.activeId !== undefined ? parsed.activeId : 0;\n    } catch(e) {}\n  }\n\n  function getActiveThresholds() {\n    const prof = USER_PROFILES[ACTIVE_PROFILE_ID];\n    return prof.thresholds ? prof.thresholds : DEFAULT_THRESHOLDS;\n  }\n\n  function updateProfileSelectUI() {\n    const sel = document.getElementById('active-profile-select');\n    sel.innerHTML = USER_PROFILES.map(p => `<option value=\"${p.id}\" ${p.id === ACTIVE_PROFILE_ID ? 'selected' : ''}>${p.isEmpty ? '(未登録)' : '🖋 ' + p.name}</option>`).join('');\n  }\n\n  function switchProfile(id) {\n    ACTIVE_PROFILE_ID = parseInt(id);\n    const prof = USER_PROFILES[ACTIVE_PROFILE_ID];\n    if (prof.isEmpty) alert(\"このスロットは未登録です。「ペン調整」から設定を記録してください。\");\n    SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));\n    if (referenceStrokes.length > 0) redrawAllUserStrokes(); \n  }\n\n  // ==========================================\n  // 4. 表現設定UIロジック\n  // ==========================================\n  const previewContexts = {}; \n\n  function toggleSettings(show) {\n    const modal = document.getElementById('settings-modal');\n    if (show) {\n      Object.keys(STROKE_PARAMS).forEach(k => {\n        const el = document.getElementById(`sl-${k}`);\n        if(el) { el.value = STROKE_PARAMS[k]; document.getElementById(`val-${k}`).innerText = STROKE_PARAMS[k]; }\n      });\n      modal.classList.remove('hidden'); updateAllPreviews();\n    } else {\n      modal.classList.add('hidden');\n      if (referenceStrokes.length > 0) redrawAllUserStrokes(); \n    }\n  }\n\n  function updateParam(k, v) { STROKE_PARAMS[k] = parseFloat(v); document.getElementById(`val-${k}`).innerText = v; SafeStorage.set('kanjiStrokeParamsV2', JSON.stringify(STROKE_PARAMS)); updateAllPreviews(); }\n  function resetParams() { if(confirm(\"エフェクト設定を初期化しますか？\")) { STROKE_PARAMS = { ...DEFAULT_PARAMS }; toggleSettings(true); } }\n\n  // ==========================================\n  // 5. キャリブレーション・ウィザード機能\n  // ==========================================\n  let wizDrawing = false, wizCurrentPoints = [], wizLastTime = 0, wizStats = null;\n  let wizHistory = { tome: [], hane: [], harai: [] };\n\n  function toggleWizard(show) {\n    const modal = document.getElementById('wizard-modal');\n    if (show) {\n      const sel = document.getElementById('wiz-kanji-select');\n      const loadedKeys = Object.keys(KANJI_DATA);\n      const keysToUse = loadedKeys.length > 0 ? loadedKeys : Object.keys(TEST_KANJI);\n      sel.innerHTML = `<option value=\"\">(なし・自由書き)</option>` + keysToUse.map(k => `<option value=\"${k}\">${k}</option>`).join('');\n      \n      wizHistory = { tome: [], hane: [], harai: [] };\n      renderProfileSaveSlots(); updateWizUI();\n      modal.classList.remove('hidden'); drawWizGuide();\n    } else {\n      modal.classList.add('hidden'); updateProfileSelectUI();\n    }\n  }\n\n  function drawWizGuide() {\n    wctx.clearRect(0, 0, WIZ_CANVAS_SIZE, WIZ_CANVAS_SIZE);\n    const char = document.getElementById('wiz-kanji-select').value;\n    if (!char) return;\n    let paths = TEST_KANJI[char] || KANJI_DATA[char];\n    if (!paths) return;\n\n    let strokes = paths.map(p => sampleSvgPath(p, 30));\n    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;\n    strokes.forEach(s => s.forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }));\n    \n    const pad = 30, scale = Math.min((WIZ_CANVAS_SIZE - pad * 2) / Math.max(1, maxX - minX), (WIZ_CANVAS_SIZE - pad * 2) / Math.max(1, maxY - minY));\n    const offX = (WIZ_CANVAS_SIZE - (maxX - minX) * scale) / 2 - minX * scale, offY = (WIZ_CANVAS_SIZE - (maxY - minY) * scale) / 2 - minY * scale;\n\n    wctx.fillStyle = '#e0e0e0';\n    strokes.forEach(s => { s.forEach(pt => { wctx.beginPath(); wctx.arc(pt.x * scale + offX, pt.y * scale + offY, 4, 0, Math.PI * 2); wctx.fill(); }); });\n  }\n\n  function clearWizCanvas() { wizCurrentPoints = []; wizStats = null; document.getElementById('wiz-prompt-area').classList.add('hidden'); drawWizGuide(); }\n\n  wizCanvas.addEventListener('pointerdown', e => {\n    wizCanvas.setPointerCapture(e.pointerId); wizDrawing = true; wizCurrentPoints = [];\n    const r = wizCanvas.getBoundingClientRect();\n    const pt = { x: (e.clientX - r.left)*(WIZ_CANVAS_SIZE/r.width), y: (e.clientY - r.top)*(WIZ_CANVAS_SIZE/r.height) };\n    wizCurrentPoints.push(pt); wizLastTime = Date.now();\n    wctx.fillStyle = '#e53935'; wctx.beginPath(); wctx.arc(pt.x, pt.y, STROKE_PARAMS.baseWidth/2, 0, Math.PI * 2); wctx.fill();\n    document.getElementById('wiz-prompt-area').classList.add('hidden');\n  });\n\n  wizCanvas.addEventListener('pointermove', e => {\n    if (!wizDrawing) return;\n    const r = wizCanvas.getBoundingClientRect();\n    const pt = { x: (e.clientX - r.left)*(WIZ_CANVAS_SIZE/r.width), y: (e.clientY - r.top)*(WIZ_CANVAS_SIZE/r.height) };\n    const last = wizCurrentPoints[wizCurrentPoints.length-1];\n    fillBetween(wctx, last, pt, STROKE_PARAMS.baseWidth); wizCurrentPoints.push(pt);\n  });\n\n  wizCanvas.addEventListener('pointerup', e => {\n    if (!wizDrawing) return;\n    wizDrawing = false;\n    if (wizCurrentPoints.length < 3) { clearWizCanvas(); return; }\n\n    const n = wizCurrentPoints.length, pStart = wizCurrentPoints[Math.max(0, n - 6)], pEnd = wizCurrentPoints[n - 1];\n    const velocity = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y) / ((Date.now() - wizLastTime) || 1) * 10;\n    const pMid = wizCurrentPoints[Math.floor(n * 0.5)], pPre = wizCurrentPoints[Math.floor(n * 0.85)];\n    const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n    let angleDiff = Math.abs(angleTip - angleMain); if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;\n\n    wizStats = { v: velocity, a: angleDiff };\n    document.getElementById('wiz-prompt-area').classList.remove('hidden');\n  });\n\n  function submitWizData(type) {\n    if (type === 'ignore') { clearWizCanvas(); return; }\n    if (!wizStats) return;\n    wizHistory[type].push(wizStats); recalcThresholds(); updateWizUI(); clearWizCanvas();\n  }\n\n  let TEMPORARY_THRESHOLDS = { ...DEFAULT_THRESHOLDS };\n  function recalcThresholds() {\n    let maxTomeV = 0, minHaneHaraiV = 999;\n    if (wizHistory.tome.length > 0) maxTomeV = Math.max(...wizHistory.tome.map(d => d.v));\n    const hhArray = wizHistory.hane.concat(wizHistory.harai);\n    if (hhArray.length > 0) minHaneHaraiV = Math.min(...hhArray.map(d => d.v));\n\n    let newMinV = DEFAULT_THRESHOLDS.minVelocity;\n    if (wizHistory.tome.length > 0 && hhArray.length > 0) newMinV = (maxTomeV + minHaneHaraiV) / 2;\n    else if (wizHistory.tome.length > 0) newMinV = maxTomeV * 1.2; else if (hhArray.length > 0) newMinV = minHaneHaraiV * 0.8;\n\n    let newAngleDiff = DEFAULT_THRESHOLDS.hookAngleDiff;\n    if (wizHistory.hane.length > 0) newAngleDiff = Math.max(0.2, Math.min(...wizHistory.hane.map(d => d.a)) * 0.75); \n    \n    TEMPORARY_THRESHOLDS.minVelocity = parseFloat(newMinV.toFixed(2)); TEMPORARY_THRESHOLDS.hookAngleDiff = parseFloat(newAngleDiff.toFixed(2));\n  }\n\n  function updateWizUI() {\n    document.getElementById('wiz-counts').innerText = `とめ: ${wizHistory.tome.length} / はね: ${wizHistory.hane.length} / はらい: ${wizHistory.harai.length}`;\n    const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;\n    document.getElementById('wiz-thresholds').innerHTML = `v >= ${t.minVelocity} で「払・跳」<br>a >= ${t.hookAngleDiff} で「跳ね」`;\n  }\n\n  function resetWizard() {\n    if (confirm(\"学習データをクリアしますか？\")) {\n      wizHistory = { tome: [], hane: [], harai: [] }; TEMPORARY_THRESHOLDS = { ...DEFAULT_THRESHOLDS };\n      updateWizUI(); clearWizCanvas();\n    }\n  }\n\n  function renderProfileSaveSlots() {\n    const area = document.getElementById('profile-slots-area');\n    area.innerHTML = USER_PROFILES.map(p => `\n      <div class=\"profile-slot\">\n        <input type=\"text\" id=\"prof-name-${p.id}\" value=\"${p.isEmpty ? '' : p.name}\" placeholder=\"ペン・端末名 (未登録)\">\n        <button style=\"background:${p.isEmpty ? '#4caf50' : '#f4b400'}; color:#fff;\" onclick=\"saveProfileToSlot(${p.id})\">${p.isEmpty ? 'ここに保存' : '上書き保存'}</button>\n      </div>`).join('');\n  }\n\n  function saveProfileToSlot(id) {\n    const t = wizHistory.tome.length + wizHistory.hane.length + wizHistory.harai.length > 0 ? TEMPORARY_THRESHOLDS : DEFAULT_THRESHOLDS;\n    const nameInput = document.getElementById(`prof-name-${id}`).value.trim() || `ペン設定 ${id+1}`;\n    if (!USER_PROFILES[id].isEmpty) if (!confirm(`「${USER_PROFILES[id].name}」に上書き保存しますか？\\n(以前の判定設定は消去されます)`)) return;\n    \n    USER_PROFILES[id] = { id: id, name: nameInput, thresholds: { ...t }, isEmpty: false };\n    ACTIVE_PROFILE_ID = id;\n    SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));\n    alert(`「${nameInput}」として保存し、現在のペンに設定しました。`);\n    renderProfileSaveSlots(); updateProfileSelectUI();\n  }\n\n  // ==========================================\n  // 6. アプリケーション初期化 (安全対策済)\n  // ==========================================\n  function showLoading(show, msg = \"ロード中...\") {\n    const overlay = document.getElementById('loading-overlay');\n    if (overlay) { overlay.style.display = show ? 'flex' : 'none'; if(show) overlay.querySelector('span').textContent = msg; }\n  }\n\n  window.onload = () => {\n    updateProfileSelectUI();\n    showLoading(true, \"初期化中...\");\n    postKanjiApi(\"get_kanji_init_data\")\n      .then(initData => {\n        if (!initData || initData.status !== \"success\") throw new Error((initData && initData.message) || \"初期化に失敗しました\");\n        showLoading(false); // エラーが起きる前に絶対に隠す\n        try {\n          const cachedBook = SafeStorage.get('kanjiBookName');\n          if (cachedBook !== initData.bookName) { SafeStorage.clearData(); SafeStorage.set('kanjiBookName', initData.bookName); }\n          const sheetSelect = document.getElementById('sheet-selector');\n          sheetSelect.innerHTML = initData.sheets.map(s => `<option value=\"${s}\">${s}</option>`).join('');\n          loadKanjiData();\n        } catch(e) { alert(\"初期化エラー: \" + e.message); }\n      })\n      .catch(e => { alert(\"サーバー接続エラー: \" + (e && e.message ? e.message : e)); showLoading(false); });\n  };\n\n  function syncData() { const name = 'KanjiVG.txt'; SafeStorage.remove(`kanjiData_${name}`); loadKanjiData(); }\n\n  function loadKanjiData() {\n    const name = 'KanjiVG.txt';\n    if (!name) { showLoading(false); return; }\n    const cached = SafeStorage.get(`kanjiData_${name}`);\n    \n    if (cached) { \n      try { \n        KANJI_DATA = JSON.parse(cached); populateKanjiSelector(); showLoading(false); return; \n      } catch(e) { SafeStorage.remove(`kanjiData_${name}`); } \n    }\n\n    showLoading(true, `${name} を読込中...`);\n    postKanjiApi(\"get_kanji_data_from_sheet\", { sheetName: name })\n      .then(res => {\n        if (!res || res.status !== \"success\") throw new Error((res && res.message) || \"データ取得に失敗しました\");\n        const data = res.data || {};\n        showLoading(false); \n        try { KANJI_DATA = data; SafeStorage.set(`kanjiData_${name}`, JSON.stringify(data)); populateKanjiSelector(); } \n        catch(e) { alert(\"データ展開中にエラー: \" + e.message); } \n      })\n      .catch(e => { alert(\"データ取得失敗: \" + (e && e.message ? e.message : e)); showLoading(false); });\n  }\n\n  function populateKanjiSelector() {\n    const select = document.getElementById('target-kanji');\n    const keys = Object.keys(KANJI_DATA);\n    select.innerHTML = keys.length ? keys.map(k => `<option value=\"${k}\">${k}</option>`).join('') : '<option>データなし</option>';\n    initTargetKanji();\n  }\n\n  function initTargetKanji() {\n    const char = document.getElementById('target-kanji').value;\n    if(!char || !KANJI_DATA[char]) return;\n    try {\n      referenceStrokes = KANJI_DATA[char].map(p => {\n        const points = sampleSvgPath(p, NUM_SAMPLES);\n        return { type: detectStrokeType(points, false), points: points };\n      });\n      switchMode('score');\n    } catch(e) {\n      console.warn(\"SVG解析スキップ:\", char);\n    }\n  }\n\n  // ==========================================\n  // 7. 解析と描画エンジン (ゼロ除算保護済)\n  // ==========================================\n  function sampleSvgPath(d, n) {\n    if (!d || typeof d !== 'string' || d.trim() === '') return Array(n).fill({x:0, y:0});\n    try {\n      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); const len = p.getTotalLength();\n      if (len === 0) return Array(n).fill({x:0, y:0});\n      return Array.from({length: n}, (_, i) => { const pt = p.getPointAtLength(i * len / (Math.max(1, n - 1))); return {x: pt.x, y: pt.y}; });\n    } catch(e) { return Array(n).fill({x:0, y:0}); }\n  }\n\n  function detectStrokeType(points, isUser = false, terminalInfo = null) {\n    if (points.length < 5) return 'tome';\n    const n = points.length, thr = getActiveThresholds(); \n    \n    if (!isUser) {\n        const pMid = points[Math.floor(n * 0.5)], pPre = points[Math.floor(n * 0.85)], pEnd = points[n - 1];\n        const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n        let diff = Math.abs(angleTip - angleMain); if (diff > Math.PI) diff = 2 * Math.PI - diff;\n        if (diff > thr.hookAngleDiff) return 'hane';\n        const deg = angleMain * 180 / Math.PI;\n        if ((deg > 10 && deg < 85) || (deg > 95 && deg < 170)) return 'harai';\n        return 'tome';\n    } \n    \n    if (terminalInfo) {\n        const { velocity, dy, angleDiff } = terminalInfo;\n        if (velocity < thr.minVelocity) return 'tome';\n        if (dy < 0 || angleDiff > thr.hookAngleDiff) return 'hane';\n        return 'harai';\n    }\n    return 'tome';\n  }\n\n  function renderStrokeWithEffect(context, points, type, color, scale = 1.0) {\n    if (points.length === 0) return;\n    context.fillStyle = color;\n    const bW = STROKE_PARAMS.baseWidth * scale;\n    if (points.length === 1) { context.beginPath(); context.arc(points[0].x, points[0].y, bW / 2, 0, Math.PI * 2); context.fill(); return; }\n\n    const n = points.length;\n    for (let i = 0; i < n - 1; i++) {\n      const ratio = i / (n - 1);\n      let w = bW;\n      \n      // ★ ゼロ除算・NaN対策\n      if (type === 'harai' && ratio > STROKE_PARAMS.haraiStart) {\n        const denom = (1 - STROKE_PARAMS.haraiStart) || 0.001;\n        w *= Math.max(0.1, 1 - STROKE_PARAMS.haraiSharp * ((ratio - STROKE_PARAMS.haraiStart) / denom));\n      } else if (type === 'hane' && ratio > STROKE_PARAMS.haneStart) {\n        const denom = (1 - STROKE_PARAMS.haneStart) || 0.001;\n        w *= Math.max(0.1, 1 - STROKE_PARAMS.haneSharp * ((ratio - STROKE_PARAMS.haneStart) / denom));\n      } else if (type === 'tome' && ratio > STROKE_PARAMS.tomeStart) {\n        const denom = (1 - STROKE_PARAMS.tomeStart) || 0.001;\n        w *= (1 + (STROKE_PARAMS.tomeScale - 1) * ((ratio - STROKE_PARAMS.tomeStart) / denom));\n      }\n      fillBetween(context, points[i], points[i+1], Math.max(0.5, w));\n    }\n  }\n\n  function fillBetween(context, start, end, width) {\n    const dist = Math.hypot(end.x - start.x, end.y - start.y); \n    const steps = Math.max(1, Math.ceil(dist * 2.5)); \n    for (let i = 0; i <= steps; i++) {\n      const t = i / steps; context.beginPath(); context.arc(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t, width / 2, 0, Math.PI * 2); context.fill();\n    }\n  }\n\n  // ==========================================\n  // 8. 手書き処理（メインキャンバス）\n  // ==========================================\n  let isDrawingMain = false, currentPointsMain = [], mainLastTime = 0, mainLastPos = null;\n\n  function getMainXY(e) {\n    const r = canvas.getBoundingClientRect();\n    return { x: (e.clientX - r.left) * (CANVAS_SIZE / r.width), y: (e.clientY - r.top) * (CANVAS_SIZE / r.height), t: Date.now(), p: e.pressure || 0.5 };\n  }\n\n  canvas.addEventListener('pointerdown', e => {\n    if (mode === 'demo') return;\n    canvas.setPointerCapture(e.pointerId);\n    isDrawingMain = true; currentPointsMain = []; mainLastPos = getMainXY(e); mainLastTime = Date.now();\n    currentPointsMain.push({x: mainLastPos.x, y: mainLastPos.y});\n    ctx.fillStyle = (mode === 'trace' ? '#e53935' : '#333');\n    ctx.beginPath(); ctx.arc(mainLastPos.x, mainLastPos.y, STROKE_PARAMS.baseWidth / 2, 0, Math.PI * 2); ctx.fill();\n  });\n\n  canvas.addEventListener('pointermove', e => {\n    if (!isDrawingMain) return;\n    const pos = getMainXY(e);\n    ctx.fillStyle = (mode === 'trace' ? '#e53935' : '#333');\n    fillBetween(ctx, mainLastPos, pos, STROKE_PARAMS.baseWidth); \n    currentPointsMain.push({x: pos.x, y: pos.y}); mainLastPos = pos;\n  });\n\n  canvas.addEventListener('pointerup', e => {\n    if (!isDrawingMain) return;\n    isDrawingMain = false;\n    if (currentPointsMain.length < 3) { \n      userStrokes.push({ type: 'tome', points: [...currentPointsMain] }); redrawAllUserStrokes(); return; \n    }\n\n    const n = currentPointsMain.length, pStart = currentPointsMain[Math.max(0, n - 6)], pEnd = currentPointsMain[n - 1];\n    const velocity = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y) / ((Date.now() - mainLastTime) || 1) * 10;\n    const dy = pEnd.y - pStart.y;\n    const pMid = currentPointsMain[Math.floor(n * 0.5)], pPre = currentPointsMain[Math.floor(n * 0.85)];\n    const angleMain = Math.atan2(pPre.y - pMid.y, pPre.x - pMid.x), angleTip = Math.atan2(pEnd.y - pPre.y, pEnd.x - pPre.x);\n    let angleDiff = Math.abs(angleTip - angleMain); if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;\n\n    const type = detectStrokeType(currentPointsMain, true, { velocity, dy, angleDiff });\n    userStrokes.push({ type, points: [...currentPointsMain] });\n    redrawAllUserStrokes();\n  });\n\n  function redrawAllUserStrokes() {\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n    if (mode === 'trace') drawTraceGuide();\n    userStrokes.forEach(s => { renderStrokeWithEffect(ctx, s.points, s.type, (mode === 'trace' ? '#e53935' : '#333')); });\n  }\n\n  function removeLastEffect() {\n    if (userStrokes.length > 0) {\n      userStrokes[userStrokes.length - 1].type = 'none';\n      redrawAllUserStrokes();\n    }\n  }\n\n  function updateAllPreviews() {\n    ['永', '校', '木', '文'].forEach(char => {\n      if (!previewContexts[char]) { previewContexts[char] = setupHighDPICanvas(`pre-${char}`, PREVIEW_SIZE, PREVIEW_SIZE); }\n      const pctx = previewContexts[char]; if (!pctx) return;\n      pctx.clearRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);\n      const paths = TEST_KANJI[char]; if (!paths) return;\n      const strokes = paths.map(p => { return { type: detectStrokeType(sampleSvgPath(p, NUM_SAMPLES), false), points: sampleSvgPath(p, NUM_SAMPLES) }; });\n      const off = 10; strokes.forEach(s => { const scaledPoints = s.points.map(pt => ({x: pt.x + off, y: pt.y + off})); renderStrokeWithEffect(pctx, scaledPoints, s.type, \"#333\", 0.4); });\n    });\n  }\n\n  // ==========================================\n  // 9. モード切替と採点エンジン（厳密判定対応）\n  // ==========================================\n  function switchMode(m) {\n    mode = m; const msg = document.getElementById('mode-msg');\n    ['score-controls', 'trace-controls', 'demo-controls'].forEach(id => document.getElementById(id).classList.add('hidden'));\n    document.getElementById(`${mode}-controls`).classList.remove('hidden');\n    if (mode === 'demo') document.getElementById('result-box').classList.add('hidden'); else document.getElementById('result-box').classList.remove('hidden');\n    \n    clearCanvas();\n    if(mode==='trace') msg.innerHTML = \"お手本を<span style='color:#e53935'>赤ペン</span>でなぞってください\";\n    else if(mode==='demo') { msg.innerText = \"お手本（完成したかたち）を表示しています。書き順は「書き順デモ再生」または下の「再生」で確認できます。\"; drawDemoStaticReference(); }\n    else msg.innerText = \"正確に書いてください\";\n  }\n\n  function clearCanvas() {\n    if(animationId) cancelAnimationFrame(animationId);\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE); userStrokes = [];\n    if(mode === 'trace') drawTraceGuide();\n    document.getElementById('score').innerText = \"- 点\"; document.getElementById('msg').innerText = \"書いて「採点する」を押してください\";\n  }\n\n  function getScaledRefs() {\n    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;\n    referenceStrokes.forEach(s => { s.points.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    const pad = 40, scale = Math.min((CANVAS_SIZE - pad * 2) / Math.max(1, maxX - minX), (CANVAS_SIZE - pad * 2) / Math.max(1, maxY - minY));\n    const offX = (CANVAS_SIZE - (maxX - minX) * scale) / 2 - minX * scale, offY = (CANVAS_SIZE - (maxY - minY) * scale) / 2 - minY * scale;\n    return referenceStrokes.map(s => ({ type: s.type, points: s.points.map(p => ({x: p.x * scale + offX, y: p.y * scale + offY})) }));\n  }\n\n  function drawTraceGuide() { getScaledRefs().forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#f0f0f0\")); }\n\n  function drawDemoStaticReference() {\n    if(animationId) cancelAnimationFrame(animationId);\n    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n    const refs = getScaledRefs();\n    refs.forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#757575\"));\n  }\n\n  function playAnimation() {\n    if(animationId) cancelAnimationFrame(animationId);\n    const refs = getScaledRefs(); let sIdx = 0, pIdx = 0;\n    function frame() {\n      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);\n      refs.forEach(s => renderStrokeWithEffect(ctx, s.points, s.type, \"#f5f5f5\"));\n      for (let i = 0; i < sIdx; i++) renderStrokeWithEffect(ctx, refs[i].points, refs[i].type, \"#9e9e9e\");\n      if (sIdx < refs.length) {\n        renderStrokeWithEffect(ctx, refs[sIdx].points.slice(0, pIdx + 1), refs[sIdx].type, \"#9e9e9e\");\n        const cur = refs[sIdx].points[pIdx]; ctx.beginPath(); ctx.arc(cur.x, cur.y, STROKE_PARAMS.baseWidth/2, 0, Math.PI * 2); ctx.fillStyle = '#e53935'; ctx.fill();\n        pIdx++;\n        if (pIdx >= refs[sIdx].points.length) { sIdx++; pIdx = 0; setTimeout(() => { if (mode === 'demo') animationId = requestAnimationFrame(frame); }, 400); return; }\n      } else return;\n      if (mode === 'demo') animationId = requestAnimationFrame(frame);\n    }\n    frame();\n  }\n\n  // ==========================================\n  // 9b. 採点用ヘルパ（リサンプル・正規化・DTW・交差・サイズ）\n  // ==========================================\n  // 採点をやや易しくする都合: 重み（軌道の比重↓・サイズ↓をやや緩和寄り）と下記スケールを併用\n  const SCORE_WEIGHTS = { trajectory: 0.40, startEnd: 0.22, structure: 0.13, size: 0.25 };\n\n  function resamplePolyline(sArray, n) {\n    const s = [...sArray];\n    if (s.length < 2) return Array(n).fill(s[0] || {x:0, y:0});\n    let len = 0; for (let i = 1; i < s.length; i++) len += Math.hypot(s[i].x - s[i-1].x, s[i].y - s[i-1].y);\n    const step = len / (n - 1), res = [s[0]]; let d = 0, i = 1;\n    while (i < s.length && res.length < n) {\n      const seg = Math.hypot(s[i].x - s[i-1].x, s[i].y - s[i-1].y);\n      if (d + seg >= step) { const t = (step - d) / Math.max(0.1, seg); res.push({ x: s[i-1].x + (s[i].x - s[i-1].x) * t, y: s[i-1].y + (s[i].y - s[i-1].y) * t }); s.splice(i, 0, res[res.length - 1]); d = 0; }\n      else { d += seg; i++; }\n    }\n    while (res.length < n) res.push(s[s.length - 1]); return res;\n  }\n\n  function normalizeStrokesToUnitSquare(strokes) {\n    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;\n    strokes.forEach(s => { s.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    const scale = Math.max(maxX - minX, maxY - minY) || 1;\n    return strokes.map(s => s.map(p => ({x: (p.x - minX) / scale, y: (p.y - minY) / scale})));\n  }\n\n  function dtwMeanDistance(a, b) {\n    const n = a.length, m = b.length;\n    if (n === 0 || m === 0) return 1;\n    const inf = 1e12;\n    const dtw = Array(n + 1);\n    for (let i = 0; i <= n; i++) {\n      dtw[i] = new Float64Array(m + 1);\n      dtw[i].fill(inf);\n    }\n    dtw[0][0] = 0;\n    for (let i = 1; i <= n; i++) {\n      for (let j = 1; j <= m; j++) {\n        const cost = Math.hypot(a[i - 1].x - b[j - 1].x, a[i - 1].y - b[j - 1].y);\n        dtw[i][j] = cost + Math.min(dtw[i - 1][j], dtw[i][j - 1], dtw[i - 1][j - 1]);\n      }\n    }\n    const pathLen = n + m - 1;\n    return dtw[n][m] / Math.max(1, pathLen);\n  }\n\n  function distTo100(meanDist, scale) {\n    return Math.max(0, Math.min(100, Math.round(100 * (1 - meanDist / scale))));\n  }\n\n  function calcTrajectoryScoreDtw(uN, rN) {\n    let sum = 0;\n    for (let i = 0; i < rN.length; i++) {\n      const m = dtwMeanDistance(uN[i], rN[i]);\n      sum += distTo100(m, 0.18);\n    }\n    return Math.round(sum / rN.length);\n  }\n\n  function calcStartEndScore(uN, rN) {\n    let total = 0, count = 0;\n    for (let i = 0; i < rN.length; i++) {\n      const us = uN[i][0], ue = uN[i][uN[i].length - 1], rs = rN[i][0], re = rN[i][rN[i].length - 1];\n      const dS = Math.hypot(us.x - rs.x, us.y - rs.y), dE = Math.hypot(ue.x - re.x, ue.y - re.y);\n      // 正規化座標上の先端/末端差。スケールを大きいほうが同じ距離で得点が上がる（易しい）\n      const pairMean = (dS + dE) / 2;\n      total += distTo100(pairMean, 0.30);\n      count++;\n    }\n    return count ? Math.round(total / count) : 0;\n  }\n\n  function cross2(ax, ay, bx, by) { return ax * by - ay * bx; }\n  function sub(a, b) { return {x: a.x - b.x, y: a.y - b.y}; }\n  function segIntersects(p1, p2, p3, p4) {\n    const r = sub(p2, p1), s = sub(p4, p3);\n    const cr = cross2(r.x, r.y, s.x, s.y);\n    if (Math.abs(cr) < 1e-9) return false;\n    const t = cross2(sub(p3, p1).x, sub(p3, p1).y, s.x, s.y) / cr;\n    const u = cross2(sub(p3, p1).x, sub(p3, p1).y, r.x, r.y) / cr;\n    return t >= 0 && t <= 1 && u >= 0 && u <= 1;\n  }\n\n  function strokePolylinesIntersect(A, B) {\n    for (let i = 0; i < A.length - 1; i++) {\n      for (let j = 0; j < B.length - 1; j++) {\n        if (segIntersects(A[i], A[i + 1], B[j], B[j + 1])) return true;\n      }\n    }\n    return false;\n  }\n\n  function collectIntersectingStrokePairs(polys) {\n    const pairs = new Set();\n    for (let i = 0; i < polys.length; i++) {\n      for (let j = i + 1; j < polys.length; j++) {\n        if (strokePolylinesIntersect(polys[i], polys[j])) {\n          const key = i * 256 + j;\n          pairs.add(key);\n        }\n      }\n    }\n    return pairs;\n  }\n\n  function calcStructureScore(uN, rN) {\n    const refPolys = rN, userPolys = uN;\n    const refSet = collectIntersectingStrokePairs(refPolys);\n    if (refSet.size === 0) return 100;\n    let matches = 0;\n    for (const key of refSet) {\n      const j = key % 256, i = (key - j) / 256;\n      if (strokePolylinesIntersect(userPolys[i], userPolys[j])) matches++;\n    }\n    // 交差の一致度に最低点を与え、わずかな不一致で大きく落ちにくくする\n    return Math.min(100, Math.round(22 + 78 * (matches / refSet.size)));\n  }\n\n  function boundingBoxFromStrokesInCanvas(strokes) {\n    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;\n    let any = false;\n    strokes.forEach(s => { s.forEach(p => { any = true; minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }); });\n    if (!any) return { w: 1, h: 1, area: 1 };\n    const w = Math.max(0.1, maxX - minX), h = Math.max(0.1, maxY - minY);\n    return { w, h, area: w * h };\n  }\n\n  function calcSizeScoreCanvas(userStrokesResampled, scaledRefStrokes) {\n    const uB = boundingBoxFromStrokesInCanvas(userStrokesResampled);\n    const rB = boundingBoxFromStrokesInCanvas(scaledRefStrokes.map(s => s.points));\n    const areaRatio = uB.area / rB.area;\n    const lo0 = 0.50, lo1 = 0.63, hi1 = 1.40, hi2 = 1.68, lo2 = 0.32, hi3 = 2.1;\n    if (areaRatio >= lo1 && areaRatio <= hi1) return 100;\n    if (areaRatio >= lo0 && areaRatio < lo1) return Math.round(90 + 10 * (areaRatio - lo0) / (lo1 - lo0));\n    if (areaRatio > hi1 && areaRatio <= hi2) return Math.round(90 + 10 * (hi2 - areaRatio) / (hi2 - hi1));\n    if (areaRatio < lo0 && areaRatio >= lo2) return Math.round(60 + 30 * (areaRatio - lo2) / (lo0 - lo2));\n    if (areaRatio > hi2 && areaRatio < hi3) return Math.round(60 + 30 * (hi3 - areaRatio) / (hi3 - hi2));\n    if (areaRatio < lo2) return Math.max(0, 40 - Math.min(40, Math.round(80 * (lo2 - areaRatio) / lo2)));\n    if (areaRatio > hi3) return Math.max(0, 40 - Math.min(40, Math.round(20 * (areaRatio - hi3))));\n    return 40;\n  }\n\n  function evaluateKanji(isTrace) {\n    const sEl = document.getElementById('score'), mEl = document.getElementById('msg');\n    if (userStrokes.length !== referenceStrokes.length) { sEl.innerText = \"0 点\"; mEl.innerText = `画数が違います（正解：${referenceStrokes.length}画）`; return; }\n\n    const userResampled = userStrokes.map(s => resamplePolyline(s.points, NUM_SAMPLES));\n    const uN = normalizeStrokesToUnitSquare(userResampled);\n    const rN = normalizeStrokesToUnitSquare(referenceStrokes.map(s => s.points));\n\n    const trajS = calcTrajectoryScoreDtw(uN, rN);\n    const seS = calcStartEndScore(uN, rN);\n    const strS = calcStructureScore(uN, rN);\n    const scaledRefs = getScaledRefs();\n    const sizeS = calcSizeScoreCanvas(userResampled, scaledRefs);\n\n    let score = Math.round(\n      SCORE_WEIGHTS.trajectory * trajS + SCORE_WEIGHTS.startEnd * seS + SCORE_WEIGHTS.structure * strS + SCORE_WEIGHTS.size * sizeS\n    );\n    score = Math.max(0, Math.min(100, score));\n\n    const isStrict = document.getElementById('cb-strict-mode').checked;\n    let typeErrors = 0;\n    if (isStrict) {\n      for (let i = 0; i < rN.length; i++) {\n        const rType = referenceStrokes[i].type;\n        const uType = userStrokes[i].type;\n        // はね・はらいがあるべき場所にない場合は減点\n        if (rType === 'hane' && uType !== 'hane') {\n          typeErrors++; score = Math.max(0, score - 6);\n        } else if (rType === 'harai' && uType !== 'harai') {\n          typeErrors++; score = Math.max(0, score - 6);\n        }\n        // とめ(rType === 'tome')の箇所に不要なはね・はらいが存在しても減点しない\n      }\n    }\n\n    const uB2 = boundingBoxFromStrokesInCanvas(userResampled);\n    const rB2 = boundingBoxFromStrokesInCanvas(scaledRefs.map(s => s.points));\n    const areaRatio = (uB2.area / rB2.area) || 1;\n    const sizeLabel = (areaRatio >= 0.63 && areaRatio <= 1.4) ? '大きさは適正' : (areaRatio < 0.63 && areaRatio > 0.38) ? '少し小さい' : (areaRatio < 0.38) ? '小さすぎ' : (areaRatio <= 1.68) ? 'やや大きい' : '大きすぎ';\n\n    sEl.innerText = score + \" 点\";\n    mEl.style.color = '#555';\n    const subLine = `内訳: 軌道${trajS} 始終${seS} 構造${strS} 大きさ${sizeS}（${sizeLabel}）`;\n    if (isStrict && typeErrors > 0) {\n      mEl.style.color = '#e91e63';\n      mEl.innerText = `形は書けていますが、\\nとめ・はね・はらいのミスが ${typeErrors} 箇所あります。\\n` + subLine;\n    } else {\n      if (score > 85) mEl.innerText = \"素晴らしい！完璧に近いです。\\n\" + subLine;\n      else if (score > 65) mEl.innerText = `良い感じです。${sizeLabel}。お手本の形に近づけましょう。\\n` + subLine;\n      else mEl.innerText = `もう一歩。${sizeLabel}。ゆっくりなぞると形が安定しやすいです。\\n` + subLine;\n    }\n  }\n<\/script>\n<script>\n  // Data loading override for unified repository flow (KanjiVG.txt).\n  (function() {\n    function parseUnicodeToChar(rawUnicode) {\n      const raw = String(rawUnicode || '').trim();\n      if (!raw) return '';\n      const hexMatch = raw.match(/^(?:U\\+|0x)?([0-9A-Fa-f]{4,6})$/);\n      if (hexMatch) {\n        const cp = parseInt(hexMatch[1], 16);\n        if (!isNaN(cp) && cp > 0) return String.fromCodePoint(cp);\n      }\n      const sci = Number(raw);\n      if (!isNaN(sci)) {\n        const cp = Math.round(sci);\n        if (cp > 0 && cp <= 0x10FFFF) return String.fromCodePoint(cp);\n      }\n      return '';\n    }\n    function parseKanjiVgTsv(text) {\n      const map = {};\n      const lines = String(text || '').split(/\\r?\\n/);\n      lines.forEach(line => {\n        const row = line.trim();\n        if (!row) return;\n        const cols = row.split('\\t');\n        if (cols.length < 3) return;\n        let kanji = String(cols[0] || '').trim();\n        const unicodeCol = String(cols[1] || '').trim();\n        const strokesCol = String(cols[2] || '').trim();\n        if (!kanji || kanji.length !== 1) {\n          const parsed = parseUnicodeToChar(unicodeCol);\n          if (parsed) kanji = parsed;\n        }\n        if (!kanji || !strokesCol) return;\n        const paths = strokesCol.split('|').map(p => String(p || '').trim()).filter(p => p && (p.startsWith('M') || p.startsWith('m')));\n        if (paths.length > 0) map[kanji] = paths;\n      });\n      return map;\n    }\n    window.syncData = function() {\n      try { SafeStorage.remove('kanjiData_KanjiVG_txt'); } catch (_) {}\n      window.loadKanjiData();\n    };\n    window.loadKanjiData = function() {\n      const cacheKey = 'kanjiData_KanjiVG_txt';\n      const cached = SafeStorage.get(cacheKey);\n      if (cached) {\n        try {\n          KANJI_DATA = JSON.parse(cached);\n          populateKanjiSelector();\n          showLoading(false);\n          return;\n        } catch (_) { SafeStorage.remove(cacheKey); }\n      }\n      showLoading(true, \"KanjiVG.txt を読込中...\");\n      fetch('./KanjiVG.txt')\n      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })\n      .then(text => {\n        const data = parseKanjiVgTsv(text);\n        if (!Object.keys(data).length) throw new Error(\"TSVの解析結果が空です\");\n        KANJI_DATA = data;\n        SafeStorage.set(cacheKey, JSON.stringify(data));\n        populateKanjiSelector();\n        showLoading(false);\n      })\n      .catch(e => {\n        alert(\"KanjiVG.txt の読込に失敗: \" + (e && e.message ? e.message : e));\n        showLoading(false);\n      });\n    };\n    (function(){var _kjpPrev=window.onload;window.onload=function(){if(typeof _kjpPrev===\"function\")_kjpPrev();updateProfileSelectUI();showLoading(true, \"初期化中...\");window.loadKanjiData();};})();\n  })();\n<\/script>\n</body>\n</html>"};
   </script>
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままで大丈夫） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzV1so0tecfOg1KF6OfeYuuKtFxPVbeRkqThf557_i8Hvbhc7SoB4LLHPQ7DpETmZGS8A/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx-IAMRVPyaVKmP8sf8mviWVUMngSfjwuECn-wU0dIJsmwV76noGCVI37huAaoQoBEHsg/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -1679,20 +1634,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           localStorage.removeItem(k);
         }
       });
-      try {
-        if (typeof window.clearParentKanjiVgCache === "function") window.clearParentKanjiVgCache();
-        else localStorage.removeItem("app_kanji_vg_map_v1");
-      } catch (_) {}
       location.reload();
     }
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; let externalMenus = [];
     let kanjiQuizSession = null; let lastKanjiQuizContext = null;
     let __kanjiQuizSubmitInFlight = false;
-    /** 漢字練習：同一字での採点APIの二度打ち緩和 */
-    let __kpPracticeAwardState = { key: "", at: 0 };
-    let __kpPracticeAwardInFlight = false;
-    var __kanjiWeakPostTimer = null;
-    var __kanjiWeakPostQueued = null;
     let currentMaterialsCategory = "english";
     let stopwatches = {
       home: { timerId: null, startAt: 0, elapsed: 0 },
@@ -2491,7 +2437,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       document.getElementById('message').innerText="";
-      const kanjiFlowIds = ['section-kanji-learning', 'section-kanji-nigate', 'section-kanji-quiz-sets', 'section-kanji-quiz-play'];
+      const kanjiFlowIds = ['section-kanji-learning', 'section-kanji-quiz-sets', 'section-kanji-quiz-play'];
       let isKanjiFlow = kanjiFlowIds.includes(id) || ((id === 'section-materials' || id === 'section-settings') && currentMaterialsCategory === 'kanji');
       if (id === 'section-result' && document.body.classList.contains('kanji-study-mode')) {
         isKanjiFlow = true;
@@ -2517,7 +2463,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return;
       }
       const targetIds = [
-        'kanji-quiz-format-select', 'kp-book-select', 'kp-sheet-select', 'kp-set-select', 'nigate-book-select',
+        'kanji-quiz-format-select', 'kp-book-select', 'kp-sheet-select', 'kp-set-select',
         'setting-play-mode', 'setting-format', 'setting-answer-type', 'setting-order', 'setting-blank-count'
       ];
       targetIds.forEach(id => {
@@ -3392,348 +3338,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       applyKanjiHwDominantHandToBody();
       syncKanjiHwHandSwitchUI();
     }
-    function openKanjiNigateTraining() {
-      switchSection("section-kanji-nigate");
-      initKanjiPracticeCatalog();
-      nigateRenderBookSelect();
-    }
-    function nigateRenderBookSelect() {
-      const sel = document.getElementById("nigate-book-select");
-      if (!sel) return;
-      const mats = kpCatalogState.materials || [];
-      sel.innerHTML =
-        '<option value="">（すべてのブック）</option>' +
-        mats
-          .map(function (m) {
-            return `<option value="${escapeHtml(String(m.modeId || ""))}">${escapeHtml(
-              m.modeName || m.modeId || ""
-            )}</option>`;
-          })
-          .join("");
-      nigateOnBookChange();
-    }
-    function nigateOnBookChange() {
-      const b = document.getElementById("nigate-book-select");
-      const s = document.getElementById("nigate-sheet-ms");
-      const st = document.getElementById("nigate-scope-status");
-      const setMs = document.getElementById("nigate-set-ms");
-      if (!b || !s) return;
-      const modeId = b.value;
-      s.innerHTML = "";
-      if (setMs) setMs.innerHTML = "";
-      if (!modeId) {
-        s.disabled = true;
-        if (st) st.textContent = "全ブック対象：シート・セットのしぼりこみはしません。";
-        return;
-      }
-      s.disabled = false;
-      const mat = kpCatalogState.materials.find(function (m) {
-        return String(m.modeId) === String(modeId);
-      });
-      const units = mat && Array.isArray(mat.units) ? mat.units : [];
-      units.forEach(function (u) {
-        const o = document.createElement("option");
-        o.value = u;
-        o.textContent = formatUnitSheetDisplayLabel(u);
-        s.appendChild(o);
-      });
-      if (st) st.textContent = "シートを選ばない場合は、そのブックの全シートが対象です。";
-    }
-    function nigateLoadSetMultiselect() {
-      const b = document.getElementById("nigate-book-select");
-      const s = document.getElementById("nigate-sheet-ms");
-      const setMs = document.getElementById("nigate-set-ms");
-      const st = document.getElementById("nigate-scope-status");
-      if (!b || !setMs) return;
-      const modeId = b.value;
-      if (!modeId) {
-        if (st) st.textContent = "ブックを選ぶと、セット一覧を読み込めます。";
-        return;
-      }
-      const mat = kpCatalogState.materials.find(function (m) {
-        return String(m.modeId) === String(modeId);
-      });
-      const allUnits = mat && Array.isArray(mat.units) ? mat.units.slice() : [];
-      const picked = s && !s.disabled ? Array.from(s.selectedOptions).map(function (o) {
-        return o.value;
-      }) : [];
-      const units = picked.length ? picked : allUnits;
-      if (st) st.textContent = "セットを読み込み中…";
-      setMs.innerHTML = "";
-      Promise.all(
-        units.map(function (unitName) {
-          const key = kanjiQuizDrillCacheKeySets(modeId, unitName);
-          const cached = kpGetCachedJson(key);
-          if (cached && cached.status === "success" && Array.isArray(cached.sets)) {
-            return Promise.resolve({ unitName: unitName, sets: cached.sets });
-          }
-          return fetch(GAS_API_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "get_kanji_quiz_sets", modeId: modeId, unitName: unitName })
-          })
-            .then(function (r) {
-              return r.json();
-            })
-            .then(function (d) {
-              const sets = d.status === "success" && Array.isArray(d.sets) ? d.sets : [];
-              kpSetCachedJson(key, { status: "success", sets: sets });
-              return { unitName: unitName, sets: sets };
-            })
-            .catch(function () {
-              return { unitName: unitName, sets: [] };
-            });
-        })
-      ).then(function (results) {
-        results.forEach(function (row) {
-          row.sets.forEach(function (srow) {
-            const o = document.createElement("option");
-            o.value = JSON.stringify({ unitName: row.unitName, setId: String(srow.setId || "") });
-            o.textContent =
-              formatUnitSheetDisplayLabel(row.unitName) +
-              " / セット " +
-              String(srow.setId || "") +
-              "（" +
-              String(srow.count || 0) +
-              "字）";
-            setMs.appendChild(o);
-          });
-        });
-        if (!setMs.options.length) {
-          const o = document.createElement("option");
-          o.textContent = "セットがありません";
-          o.disabled = true;
-          setMs.appendChild(o);
-        }
-        if (st) st.textContent = "セットを選ばない場合は、読み込んだ範囲のすべてが対象です。";
-      });
-    }
-    function nigateScopePayloadFromUi() {
-      const b = document.getElementById("nigate-book-select");
-      const sheetMs = document.getElementById("nigate-sheet-ms");
-      const setMs = document.getElementById("nigate-set-ms");
-      const modeId = b && b.value ? String(b.value) : "";
-      const pickedSheets =
-        sheetMs && !sheetMs.disabled
-          ? Array.from(sheetMs.selectedOptions).map(function (o) {
-              return String(o.value);
-            })
-          : [];
-      const unitNames = modeId && pickedSheets.length ? pickedSheets : [];
-      const pickedSets = setMs ? Array.from(setMs.selectedOptions).map(function (o) {
-        return o.value;
-      }).filter(Boolean) : [];
-      const setScopes = [];
-      pickedSets.forEach(function (raw) {
-        try {
-          const o = JSON.parse(raw);
-          if (o && o.unitName && o.setId != null) {
-            setScopes.push({ unitName: String(o.unitName), setId: String(o.setId) });
-          }
-        } catch (e) {}
-      });
-      return { modeId: modeId, unitNames: unitNames, setScopes: setScopes };
-    }
-    function nigateModeNameFromId(modeId) {
-      const m = kpCatalogState.materials.find(function (x) {
-        return String(x.modeId) === String(modeId);
-      });
-      return m && m.modeName ? String(m.modeName) : String(modeId || "");
-    }
-    function nigateAnnotateQuestion(q, row) {
-      const copy = Object.assign({}, q);
-      copy._scope = {
-        modeId: row.modeId,
-        modeName: nigateModeNameFromId(row.modeId),
-        unitName: row.unitName,
-        setId: row.setId
-      };
-      return copy;
-    }
-    function nigateQuestionHasKanjiTarget(q, kanji) {
-      const k = String(kanji || "");
-      if (!k) return false;
-      if (String(q.kanji || "") === k) return true;
-      const t = kanjiQuizHanOnlyChars(q.correctAnswer || "");
-      return t.indexOf(k) >= 0;
-    }
-    function nigateFindRubyQuestion(bank, kanji) {
-      const arr = Array.isArray(bank) ? bank : [];
-      for (let i = 0; i < arr.length; i++) {
-        const q = arr[i];
-        if (q.type !== "ruby_to_kanji") continue;
-        if (nigateQuestionHasKanjiTarget(q, kanji)) return q;
-      }
-      return null;
-    }
-    function nigateFindReadingQuestion(bank, kanji) {
-      const arr = Array.isArray(bank) ? bank : [];
-      for (let i = 0; i < arr.length; i++) {
-        const q = arr[i];
-        if (q.type !== "sentence_to_ruby" && q.type !== "okurigana_shift") continue;
-        if (nigateQuestionHasKanjiTarget(q, kanji)) return q;
-      }
-      return null;
-    }
-    function nigateFetchQuestions(modeId, unitName, setId) {
-      const qKey = kanjiQuizDrillCacheKeyQuestions(modeId, unitName, setId);
-      const cached = kpGetCachedJson(qKey);
-      if (cached && cached.status === "success" && Array.isArray(cached.questions)) {
-        return Promise.resolve(cached.questions);
-      }
-      return fetch(GAS_API_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "get_kanji_quiz_questions",
-          modeId: modeId,
-          unitName: unitName,
-          setId: setId
-        })
-      })
-        .then(function (r) {
-          return r.json();
-        })
-        .then(function (d) {
-          const list = d.status === "success" && Array.isArray(d.questions) ? d.questions : [];
-          kpSetCachedJson(qKey, { status: "success", questions: list });
-          return list;
-        })
-        .catch(function () {
-          return [];
-        });
-    }
-    function buildNigateQuestionList(rows, trainMode, formatMode) {
-      const out = [];
-      const seen = Object.create(null);
-      const tasks = [];
-      rows.slice(0, 40).forEach(function (row) {
-        const kanji = String(row.kanji || "");
-        if (!kanji) return;
-        const key = [row.modeId, row.unitName, row.setId, kanji, trainMode].join("|");
-        if (seen[key]) return;
-        seen[key] = true;
-        if (trainMode === "stroke_count") {
-          const n = row.lastRefStrokeCount;
-          if (n == null || n < 1) return;
-          out.push({
-            type: "kanji_stroke_count",
-            kanji: kanji,
-            correctAnswer: String(n),
-            questionId: "NIGATE_SC_" + kanji + "_" + row.setId,
-            prompt: "このかんじのかくすうは？（すうじで）",
-            maskedSentence: "",
-            readingDisplay: "",
-            sentence: "",
-            choices: [],
-            _scope: {
-              modeId: row.modeId,
-              modeName: nigateModeNameFromId(row.modeId),
-              unitName: row.unitName,
-              setId: row.setId
-            }
-          });
-          return;
-        }
-        tasks.push(
-          nigateFetchQuestions(row.modeId, row.unitName, row.setId).then(function (bank) {
-            if (trainMode === "reading") {
-              const q = nigateFindReadingQuestion(bank, kanji);
-              if (q) out.push(nigateAnnotateQuestion(q, row));
-            } else {
-              const q = nigateFindRubyQuestion(bank, kanji);
-              if (q) out.push(nigateAnnotateQuestion(q, row));
-            }
-          })
-        );
-      });
-      return Promise.all(tasks).then(function () {
-        let list = out.slice();
-        if (formatMode === "reading_drill") {
-          list = list.filter(function (q) {
-            return q.type === "sentence_to_ruby" || q.type === "okurigana_shift";
-          });
-        } else if (formatMode === "write_kanji") {
-          list = list.filter(function (q) {
-            return q.type === "ruby_to_kanji";
-          });
-        }
-        return shuffleKanjiQuizChoicesArray(list);
-      });
-    }
-    function startNigateKanjiTrainingFlow() {
-      const user = JSON.parse(localStorage.getItem("app_kid_user") || "null");
-      if (!user || !user.id) {
-        alert("ログイン情報が見つかりません。");
-        return;
-      }
-      const trainMode = (document.querySelector('input[name="nigate-train-mode"]:checked') || {}).value || "stroke_order";
-      const scope = nigateScopePayloadFromUi();
-      const st = document.getElementById("nigate-scope-status");
-      if (st) st.textContent = "よわみプランを取得中…";
-      const req = {
-        action: "get_kanji_weak_review_plan",
-        userId: user.id,
-        trainMode: trainMode
-      };
-      if (scope.modeId) req.modeId = scope.modeId;
-      if (scope.unitNames.length) req.unitNames = scope.unitNames;
-      if (scope.setScopes.length) req.setScopes = scope.setScopes;
-      fetch(GAS_API_URL, {
-        method: "POST",
-        body: JSON.stringify(req)
-      })
-        .then(function (r) {
-          return r.json();
-        })
-        .then(function (d) {
-          if (d.status !== "success") throw new Error(d.message || "取得失敗");
-          const rows = Array.isArray(d.rows)
-            ? d.rows.filter(function (r) {
-                return Number(r.w || 0) > 0;
-              })
-            : [];
-          if (!rows.length) {
-            alert(
-              "この条件では、まだニガテデータがありません。\n通常の漢字クイズで学習してから、もう一度試してください。"
-            );
-            if (st) st.textContent = "";
-            return;
-          }
-          const formatModeMap = {
-            stroke_order: "write_kanji",
-            brush: "write_kanji",
-            stroke_count: "stroke_count_only",
-            reading: "reading_drill"
-          };
-          const formatMode = formatModeMap[trainMode] || "write_kanji";
-          return buildNigateQuestionList(rows, trainMode, formatMode).then(function (questions) {
-            if (!questions.length) {
-              alert(
-                "もんだいを組み立てられませんでした。\n「セット一覧を読み込み」を押してから、もう一度試してください。"
-              );
-              if (st) st.textContent = "";
-              return;
-            }
-            const first = rows[0];
-            startKanjiQuizPlay({
-              modeId: scope.modeId || first.modeId,
-              modeName: "ニガテ特訓",
-              unitName: "__nigate__",
-              setId: "__nigate__",
-              questions: questions,
-              formatMode: formatMode,
-              isTrainingMode: false,
-              isNigateTraining: true,
-              nigateTrainMode: trainMode
-            });
-            ensureKanjiPracticeFrameReady().catch(function () {});
-            if (st) st.textContent = "";
-          });
-        })
-        .catch(function (e) {
-          alert("特訓の準備に失敗しました: " + (e.message || e));
-          if (st) st.textContent = "";
-        });
-    }
     function loadEnglishMaterials(btn) {
       currentMaterialsCategory = "english";
       loadMaterialsByFilter(btn, "english");
@@ -3776,73 +3380,15 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         localStorage.setItem(key, JSON.stringify(value));
       } catch (_) {}
     }
-
-    var __parentKanjiVgMap = null;
-    var __parentKanjiVgLoadP = null;
-    var LS_KANJI_VG_CACHE_KEY = "app_kanji_vg_map_v1";
-
-    window.clearParentKanjiVgCache = function () {
-      __parentKanjiVgMap = null;
-      __parentKanjiVgLoadP = null;
-      try {
-        localStorage.removeItem(LS_KANJI_VG_CACHE_KEY);
-      } catch (_e) {}
-    };
-
-    function ensureParentKanjiVgMap() {
-      if (__parentKanjiVgMap && Object.keys(__parentKanjiVgMap).length) return Promise.resolve(__parentKanjiVgMap);
-      if (__parentKanjiVgLoadP) return __parentKanjiVgLoadP;
-      try {
-        var raw = localStorage.getItem(LS_KANJI_VG_CACHE_KEY);
-        if (raw) {
-          var cached = JSON.parse(raw);
-          if (cached && typeof cached === "object" && Object.keys(cached).length) {
-            __parentKanjiVgMap = cached;
-            return Promise.resolve(cached);
-          }
-        }
-      } catch (_e2) {}
-      if (typeof KanjiVg === "undefined" || !KanjiVg.fetchMap) {
-        return Promise.reject(new Error("kanji-vg.js が読み込まれていません"));
-      }
-      __parentKanjiVgLoadP = KanjiVg.fetchMap()
-        .then(function (m) {
-          __parentKanjiVgMap = m;
-          __parentKanjiVgLoadP = null;
-          try {
-            localStorage.setItem(LS_KANJI_VG_CACHE_KEY, JSON.stringify(m));
-          } catch (_e3) {}
-          return m;
-        })
-        .catch(function (err) {
-          __parentKanjiVgLoadP = null;
-          return Promise.reject(err);
-        });
-      return __parentKanjiVgLoadP;
-    }
-
-    window.injectKanjiVgIntoChildFrame = function (childWin) {
-      return ensureParentKanjiVgMap().then(function (map) {
-        try {
-          childWin.KANJI_DATA = JSON.parse(JSON.stringify(map));
-        } catch (_e4) {
-          childWin.KANJI_DATA = map;
-        }
-        if (typeof childWin.populateKanjiSelector === "function") childWin.populateKanjiSelector();
-        if (typeof childWin.showLoading === "function") childWin.showLoading(false);
-      });
-    };
-
     function openKanjiPractice() {
       switchSection('section-kanji-practice');
       openKanjiPracticePro();
       initKanjiPracticeCatalog();
-      ensureKanjiPracticeFrameReady().catch(function () {});
     }
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
       if (!frame) return;
-      const KP_EMBED_VER = "5";
+      const KP_EMBED_VER = "4";
       if (frame.dataset.kpEmbedVer !== KP_EMBED_VER) {
         frame.dataset.kpLoaded = "";
         frame.dataset.kpEmbedVer = KP_EMBED_VER;
@@ -3860,7 +3406,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       frame.srcdoc = kpHtml;
       frame.dataset.kpLoaded = "1";
-      ensureParentKanjiVgMap().catch(function () {});
       delete frame.dataset.kanjiQuizPatched;
       setTimeout(kpResizeFrameToContent, 120);
       setTimeout(kpResizeFrameToContent, 700);
@@ -3976,94 +3521,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       ssel.innerHTML = units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(formatUnitSheetDisplayLabel(u))}</option>`).join('');
       kpOnSheetChange();
-    }
-    function kpPracticeContextFromUi() {
-      const bsel = document.getElementById("kp-book-select");
-      const ssel = document.getElementById("kp-sheet-select");
-      const setSel = document.getElementById("kp-set-select");
-      if (!bsel || !ssel || !setSel) return null;
-      const modeId = String(bsel.value || "").trim();
-      const unitName = String(ssel.value || "").trim();
-      const setId = String(setSel.value || "").trim();
-      if (!modeId || !unitName || !setId) return null;
-      const mat = kpCatalogState.materials.find(function (m) {
-        return String(m.modeId) === String(modeId);
-      });
-      const modeName = mat && mat.modeName ? String(mat.modeName) : modeId;
-      return { modeId: modeId, modeName: modeName, unitName: unitName, setId: setId };
-    }
-    function kpOnPracticeHandwritingScored(rawScore) {
-      const score = Number(rawScore);
-      if (isNaN(score) || score < 60) return;
-      const pracSec = document.getElementById("section-kanji-practice");
-      if (!pracSec || !pracSec.classList.contains("active")) return;
-      if (kanjiQuizSession) return;
-      const ctx = kpPracticeContextFromUi();
-      if (!ctx) {
-        setKpStatus("ブック・シート・セットを選んでから、ポイントをもらえます。");
-        return;
-      }
-      const user = JSON.parse(localStorage.getItem("app_kid_user") || "null");
-      if (!user || !user.id) {
-        setKpStatus("ログインしなおしてください。");
-        return;
-      }
-      let ch = "";
-      try {
-        const frame = document.getElementById("kp-pro-frame");
-        const sel = frame && frame.contentWindow && frame.contentWindow.document.getElementById("target-kanji");
-        ch = sel && sel.value ? String(sel.value).trim() : "";
-      } catch (_) {}
-      if (!ch || ch === "データなし") return;
-      const debounceKey = ctx.modeId + "\x1f" + ctx.unitName + "\x1f" + ctx.setId + "\x1f" + ch;
-      const nowMs = Date.now();
-      if (__kpPracticeAwardInFlight) return;
-      if (__kpPracticeAwardState.key === debounceKey && nowMs - __kpPracticeAwardState.at < 12000) return;
-      __kpPracticeAwardInFlight = true;
-      const qid = "PRACTICE_" + ch;
-      const unitId = "KANJI_" + ctx.modeName + "_" + ctx.unitName + "_SET" + ctx.setId + "_" + qid;
-      const kanjiSetScopeId = "KANJI_" + ctx.modeName + "_" + ctx.unitName + "_SET" + ctx.setId;
-      const payload = {
-        action: "save_learning_session",
-        userId: user.id,
-        unitId: unitId,
-        unitSheetName: ctx.unitName,
-        results: [],
-        isReviewMode: false,
-        isRandom: false,
-        learningCategory: "kanji",
-        challengeType: "score",
-        kanjiChar: ch,
-        score: Math.max(0, Math.min(100, Math.round(score))),
-        questionId: qid,
-        questionCorrect: true,
-        kanjiSetScopeId: kanjiSetScopeId,
-        kanjiSetContinuation: false
-      };
-      fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
-        .then(function (r) {
-          return r.json();
-        })
-        .then(function (d) {
-          if (d.status !== "success") throw new Error(d.message || "保存に失敗");
-          user.points = d.newTotal;
-          localStorage.setItem("app_kid_user", JSON.stringify(user));
-          const ptsEl = document.getElementById("user-points");
-          if (ptsEl) ptsEl.innerText = user.points;
-          __kpPracticeAwardState = { key: debounceKey, at: Date.now() };
-          const earned = Number(d.earnedPoints || 0);
-          var pctNote = "";
-          if (d.sheetPointPercent != null && Number(d.sheetPointPercent) < 100) {
-            pctNote = "（シート設定 " + d.sheetPointPercent + "%）";
-          }
-          setKpStatus("せいこう！ ＋" + earned.toFixed(2) + " Pt／ごうけい " + d.newTotal + " Pt" + pctNote);
-        })
-        .catch(function (e) {
-          setKpStatus("ポイント保存に失敗: " + (e.message || e));
-        })
-        .finally(function () {
-          __kpPracticeAwardInFlight = false;
-        });
     }
     function kpOnSheetChange() {
       const bsel = document.getElementById('kp-book-select');
@@ -4326,90 +3783,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (!t) return arr.slice();
       return arr.filter(function (q) { return q.type === t; });
     }
-    function kanjiQuizResolveScopeFields(q) {
-      const sc = q && q._scope ? q._scope : {};
-      return {
-        modeId: sc.modeId != null ? sc.modeId : (kanjiQuizSession ? kanjiQuizSession.modeId : ""),
-        modeName: sc.modeName != null ? sc.modeName : (kanjiQuizSession ? kanjiQuizSession.modeName : ""),
-        unitName: sc.unitName != null ? sc.unitName : (kanjiQuizSession ? kanjiQuizSession.unitName : ""),
-        setId: sc.setId != null ? sc.setId : (kanjiQuizSession ? kanjiQuizSession.setId : "")
-      };
-    }
-    function kanjiQuizCurrentHandKanjiChar() {
-      if (!kanjiQuizSession || !Array.isArray(kanjiQuizSession.rubyHandTargets)) return "";
-      const slot = Number(kanjiQuizSession.rubyHandSlot) || 0;
-      return String(kanjiQuizSession.rubyHandTargets[slot] || "");
-    }
-    function queueAppendKanjiWeakSignals(body) {
-      __kanjiWeakPostQueued = body;
-      if (__kanjiWeakPostTimer) clearTimeout(__kanjiWeakPostTimer);
-      __kanjiWeakPostTimer = setTimeout(function () {
-        __kanjiWeakPostTimer = null;
-        const p = __kanjiWeakPostQueued;
-        __kanjiWeakPostQueued = null;
-        if (!p) return;
-        const u = JSON.parse(localStorage.getItem("app_kid_user") || "null");
-        if (!u || !u.id) return;
-        fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify(Object.assign({ action: "append_kanji_weak_signals", userId: u.id }, p))
-        })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (d) {
-            if (d && d.status === "success" && d.historyJson) {
-              u.historyJson = d.historyJson;
-              localStorage.setItem("app_kid_user", JSON.stringify(u));
-            }
-          })
-          .catch(function () {});
-      }, 520);
-    }
-    function ensureKanjiWeakAnalyticsListener() {
-      if (window.__kanjiWeakAnalyticsListenerAdded) return;
-      window.__kanjiWeakAnalyticsListenerAdded = true;
-      window.addEventListener("message", function (ev) {
-        if (!ev || !ev.data || ev.data.type !== "kanjiQuizHandAnalytics") return;
-        if (!kanjiQuizSession) return;
-        const sec = document.getElementById("section-kanji-quiz-play");
-        if (!sec || !sec.classList.contains("active")) return;
-        const q = kanjiQuizSession.questions[kanjiQuizSession.index];
-        if (!q || q.type !== "ruby_to_kanji") return;
-        const qid = q.questionId || `${q.kanji}_${kanjiQuizSession.index}_${q.type}`;
-        const sc = kanjiQuizResolveScopeFields(q);
-        let kanjiChar = "";
-        if (q.type === "ruby_to_kanji") {
-          kanjiChar = kanjiQuizCurrentHandKanjiChar();
-        } else {
-          kanjiChar = String(q.kanji || "");
-        }
-        if (kanjiQuizSession.isNigateTraining && kanjiQuizSession.nigateAgg) {
-          const ag = kanjiQuizSession.nigateAgg;
-          ag.handEvents = (ag.handEvents || 0) + 1;
-          if (ev.data.hasStrokeOrderIssue) ag.anyStrokeOrderIssue = true;
-          if (ev.data.brushEndingAllOk === false) ag.anyBrushIssue = true;
-          if (ev.data.strokeCountMismatch) ag.anyStrokeCountMismatch = true;
-        }
-        const basePayload = {
-          signal: "hand_analytics",
-          modeId: sc.modeId,
-          unitName: sc.unitName,
-          setId: sc.setId,
-          kanji: kanjiChar || String(q.kanji || ""),
-          questionId: qid,
-          hasStrokeOrderIssue: !!ev.data.hasStrokeOrderIssue,
-          strokeCountMismatch: !!ev.data.strokeCountMismatch
-        };
-        if (typeof ev.data.brushEndingAllOk === "boolean") basePayload.brushEndingAllOk = ev.data.brushEndingAllOk;
-        if (ev.data.referenceStrokeCount != null && !isNaN(Number(ev.data.referenceStrokeCount))) {
-          basePayload.referenceStrokeCount = Number(ev.data.referenceStrokeCount);
-        }
-        if (ev.data.handScore != null) basePayload.handScore = ev.data.handScore;
-        if (ev.data.passedThreshold != null) basePayload.passedThreshold = ev.data.passedThreshold;
-        queueAppendKanjiWeakSignals(basePayload);
-      });
-    }
     function shuffleKanjiQuizChoicesArray(arr) {
       const a = Array.isArray(arr) ? arr.slice() : [];
       for (let i = a.length - 1; i > 0; i--) {
@@ -4511,11 +3884,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         try {
           if (typeof requestIdleCallback === "function") {
             requestIdleCallback(function () {
-              ensureKanjiPracticeFrameReady().catch(function () {});
+              ensureKanjiPracticeFrameReady();
             }, { timeout: 2500 });
           } else {
             setTimeout(function () {
-              ensureKanjiPracticeFrameReady().catch(function () {});
+              ensureKanjiPracticeFrameReady();
             }, 120);
           }
         } catch (e) {}
@@ -4556,88 +3929,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     let kanjiQuizStrokeStartTime = 0;
     let __kanjiQuizWriteCanvasBound = false;
     let __kanjiQuizHwFrameReadyP = null;
-    const KANJI_HW_SCROLL_GUARD_MS = 3000;
-    let __kanjiHwNoScrollUntil = 0;
-    let __kanjiHwScrollLockTimer = null;
-    let __kanjiHwTouchMoveBlock = null;
-    let __kanjiHwWheelBlock = null;
-    function kanjiQuizApplyHandwritingScrollSuppress(active) {
-      var sec = document.getElementById("section-kanji-quiz-play");
-      if (sec) sec.classList.toggle("kanji-hw-scroll-suppress", !!active);
-      if (!active) {
-        if (__kanjiHwTouchMoveBlock) {
-          document.removeEventListener("touchmove", __kanjiHwTouchMoveBlock, { capture: true, passive: false });
-          __kanjiHwTouchMoveBlock = null;
-        }
-        if (__kanjiHwWheelBlock) {
-          window.removeEventListener("wheel", __kanjiHwWheelBlock, { capture: true, passive: false });
-          __kanjiHwWheelBlock = null;
-        }
-        return;
-      }
-      if (__kanjiHwTouchMoveBlock) return;
-      __kanjiHwTouchMoveBlock = function (ev) {
-        if (!sec || !sec.classList.contains("kanji-hw-scroll-suppress")) return;
-        var el = ev.target;
-        if (el && typeof el.closest === "function") {
-          if (el.closest("button, [role=\"button\"], a, input, textarea, select, label, #kanji-drill-pen-controls")) return;
-          if (el.closest(".kanji-quiz-title-rail-wrap")) return;
-        }
-        ev.preventDefault();
-      };
-      __kanjiHwWheelBlock = function (ev) {
-        if (!sec || !sec.classList.contains("kanji-hw-scroll-suppress")) return;
-        var el = ev.target;
-        if (el && typeof el.closest === "function") {
-          if (el.closest("button, [role=\"button\"], a, input, textarea, select")) return;
-        }
-        ev.preventDefault();
-      };
-      document.addEventListener("touchmove", __kanjiHwTouchMoveBlock, { capture: true, passive: false });
-      window.addEventListener("wheel", __kanjiHwWheelBlock, { capture: true, passive: false });
-    }
-    function kanjiQuizClearHandwritingScrollSuppress() {
-      __kanjiHwNoScrollUntil = 0;
-      if (__kanjiHwScrollLockTimer) {
-        clearTimeout(__kanjiHwScrollLockTimer);
-        __kanjiHwScrollLockTimer = null;
-      }
-      kanjiQuizApplyHandwritingScrollSuppress(false);
-    }
-    function kanjiQuizRefreshHandwritingScrollLockState() {
-      var sec = document.getElementById("section-kanji-quiz-play");
-      if (!sec || !sec.classList.contains("active")) {
-        kanjiQuizClearHandwritingScrollSuppress();
-        return;
-      }
-      var q = kanjiQuizSession && kanjiQuizSession.questions[kanjiQuizSession.index];
-      if (!q || q.type !== "ruby_to_kanji") {
-        kanjiQuizClearHandwritingScrollSuppress();
-        return;
-      }
-      var locked = kanjiQuizIsDrawing || Date.now() < __kanjiHwNoScrollUntil;
-      kanjiQuizApplyHandwritingScrollSuppress(locked);
-      if (__kanjiHwScrollLockTimer) {
-        clearTimeout(__kanjiHwScrollLockTimer);
-        __kanjiHwScrollLockTimer = null;
-      }
-      if (locked && !kanjiQuizIsDrawing) {
-        var ms = Math.max(0, __kanjiHwNoScrollUntil - Date.now());
-        __kanjiHwScrollLockTimer = setTimeout(function () {
-          __kanjiHwScrollLockTimer = null;
-          kanjiQuizRefreshHandwritingScrollLockState();
-        }, ms + 24);
-      }
-    }
     function clearKanjiHwFrameReadyCache() {
       __kanjiQuizHwFrameReadyP = null;
     }
     function ensureKanjiHwFrameReadyOnce() {
       if (!__kanjiQuizHwFrameReadyP) {
-        __kanjiQuizHwFrameReadyP = ensureKanjiPracticeFrameReady().catch(function (err) {
-          clearKanjiHwFrameReadyCache();
-          return Promise.reject(err || new Error("kanjiVgFrameReadyFailed"));
-        });
+        __kanjiQuizHwFrameReadyP = ensureKanjiPracticeFrameReady();
       }
       return __kanjiQuizHwFrameReadyP;
     }
@@ -4645,7 +3942,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const quizPlayEl = document.getElementById("section-kanji-quiz-play");
       const wasPlay = quizPlayEl && quizPlayEl.classList.contains("active");
       if (!wasPlay || newSectionId === "section-kanji-quiz-play" || !kanjiQuizSession) return;
-      kanjiQuizClearHandwritingScrollSuppress();
       kanjiQuizSession = null;
       lastKanjiQuizContext = null;
       clearKanjiHwFrameReadyCache();
@@ -4812,7 +4108,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizCurrentStrokePoints.push({ x: px, y: py });
           kanjiQuizRedrawParentCanvas(kanjiQuizCurrentStrokePoints);
-          kanjiQuizRefreshHandwritingScrollLockState();
         }
         function moveStrokeAt(clientX, clientY) {
           if (!kanjiQuizIsDrawing) return;
@@ -4834,36 +4129,22 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           }
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizRedrawParentCanvas();
-          __kanjiHwNoScrollUntil = Date.now() + KANJI_HW_SCROLL_GUARD_MS;
-          kanjiQuizRefreshHandwritingScrollLockState();
         }
         canvas.addEventListener("pointerdown", function (e) {
           if (!canStartKanjiQuizDraw()) return;
-          if (e.pointerType === "touch" && e.isPrimary === false) {
-            e.preventDefault();
-            return;
-          }
-          try {
-            canvas.setPointerCapture(e.pointerId);
-          } catch (_) {}
+          canvas.setPointerCapture(e.pointerId);
           beginStrokeAt(e.clientX, e.clientY);
         });
         canvas.addEventListener("pointermove", function (e) {
           moveStrokeAt(e.clientX, e.clientY);
-          if (kanjiQuizIsDrawing && e.pointerType === "touch") {
-            e.preventDefault();
-          }
-        }, { passive: false });
+        });
         canvas.addEventListener("pointerup", function () {
           endStroke();
         });
         canvas.addEventListener("pointercancel", function () {
-          if (!kanjiQuizIsDrawing) return;
           kanjiQuizIsDrawing = false;
           kanjiQuizCurrentStrokePoints = [];
           kanjiQuizRedrawParentCanvas();
-          __kanjiHwNoScrollUntil = Date.now() + KANJI_HW_SCROLL_GUARD_MS;
-          kanjiQuizRefreshHandwritingScrollLockState();
         });
         canvas.addEventListener("mousedown", function (e) {
           if (!canStartKanjiQuizDraw()) return;
@@ -4880,10 +4161,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         canvas.addEventListener("touchstart", function (e) {
           if (!canStartKanjiQuizDraw()) return;
           if (!e.touches || !e.touches.length) return;
-          if (e.touches.length > 1) {
-            e.preventDefault();
-            return;
-          }
           e.preventDefault();
           beginStrokeAt(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
@@ -4941,7 +4218,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizRedrawParentCanvas();
     }
     function kanjiQuizClearWritePad(clearIframe) {
-      kanjiQuizClearHandwritingScrollSuppress();
       kanjiQuizParentStrokes = [];
       kanjiQuizCurrentStrokePoints = [];
       kanjiQuizIsDrawing = false;
@@ -4969,12 +4245,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!frame || !frame.contentWindow) return false;
         const targets = kanjiQuizSession ? kanjiQuizSession.rubyHandTargets || [] : [];
         const slot = kanjiQuizSession ? kanjiQuizSession.rubyHandSlot || 0 : 0;
-        let expectedChar = targets[slot];
+        const expectedChar = targets[slot];
         if (expectedChar) {
-          if (!selectKanjiCharInQuizFrame(expectedChar)) return false;
+          selectKanjiCharInQuizFrame(expectedChar);
         }
-        const selAfter = frame.contentWindow.document.getElementById("target-kanji");
-        if (selAfter && selAfter.value) expectedChar = selAfter.value;
         const payload = {
           type: "quizEvalParentStrokes",
           expectedChar: expectedChar,
@@ -4989,20 +4263,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }, 90);
         return true;
       }
-      ensureKanjiHwFrameReadyOnce()
-        .then(function () {
-          const frame = document.getElementById("kp-pro-frame");
-          if (frame) patchKanjiFrameForQuizPostMessage(frame);
-          ensureKanjiFrameForQuizEval();
-          if (!postEvalToFrame()) {
-            alert("さいてんようのびゅうが みつかりません。");
-          }
-        })
-        .catch(function () {
-          alert(
-            "漢字データ（KanjiVG.txt）の準備が間に合いませんでした。\n少し待ってから、もう一度「かんがえる」や手書きを試してください。"
-          );
-        });
+      ensureKanjiHwFrameReadyOnce().then(function () {
+        const frame = document.getElementById("kp-pro-frame");
+        if (frame) patchKanjiFrameForQuizPostMessage(frame);
+        ensureKanjiFrameForQuizEval();
+        if (!postEvalToFrame()) {
+          alert("さいてんようのびゅうが みつかりません。");
+        }
+      });
     }
     function kanjiQuizOnHandwritingScored(sc) {
       if (!kanjiQuizSession) return;
@@ -5046,49 +4314,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function kanjiQuizHanOnlyChars(str) {
       return Array.from(String(str || "")).filter(isKanjiQuizHanChar);
-    }
-    /** KanjiVG の <option value> と問題文の文字を、NFC・異体字セレクタ等を揃えて比較する */
-    function kanjiQuizNormalizeForVgMatch(s) {
-      try {
-        let t = String(s || "")
-          .replace(/[\u200B-\u200D\uFEFF]/g, "")
-          .normalize("NFC");
-        t = t.replace(/[\uFE00-\uFE0F\uE0100-\uE01EF]/g, "");
-        return t;
-      } catch (e) {
-        return String(s || "").replace(/[\uFE00-\uFE0F\uE0100-\uE01EF]/g, "");
-      }
-    }
-    function kanjiQuizKanjiVgEffectiveOptionCount(sel) {
-      return Array.from(sel.options || []).filter(function (o) {
-        const v = String(o.value || "");
-        return v && v !== "データなし";
-      }).length;
-    }
-    /** iframe 内: KANJI_DATA が埋まり、#target-kanji に実オプションが付いているか（親のアラ判定と整合） */
-    function kpFrameKanjiVgDomReady(win) {
-      try {
-        if (!win || !win.document) return false;
-        const kd = win.KANJI_DATA;
-        if (!kd || typeof kd !== "object" || Object.keys(kd).length === 0) return false;
-        const sel = win.document.getElementById("target-kanji");
-        return kanjiQuizKanjiVgEffectiveOptionCount(sel) > 0;
-      } catch (e) {
-        return false;
-      }
-    }
-    /** @returns {string|null} 一致する option.value（KANJI_DATA のキー表記） */
-    function kanjiQuizResolveKanjiVgOptionValue(sel, ch) {
-      if (!sel) return null;
-      const want = kanjiQuizNormalizeForVgMatch(ch);
-      if (!want) return null;
-      const opts = Array.from(sel.options || []);
-      for (let i = 0; i < opts.length; i++) {
-        const v = String(opts[i].value || "");
-        if (!v || v === "データなし") continue;
-        if (kanjiQuizNormalizeForVgMatch(v) === want) return v;
-      }
-      return null;
     }
     function patchKanjiFrameForQuizPostMessage(frame) {
       try {
@@ -5141,9 +4366,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
     }
     function ensureKanjiPracticeFrameReady() {
-      var VG_READY_MAX_POLL = 100;
-      var VG_READY_POLL_MS = 200;
-      return new Promise(function (resolve, reject) {
+      return new Promise(function (resolve) {
         openKanjiPracticePro();
         kanjiQuizEnsureScoreListener();
         const frame = document.getElementById("kp-pro-frame");
@@ -5153,28 +4376,26 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         function tryPoll() {
           patchKanjiFrameForQuizPostMessage(frame);
+          const win = frame.contentWindow;
+          if (!win) {
+            resolve();
+            return;
+          }
           let n = 0;
           const id = setInterval(function () {
             n++;
             patchKanjiFrameForQuizPostMessage(frame);
-            const win = frame.contentWindow;
-            if (!win) {
-              if (n >= VG_READY_MAX_POLL) {
-                clearInterval(id);
-                reject(new Error("kanjiPracticeNoContentWindow"));
-              }
-              return;
-            }
-            if (kpFrameKanjiVgDomReady(win)) {
+            const kd = win.KANJI_DATA;
+            if (kd && typeof kd === "object" && Object.keys(kd).length > 0) {
               clearInterval(id);
               resolve();
               return;
             }
-            if (n >= VG_READY_MAX_POLL) {
+            if (n >= 50) {
               clearInterval(id);
-              reject(new Error("kanjiVgDataOrSelectorTimeout"));
+              resolve();
             }
-          }, VG_READY_POLL_MS);
+          }, 180);
         }
         if (frame.dataset.kpLoaded === "1" && frame.contentDocument && frame.contentDocument.readyState === "complete") {
           setTimeout(tryPoll, 80);
@@ -5205,22 +4426,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     function kanjiQuizEnsureScoreListener() {
       if (window.__kanjiQuizScoreListenerAdded) return;
       window.__kanjiQuizScoreListenerAdded = true;
-      ensureKanjiWeakAnalyticsListener();
       window.addEventListener("message", function (ev) {
-        if (!ev.data || ev.data.type !== "kanjiQuizScored") return;
-        if (kanjiQuizSession) {
-          const secQuiz = document.getElementById("section-kanji-quiz-play");
-          if (!secQuiz || !secQuiz.classList.contains("active")) return;
-          kanjiQuizSession.lastHandScore = ev.data.score;
-          const sum = document.getElementById("kanji-play-summary");
-          if (sum) sum.innerHTML = "<span style=\"color:#b8860b;font-weight:700;\">さいてん: " + ev.data.score + " てん</span>";
-          kanjiQuizOnHandwritingScored(ev.data.score);
-          return;
-        }
-        const secPrac = document.getElementById("section-kanji-practice");
-        if (secPrac && secPrac.classList.contains("active")) {
-          kpOnPracticeHandwritingScored(ev.data.score);
-        }
+        if (!kanjiQuizSession || !ev.data || ev.data.type !== "kanjiQuizScored") return;
+        const sec = document.getElementById("section-kanji-quiz-play");
+        if (!sec || !sec.classList.contains("active")) return;
+        kanjiQuizSession.lastHandScore = ev.data.score;
+        const sum = document.getElementById("kanji-play-summary");
+        if (sum) sum.innerHTML = "<span style=\"color:#b8860b;font-weight:700;\">さいてん: " + ev.data.score + " てん</span>";
+        kanjiQuizOnHandwritingScored(ev.data.score);
       });
     }
     function selectKanjiCharInQuizFrame(ch) {
@@ -5231,19 +4444,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const doc = win.document;
         const sel = doc.getElementById("target-kanji");
         if (!sel) return false;
-        const resolved = kanjiQuizResolveKanjiVgOptionValue(sel, ch);
-        if (!resolved) {
-          if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
-            clearKanjiHwFrameReadyCache();
-            alert(
-              "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度試してください。\n（つながりが不安定なときは、ページの再読み込みもためしてください）"
-            );
-          } else {
-            alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
-          }
+        const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
+        if (!ok) {
+          alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
           return false;
         }
-        sel.value = resolved;
+        sel.value = ch;
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
@@ -5261,22 +4467,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!sel) return false;
         for (let i = 0; i < targets.length; i++) {
           const ch = targets[i];
-          if (!kanjiQuizResolveKanjiVgOptionValue(sel, ch)) {
-            if (kanjiQuizKanjiVgEffectiveOptionCount(sel) === 0) {
-              clearKanjiHwFrameReadyCache();
-              alert(
-                "漢字データ（KanjiVG.txt）の読み込みがまだ終わっていません。\nしばらく待ってから、もう一度このセットを開いてください。"
-              );
-            } else {
-              alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
-            }
+          const ok = Array.from(sel.options || []).some(function (o) { return String(o.value) === String(ch); });
+          if (!ok) {
+            alert("「" + ch + "」は KanjiVG.txt にないため、手書きできません。");
             return false;
           }
         }
         const tActive = activeChar || targets[0];
-        const activeResolved = kanjiQuizResolveKanjiVgOptionValue(sel, tActive);
-        if (!activeResolved) return false;
-        sel.value = activeResolved;
+        sel.value = tActive;
         if (typeof win.initTargetKanji === "function") win.initTargetKanji();
         if (typeof win.switchMode === "function") win.switchMode("score");
         return true;
@@ -5356,7 +4554,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         setTimeout(function () {
           try {
             if (frame.contentWindow) {
-              selectKanjiCharInQuizFrame(ch);
               frame.contentWindow.postMessage({ type: "quizPlayStrokeOrderDemo" }, "*");
             }
           } catch (e) {}
@@ -5382,7 +4579,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (type === "okurigana_shift") return "問題タイプ: おくりがな（選択）";
       if (type === "ruby_to_kanji") return "問題タイプ: よみ→かんじ（しゅどく）";
       if (type === "sentence_to_ruby") return "問題タイプ: れいぶん→よみ（タイピング）";
-      if (type === "kanji_stroke_count") return "問題タイプ: 画数（ニガテ）";
       return "";
     }
     function resetKanjiQuizDrillPlayShell() {
@@ -5438,20 +4634,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (!kanjiQuizSession) return;
       const q = kanjiQuizSession.questions[kanjiQuizSession.index];
       if (!q) return;
-      if (!q.type) {
-        alert("問題形式が不明です。やり直してください。");
-        return;
-      }
-      if (
-        q.type !== "kanji_stroke_count" &&
-        (q.correctAnswer == null || q.correctAnswer === "")
-      ) {
+      if (!q.type || !q.correctAnswer) {
         alert("問題データの形式が古い可能性があります。セット一覧から開き直してください。");
         return;
       }
       kanjiQuizSession.selectedChoice = null;
       resetKanjiQuizDrillPlayShell();
-      kanjiQuizClearHandwritingScrollSuppress();
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       const markerEl = document.getElementById("kanji-drill-q-marker");
       const prefixEl = document.getElementById("kanji-drill-ctx-prefix");
@@ -5470,9 +4658,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         charEl.style.display = "";
         if (q.type === "okurigana_shift") {
           charEl.innerText = q.kanji || "？";
-        } else if (q.type === "kanji_stroke_count") {
-          charEl.innerText = q.kanji || "？";
-          charEl.style.fontSize = "clamp(28px, 8vw, 52px)";
         } else if (q.type === "ruby_to_kanji") {
           charEl.innerText = "";
           charEl.style.display = "none";
@@ -5483,7 +4668,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const promptEl = document.getElementById('kanji-play-prompt');
       if (promptEl) {
         if (q.type === "ruby_to_kanji") promptEl.innerText = "";
-        else if (q.type === "kanji_stroke_count") promptEl.innerText = q.prompt || "";
         else promptEl.innerText = q.prompt || "";
       }
       const detail = document.getElementById('kanji-play-detail');
@@ -5528,41 +4712,32 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           summary.innerHTML =
             "<span style=\"color:#607d8b;font-size:clamp(12px,3vw,14px);\">さいてんようの データを じゅんびしています…</span>";
         }
-        ensureKanjiHwFrameReadyOnce()
-          .then(function () {
-            const sec = document.getElementById("section-kanji-quiz-play");
-            if (!sec || !sec.classList.contains("active")) {
-              if (summary) summary.innerHTML = "";
-              return;
-            }
-            if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) {
-              if (summary) summary.innerHTML = "";
-              return;
-            }
-            const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
-            if (!qNow || qNow.type !== "ruby_to_kanji") {
-              if (summary) summary.innerHTML = "";
-              return;
-            }
-            ensureKanjiFrameForQuizEval();
-            if (!preloadKanjiQuizTargetsInFrame(targets, t0)) {
-              if (summary) summary.innerHTML = "";
-              return;
-            }
-            if (charHand) charHand.textContent = qNow.readingDisplay || "";
-            kanjiQuizSetPenWidth(8);
-            kanjiQuizClearWritePad(true);
-            kanjiQuizSetupWriteCanvas();
+        ensureKanjiHwFrameReadyOnce().then(function () {
+          const sec = document.getElementById("section-kanji-quiz-play");
+          if (!sec || !sec.classList.contains("active")) {
             if (summary) summary.innerHTML = "";
-          })
-          .catch(function () {
+            return;
+          }
+          if (!kanjiQuizSession || kanjiQuizSession.index !== idxAtRender) {
             if (summary) summary.innerHTML = "";
-            var secPlay = document.getElementById("section-kanji-quiz-play");
-            if (!secPlay || !secPlay.classList.contains("active")) return;
-            alert(
-              "漢字データ（KanjiVG.txt）の読み込みに時間がかかりすぎています。\nネットやサーバーの状態を確認し、ページの再読み込みのあとにもう一度お試しください。"
-            );
-          });
+            return;
+          }
+          const qNow = kanjiQuizSession.questions[kanjiQuizSession.index];
+          if (!qNow || qNow.type !== "ruby_to_kanji") {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
+          ensureKanjiFrameForQuizEval();
+          if (!preloadKanjiQuizTargetsInFrame(targets, t0)) {
+            if (summary) summary.innerHTML = "";
+            return;
+          }
+          if (charHand) charHand.textContent = qNow.readingDisplay || "";
+          kanjiQuizSetPenWidth(8);
+          kanjiQuizClearWritePad(true);
+          kanjiQuizSetupWriteCanvas();
+          if (summary) summary.innerHTML = "";
+        });
       } else {
         restoreKanjiPracticeFrameIfMoved();
         if (drillHand) drillHand.style.display = "none";
@@ -5577,9 +4752,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             <div style="margin-top:10px;font-size:clamp(14px,3.2vw,18px);color:#555;">※ まるごとの よみは だしていません。<strong>かたち</strong>だけを みて えらびましょう。</div>`;
         } else if (q.type === "ruby_to_kanji") {
           detail.innerHTML = "";
-        } else if (q.type === "kanji_stroke_count") {
-          detail.innerHTML =
-            '<div style="font-size:clamp(13px,3.2vw,16px);color:#555;line-height:1.5;">半角すうじで こたえてください（教育フォントと かくすうが ちがう もじも あるので、教材の ちゅういも みてね）。</div>';
         } else {
           detail.innerHTML = `<div style="color:#222;font-size:clamp(20px,4.5vw,28px);line-height:1.5;">${escapeHtml(q.sentence || "")}</div>`;
         }
@@ -5608,12 +4780,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
       }
       if (typingWrap) {
-        if (q.type === "sentence_to_ruby" || q.type === "kanji_stroke_count") {
+        if (q.type === "sentence_to_ruby") {
           typingWrap.style.display = "block";
           const inp = document.getElementById('kanji-play-input');
           if (inp) {
             inp.value = "";
-            inp.inputMode = q.type === "kanji_stroke_count" ? "numeric" : "";
             inp.onkeydown = function (e) {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -5627,16 +4798,13 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
       }
       if (subBtn) {
-        subBtn.style.display =
-          q.type === "sentence_to_ruby" || q.type === "kanji_stroke_count" ? "inline-block" : "none";
+        subBtn.style.display = q.type === "sentence_to_ruby" ? "inline-block" : "none";
       }
     }
     function startKanjiQuizPlay(ctx) {
       const mode = ctx.formatMode != null ? ctx.formatMode : getKanjiQuizFormatMode();
       let questions;
-      if (mode === "stroke_count_only" || mode === "reading_drill") {
-        questions = Array.isArray(ctx.questions) ? ctx.questions : [];
-      } else if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
+      if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
         questions = filterKanjiQuizQuestionsByFormat(ctx.allQuestions, mode);
         if (!questions.length) {
           alert("この しかた では もんだいがありません。\nほかの しかたを えらぶか、混合にしてください。");
@@ -5649,13 +4817,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("このセットには問題がありません。");
         return;
       }
-      questions = shuffleKanjiQuizChoicesArray(questions);
       const allQuestionsStored =
-        mode === "stroke_count_only" || mode === "reading_drill"
-          ? questions.slice()
-          : Array.isArray(ctx.allQuestions) && ctx.allQuestions.length
-            ? ctx.allQuestions
-            : questions.slice();
+        Array.isArray(ctx.allQuestions) && ctx.allQuestions.length
+          ? ctx.allQuestions
+          : questions.slice();
       const proceed = function () {
         kanjiQuizSession = {
           modeId: ctx.modeId,
@@ -5665,18 +4830,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           isTrainingMode: !!ctx.isTrainingMode,
           trainingStepIndex: ctx.trainingStepIndex,
           trainingMenuId: ctx.trainingMenuId,
-          isNigateTraining: !!ctx.isNigateTraining,
-          nigateTrainMode: ctx.nigateTrainMode || "",
-          nigateAgg: ctx.isNigateTraining
-            ? {
-                handEvents: 0,
-                anyStrokeOrderIssue: false,
-                anyBrushIssue: false,
-                anyStrokeCountMismatch: false,
-                readingWrong: 0,
-                strokeCountWrong: 0
-              }
-            : null,
           questions,
           index: 0,
           totalEarned: 0,
@@ -5691,8 +4844,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           allQuestions: allQuestionsStored,
           questions: questions,
           isTrainingMode: !!ctx.isTrainingMode,
-          isNigateTraining: !!ctx.isNigateTraining,
-          nigateTrainMode: ctx.nigateTrainMode || "",
           trainingStepIndex: ctx.trainingStepIndex,
           trainingMenuId: ctx.trainingMenuId,
           formatMode: mode
@@ -5709,22 +4860,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return;
       }
       const mode = getKanjiQuizFormatMode();
-      if (ctx.formatMode === "stroke_count_only" || ctx.formatMode === "reading_drill") {
-        startKanjiQuizPlay({
-          modeId: ctx.modeId,
-          modeName: ctx.modeName,
-          unitName: ctx.unitName,
-          setId: ctx.setId,
-          questions: ctx.questions.slice(),
-          formatMode: ctx.formatMode,
-          isTrainingMode: !!ctx.isTrainingMode,
-          isNigateTraining: !!ctx.isNigateTraining,
-          nigateTrainMode: ctx.nigateTrainMode,
-          trainingStepIndex: ctx.trainingStepIndex,
-          trainingMenuId: ctx.trainingMenuId
-        });
-        return;
-      }
       if (Array.isArray(ctx.allQuestions) && ctx.allQuestions.length) {
         const filtered = filterKanjiQuizQuestionsByFormat(ctx.allQuestions, mode);
         if (!filtered.length) {
@@ -5741,8 +4876,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           allQuestions: ctx.allQuestions,
           formatMode: mode,
           isTrainingMode: !!ctx.isTrainingMode,
-          isNigateTraining: !!ctx.isNigateTraining,
-          nigateTrainMode: ctx.nigateTrainMode,
           trainingStepIndex: ctx.trainingStepIndex,
           trainingMenuId: ctx.trainingMenuId
         });
@@ -5760,13 +4893,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         questions: filterKanjiQuizQuestionsByFormat(ctx.questions, mode),
         formatMode: mode,
         isTrainingMode: !!ctx.isTrainingMode,
-        isNigateTraining: !!ctx.isNigateTraining,
-        nigateTrainMode: ctx.nigateTrainMode,
         trainingStepIndex: ctx.trainingStepIndex,
         trainingMenuId: ctx.trainingMenuId
       });
     }
-    function showKanjiQuizResult(totalEarned, logs, isTrainingMode, nigateSummary) {
+    function showKanjiQuizResult(totalEarned, logs, isTrainingMode) {
       restoreKanjiPracticeFrameIfMoved();
       switchSection('section-result');
       const rc = document.getElementById('result-content');
@@ -5778,76 +4909,25 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const mark = v.isCorrect ? "○" : "×";
         return `「${escapeHtml(v.kanji || "")}」 ${mark} ${Number(v.score || 0)}点 → +${Number(v.earned || 0).toFixed(2)}Pt`;
       }).join("<br>");
-      let nigateBlock = "";
-      if (nigateSummary && nigateSummary.isNigate) {
-        const lines = [];
-        const tm = nigateSummary.trainMode || "";
-        if (nigateSummary.handEvents > 0 && (tm === "stroke_order" || tm === "brush")) {
-          lines.push(
-            nigateSummary.anyStrokeOrderIssue
-              ? "書き順で、「まちがいがあったよ」と おしえてもらった ぶぶんがありました。"
-              : "このセットでは、書き順の「まちがいがあったよ」は でませんでした。"
-          );
-          lines.push(
-            nigateSummary.anyBrushIssue
-              ? "とめ・はね・はらいは、なおせる ところがありました。"
-              : "とめ・はね・はらいは、ぜんぶクリアできました。"
-          );
-        }
-        if (tm === "stroke_count") {
-          lines.push(
-            (nigateSummary.strokeCountWrong || 0) === 0
-              ? "画数のミニもんは、ぜんぶせいかいでした。"
-              : "画数のミニもんに、まちがいがありました。"
-          );
-        }
-        if (tm === "reading") {
-          lines.push(
-            (nigateSummary.readingWrong || 0) === 0
-              ? "読みのもんだいは、ぜんぶせいかいでした。"
-              : "読みのもんだいで、まちがいがありました。"
-          );
-        }
-        if (lines.length) {
-          nigateBlock =
-            '<div class="kanji-nigate-summary" style="margin-top:14px;padding:12px;background:#e8f5e9;border-radius:10px;color:#1b5e20;font-size:clamp(14px,3.5vw,17px);line-height:1.55;text-align:left;">' +
-            lines.map(function (t) {
-              return escapeHtml(t);
-            }).join("<br>") +
-            "</div>";
-        }
-      }
       rc.innerHTML = `<h2 class="kanji-result-title">✨ 漢字セット完了！ ✨</h2>
         <p class="kanji-result-pts">かくとくポイント: <span class="kanji-result-pts-val">+${Number(totalEarned || 0).toFixed(2)}</span></p>
         <hr class="kanji-result-hr">
-        <div class="kanji-result-logs">${rows || "結果なし"}</div>${nigateBlock}`;
+        <div class="kanji-result-logs">${rows || "結果なし"}</div>`;
       retryBtn.style.display = "block";
       retryBtn.innerText = "🔄 同じセットでもう一度";
       retryBtn.onclick = restartLastKanjiQuizSet;
-      if (nigateSummary && nigateSummary.isNigate) {
-        settingsBtn.style.display = "block";
-        settingsBtn.innerText = "📍 ニガテ特訓にもどる";
-        settingsBtn.onclick = function () {
-          switchSection("section-kanji-nigate");
-        };
-      } else if (isTrainingMode) {
+      if (isTrainingMode) {
         settingsBtn.style.display = "block";
         settingsBtn.innerText = "🎯 特訓メニューにもどる";
-        settingsBtn.onclick = function () {
-          openTrainingMenu();
-        };
+        settingsBtn.onclick = () => openTrainingMenu();
       } else {
         settingsBtn.style.display = "block";
         settingsBtn.innerText = "📚 セット一覧にもどる";
-        settingsBtn.onclick = function () {
-          switchSection('section-kanji-quiz-sets');
-        };
+        settingsBtn.onclick = () => switchSection('section-kanji-quiz-sets');
       }
       homeBtn.style.display = "block";
       homeBtn.innerText = "🏠 ホームにもどる";
-      homeBtn.onclick = function () {
-        showHome(JSON.parse(localStorage.getItem('app_kid_user')));
-      };
+      homeBtn.onclick = () => showHome(JSON.parse(localStorage.getItem('app_kid_user')));
     }
     function cancelKanjiQuizPlay() {
       if (!kanjiQuizSession) {
@@ -5857,7 +4937,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return;
       }
       if (!confirm("このセットを中断しますか？")) return;
-      const backNigate = !!kanjiQuizSession.isNigateTraining;
       kanjiQuizSession = null;
       lastKanjiQuizContext = null;
       clearKanjiHwFrameReadyCache();
@@ -5866,7 +4945,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
       restoreKanjiPracticeFrameIfMoved();
       resetKanjiQuizDrillPlayShell();
-      switchSection(backNigate ? "section-kanji-nigate" : "section-kanji-quiz-sets");
+      switchSection("section-kanji-quiz-sets");
     }
     function submitKanjiQuizScore() {
       if (!kanjiQuizSession) return;
@@ -5876,7 +4955,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         alert("問題形式が不明です。やり直してください。");
         return;
       }
-      const qid = q.questionId || `${q.kanji}_${kanjiQuizSession.index}_${q.type}`;
       let userRaw = "";
       let isCorrect = false;
       if (q.type === "okurigana_shift") {
@@ -5900,35 +4978,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           return;
         }
         isCorrect = normalizeKanjiQuizInput(userRaw) === normalizeKanjiQuizInput(q.correctAnswer);
-      } else if (q.type === "kanji_stroke_count") {
-        const inp = document.getElementById("kanji-play-input");
-        userRaw = inp ? String(inp.value || "").trim() : "";
-        const nUser = parseInt(String(userRaw).replace(/[^0-9]/g, ""), 10);
-        const nOk = parseInt(String(q.correctAnswer || "").replace(/[^0-9]/g, ""), 10);
-        if (userRaw === "" || isNaN(nUser)) {
-          alert("かくすうを すうじで にゅうりょくしてください。");
-          return;
-        }
-        isCorrect = !isNaN(nOk) && nUser === nOk;
-      }
-      if (!isCorrect && (q.type === "okurigana_shift" || q.type === "sentence_to_ruby")) {
-        const rs = kanjiQuizResolveScopeFields(q);
-        queueAppendKanjiWeakSignals({
-          signal: "reading_mistake",
-          modeId: rs.modeId,
-          unitName: rs.unitName,
-          setId: rs.setId,
-          kanji: String(q.kanji || ""),
-          questionId: qid
-        });
-      }
-      if (!isCorrect && kanjiQuizSession.isNigateTraining && kanjiQuizSession.nigateAgg) {
-        if (q.type === "okurigana_shift" || q.type === "sentence_to_ruby") {
-          kanjiQuizSession.nigateAgg.readingWrong++;
-        }
-        if (q.type === "kanji_stroke_count") {
-          kanjiQuizSession.nigateAgg.strokeCountWrong++;
-        }
       }
       var scoreForServer = 0;
       if (isCorrect) {
@@ -5949,14 +4998,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       if (__kanjiQuizSubmitInFlight) return;
       __kanjiQuizSubmitInFlight = true;
-      const sc = kanjiQuizResolveScopeFields(q);
-      const unitId = `KANJI_${sc.modeName}_${sc.unitName}_SET${sc.setId}_${qid}`;
-      const kanjiSetScopeId = `KANJI_${sc.modeName}_${sc.unitName}_SET${sc.setId}`;
+      const qid = q.questionId || (`${q.kanji}_${kanjiQuizSession.index}_${q.type}`);
+      const unitId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}_${qid}`;
+      const kanjiSetScopeId = `KANJI_${kanjiQuizSession.modeName}_${kanjiQuizSession.unitName}_SET${kanjiQuizSession.setId}`;
       const payload = {
         action: "save_learning_session",
         userId: user.id,
         unitId: unitId,
-        unitSheetName: sc.unitName,
+        unitSheetName: kanjiQuizSession.unitName,
         isReviewMode: false,
         isRandom: false,
         results: [],
@@ -5994,34 +5043,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         localStorage.setItem('app_kid_user', JSON.stringify(user));
         kanjiQuizSession.index += 1;
         if (kanjiQuizSession.index >= kanjiQuizSession.questions.length) {
-          const nag = kanjiQuizSession.nigateAgg;
           const finished = {
             totalEarned: kanjiQuizSession.totalEarned,
             logs: kanjiQuizSession.logs.slice(),
-            isTrainingMode: !!kanjiQuizSession.isTrainingMode,
-            nigateSummary:
-              kanjiQuizSession.isNigateTraining && nag
-                ? {
-                    isNigate: true,
-                    trainMode: kanjiQuizSession.nigateTrainMode,
-                    handEvents: nag.handEvents || 0,
-                    anyStrokeOrderIssue: !!nag.anyStrokeOrderIssue,
-                    anyBrushIssue: !!nag.anyBrushIssue,
-                    strokeCountWrong: nag.strokeCountWrong || 0,
-                    readingWrong: nag.readingWrong || 0
-                  }
-                : null
+            isTrainingMode: !!kanjiQuizSession.isTrainingMode
           };
           if (kanjiQuizSession.isTrainingMode) {
             fetchTrainingRoute(user.id);
           }
           kanjiQuizSession = null;
-          showKanjiQuizResult(
-            finished.totalEarned,
-            finished.logs,
-            finished.isTrainingMode,
-            finished.nigateSummary
-          );
+          showKanjiQuizResult(finished.totalEarned, finished.logs, finished.isTrainingMode);
           return;
         }
         renderKanjiQuizQuestion();
