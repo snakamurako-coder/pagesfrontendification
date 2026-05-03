@@ -1042,6 +1042,7 @@
       min-height: 1.2em;
       line-height: 1.3;
     }
+    /* 漢字練習・設定調整（KP_HTML iframe）の #canvas / canvas と同一の見た目 */
     #kanji-quiz-write-canvas {
       display: block;
       touch-action: none;
@@ -1049,10 +1050,12 @@
       position: relative;
       z-index: 3;
       pointer-events: auto;
-      background: #fff;
-      border: 3px solid #222;
+      background-color: #fff;
+      background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px);
+      background-size: 50% 50%;
+      border: 2px solid #333;
       border-radius: 4px;
-      box-shadow: inset 0 0 0 1px #0002;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       align-self: center;
       flex-shrink: 0;
     }
@@ -1488,7 +1491,7 @@
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
             </div>
-            <canvas id="kanji-quiz-write-canvas" width="300" height="300" style="border:2px dashed #a99880; border-radius:8px; background:#fff; transform:none; flex-shrink:0; z-index:2;"></canvas>
+            <canvas id="kanji-quiz-write-canvas" width="300" height="300"></canvas>
             <div class="kanji-drill-hw-panel-aside">
               <div id="kanji-play-char-handwriting" class="kanji-drill-reading-aside kanji-drill-hw-ruby-box"></div>
             </div>
@@ -4375,13 +4378,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
       return Object.assign({}, DEFAULT_PARAMS);
     }
-    function kanjiQuizPenScaleFactor() {
-      const penRef = typeof kanjiQuizPenW === "number" ? kanjiQuizPenW : 8;
-      return penRef / 8;
-    }
     function kanjiQuizEffectiveBaseWidth() {
       const p = getKanjiQuizStrokeParams();
-      return p.baseWidth * kanjiQuizPenScaleFactor();
+      const bw = typeof p.baseWidth === "number" ? p.baseWidth : 11;
+      return Math.max(4, Math.min(18, bw));
     }
     function kanjiQuizFillBetween(ctx, start, end, width) {
       const dist = Math.hypot(end.x - start.x, end.y - start.y);
@@ -4395,9 +4395,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function kanjiQuizRenderStrokeWithEffect(ctx, points, type, color) {
       const P = getKanjiQuizStrokeParams();
-      const bW = P.baseWidth * kanjiQuizPenScaleFactor();
+      const bW = typeof P.baseWidth === "number" ? Math.max(4, Math.min(18, P.baseWidth)) : 11;
       const strokeType = type === "none" ? "tome" : type;
-      ctx.fillStyle = color || "#111";
+      ctx.fillStyle = color || "#333";
       if (!points || !points.length) return;
       if (points.length === 1) {
         ctx.beginPath();
@@ -4424,7 +4424,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     function kanjiQuizDrawLiveStrokeSegments(ctx, points) {
       const w = kanjiQuizEffectiveBaseWidth();
-      ctx.fillStyle = "#111";
+      ctx.fillStyle = "#333";
       if (!points || !points.length) return;
       if (points.length === 1) {
         ctx.beginPath();
@@ -4436,19 +4436,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizFillBetween(ctx, points[i], points[i + 1], w);
       }
     }
-    function kanjiQuizRedrawGrid(ctx, L) {
-      ctx.save();
-      ctx.strokeStyle = "#ccc";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(0.5, 0.5, L - 1, L - 1);
-      ctx.beginPath();
-      ctx.moveTo(L / 2, 0);
-      ctx.lineTo(L / 2, L);
-      ctx.moveTo(0, L / 2);
-      ctx.lineTo(L, L / 2);
-      ctx.stroke();
-      ctx.restore();
-    }
     function kanjiQuizRedrawParentCanvas(livePts) {
       const canvas = document.getElementById("kanji-quiz-write-canvas");
       if (!canvas || !canvas.getContext) return;
@@ -4458,12 +4445,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.scale(dpr, dpr);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, L, L);
-      kanjiQuizRedrawGrid(ctx, L);
+      /* 背景のグリッドは CSS（漢字練習 iframe と同じ）に任せ、白矩形は塗らない */
       kanjiQuizParentStrokes.forEach(function (s) {
         if (!s.points || !s.points.length) return;
-        kanjiQuizRenderStrokeWithEffect(ctx, s.points, s.type, "#111");
+        kanjiQuizRenderStrokeWithEffect(ctx, s.points, s.type, "#333");
       });
       if (livePts && livePts.length) {
         kanjiQuizDrawLiveStrokeSegments(ctx, livePts);
@@ -4592,8 +4577,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
       return def;
     }
+    /* 漢字練習 iframe の detectStrokeType(..., true, ...) と同じしきい値（5点未満はとめ） */
     function kanjiQuizClassifyStroke(points, drawStartTime) {
-      if (points.length < 3) return "tome";
+      if (points.length < 5) return "tome";
       const n = points.length;
       const pStart = points[Math.max(0, n - 6)], pEnd = points[n - 1];
       const dt = Math.max(1, Date.now() - (drawStartTime || Date.now()));
@@ -4609,13 +4595,67 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (dy < 0 || angleDiff > thr.hookAngleDiff) return "hane";
       return "harai";
     }
+    function kanjiQuizMergeKanjiStrokeParams(partial) {
+      const def = {
+        baseWidth: 11.0,
+        tomeStart: 0.9,
+        tomeScale: 1.3,
+        haneStart: 0.9,
+        haneSharp: 0.55,
+        haraiStart: 0.65,
+        haraiSharp: 0.8
+      };
+      let cur = { ...def };
+      try {
+        const saved = localStorage.getItem("kanjiStrokeParamsV2");
+        if (saved) cur = { ...def, ...JSON.parse(saved) };
+      } catch (e) {}
+      cur = { ...cur, ...partial };
+      try {
+        localStorage.setItem("kanjiStrokeParamsV2", JSON.stringify(cur));
+      } catch (e) {}
+      return cur;
+    }
+    /** 漢字練習の「🖋 設定」と共有する baseWidth（中間 11 を基準に 4/8/14 でスケール） */
     function kanjiQuizSetPenWidth(w) {
       kanjiQuizPenW = w;
+      const midRef = 11.0;
+      kanjiQuizMergeKanjiStrokeParams({
+        baseWidth: Math.max(4, Math.min(18, midRef * (w / 8)))
+      });
       [["kanji-pen-fine", 4], ["kanji-pen-mid", 8], ["kanji-pen-thick", 14]].forEach(function (t) {
         const el = document.getElementById(t[0]);
         if (el) el.classList.toggle("is-active-prior", t[1] === w);
       });
       kanjiQuizRedrawParentCanvas();
+    }
+    /** 保存済み kanjiStrokeParamsV2 に合わせてボタン表示のみ同期（設定を上書きしない） */
+    function kanjiQuizSyncPenUiFromStrokeParams() {
+      const midRef = 11.0;
+      let baseW = midRef;
+      try {
+        const saved = localStorage.getItem("kanjiStrokeParamsV2");
+        if (saved) {
+          const o = JSON.parse(saved);
+          if (typeof o.baseWidth === "number") baseW = o.baseWidth;
+        }
+      } catch (e) {}
+      const presets = [4, 8, 14];
+      let bestI = 1;
+      let bestD = Infinity;
+      for (let i = 0; i < presets.length; i++) {
+        const expected = midRef * (presets[i] / 8);
+        const d = Math.abs(baseW - expected);
+        if (d < bestD) {
+          bestD = d;
+          bestI = i;
+        }
+      }
+      kanjiQuizPenW = presets[bestI];
+      [["kanji-pen-fine", 4], ["kanji-pen-mid", 8], ["kanji-pen-thick", 14]].forEach(function (t) {
+        const el = document.getElementById(t[0]);
+        if (el) el.classList.toggle("is-active-prior", t[1] === kanjiQuizPenW);
+      });
     }
     function kanjiQuizClearWritePad(clearIframe) {
       kanjiQuizParentStrokes = [];
@@ -5255,11 +5295,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (charHand) charHand.textContent = "";
       const badge = document.getElementById("kanji-play-type-badge");
       if (badge) badge.innerText = "";
-      const penW = typeof kanjiQuizPenW === "number" ? kanjiQuizPenW : 8;
-      [["kanji-pen-fine", 4], ["kanji-pen-mid", 8], ["kanji-pen-thick", 14]].forEach(function (t) {
-        const el = document.getElementById(t[0]);
-        if (el) el.classList.toggle("is-active-prior", t[1] === penW);
-      });
+      try {
+        kanjiQuizSyncPenUiFromStrokeParams();
+      } catch (e) {}
     }
     function renderKanjiQuizQuestion() {
       if (!kanjiQuizSession) return;
@@ -5346,7 +5384,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (suffixEl) suffixEl.textContent = ctxDrill.after || "";
         if (charHand) charHand.textContent = q.readingDisplay || "";
         const t0 = targets[0];
-        kanjiQuizSetPenWidth(8);
+        kanjiQuizSyncPenUiFromStrokeParams();
         kanjiQuizClearWritePad(false);
         kanjiQuizSetupWriteCanvas();
         if (summary) {
@@ -5386,7 +5424,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             }, delayMs);
           });
           if (charHand) charHand.textContent = qNow.readingDisplay || "";
-          kanjiQuizSetPenWidth(8);
+          kanjiQuizSyncPenUiFromStrokeParams();
           kanjiQuizClearWritePad(true);
           kanjiQuizSetupWriteCanvas();
           if (summary) summary.innerHTML = "";
