@@ -2560,7 +2560,13 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       document.getElementById('message').innerText="";
-      const kanjiFlowIds = ['section-kanji-learning', 'section-kanji-quiz-sets', 'section-kanji-quiz-play', 'section-kanji-nigate'];
+      const kanjiFlowIds = [
+        "section-kanji-learning",
+        "section-kanji-quiz-sets",
+        "section-kanji-quiz-play",
+        "section-kanji-nigate",
+        "section-kanji-practice"
+      ];
       let isKanjiFlow = kanjiFlowIds.includes(id) || ((id === 'section-materials' || id === 'section-settings') && currentMaterialsCategory === 'kanji');
       if (id === 'section-result' && document.body.classList.contains('kanji-study-mode')) {
         isKanjiFlow = true;
@@ -5168,6 +5174,37 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       setTimeout(kpResizeFrameToContent, 80);
     }
     var __kanjiHandScoreToastTimer = null;
+    var __kanjiEarnedPtsToastTimer = null;
+    /**
+     * 今回の問題／採点で加算されたポイントを画面上部に約2秒表示。
+     * pointer-events: none・固定レイヤのため操作や fetch の続行を阻害しない。
+     */
+    function showKanjiEarnedPointsToast(earnedRaw) {
+      var earned = Number(earnedRaw);
+      if (isNaN(earned)) earned = 0;
+      var el = document.getElementById("kanji-earned-pts-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "kanji-earned-pts-toast";
+        el.setAttribute("role", "status");
+        el.setAttribute("aria-live", "polite");
+        el.style.cssText =
+          "position:fixed;left:50%;top:max(12px,env(safe-area-inset-top,12px));transform:translateX(-50%);" +
+          "z-index:10051;padding:10px 20px;border-radius:14px;background:rgba(20,35,25,0.92);color:#e8f5e9;" +
+          "font-size:clamp(15px,3.8vw,19px);font-weight:800;box-shadow:0 4px 20px rgba(0,0,0,0.25);" +
+          "pointer-events:none;opacity:0;transition:opacity 0.22s ease;text-align:center;line-height:1.35;" +
+          "max-width:min(92vw,320px);border:1px solid rgba(129,199,132,0.45);";
+        document.body.appendChild(el);
+      }
+      var showNum = (earned >= 0 ? "+" : "") + earned.toFixed(2);
+      el.textContent = "ポイント " + showNum + " Pt";
+      el.style.opacity = "1";
+      if (__kanjiEarnedPtsToastTimer) clearTimeout(__kanjiEarnedPtsToastTimer);
+      __kanjiEarnedPtsToastTimer = setTimeout(function () {
+        el.style.opacity = "0";
+        __kanjiEarnedPtsToastTimer = null;
+      }, 2000);
+    }
     /** 手書き採点の点数を画面下部に約2秒表示（pointer-events なし。他 UI を塞がない） */
     function showKanjiHandScoreToast(scoreRaw, kanjiOpt) {
       var n = Math.max(0, Math.min(100, Math.round(Number(scoreRaw) || 0)));
@@ -5266,6 +5303,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           })
           .then(function (d) {
             if (!d || d.status !== "success") return;
+            try {
+              showKanjiEarnedPointsToast(d.earnedPoints);
+            } catch (ePt) {}
             if (typeof d.newTotal === "number") {
               kidUser.points = d.newTotal;
               localStorage.setItem("app_kid_user", JSON.stringify(kidUser));
@@ -6368,6 +6408,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
       .then(r => r.json()).then(d => {
         if (d.status !== "success") throw new Error(d.message || "保存に失敗");
+        try {
+          showKanjiEarnedPointsToast(d.earnedPoints);
+        } catch (ePt) {}
         kanjiQuizSession.totalEarned += Number(d.earnedPoints || 0);
         kanjiQuizSession.newTotalPoints = Number(d.newTotal);
         kanjiQuizSession.logs.push({
