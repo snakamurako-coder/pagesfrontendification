@@ -6064,10 +6064,20 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
 
     function appendTypeAnswerText(text) {
       const target = getPenTargetInput();
-      if (!target) return;
-      target.value = composeWithAutoSpace(target.value, text);
-      target.classList.remove('type-answer-temp');
-      handwritingState.pendingTempText = "";
+      if (target) {
+        target.value = composeWithAutoSpace(target.value, text);
+        target.classList.remove('type-answer-temp');
+        handwritingState.pendingTempText = "";
+        return;
+      }
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      const ansType = ansTypeEl ? String(ansTypeEl.value || '').trim() : '';
+      if (ansType === 'fill_typing') {
+        const chars = String(text || '').replace(/\s/g, '').split('');
+        chars.forEach(ch => {
+          if (/^[a-zA-Z]$/.test(ch)) handleFillInput(ch);
+        });
+      }
     }
 
     function setTypeAnswerTemporary(text) {
@@ -6550,7 +6560,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           ? `<button type="button" id="fill-submit-btn" class="submit-btn btn-green" style="margin-top:0;padding:10px 20px;font-size:16px;" onclick="submitFillAnswer()" disabled>これで回答</button>`
           : '';
         const typingPreviewHtml = useFillMode
-          ? ''
+          ? `
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+              <button type="button" id="pen-recognize-btn" class="submit-btn btn-blue pen-recognize-btn" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
+              <span style="color:#bbb;font-size:13px;line-height:1.4;">かいたあと「文字起こし」でマスに入ります（サーバーへ送ります）</span>
+            </div>
+          `
           : `
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
               <button type="button" id="pen-recognize-btn" class="submit-btn btn-blue pen-recognize-btn" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
@@ -6647,27 +6662,44 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (answerArea) placeQuizFeedbackAboveKeyboard(answerArea);
     }
 
+    function getPenWritingGuideForApi() {
+      const canvas = document.getElementById('pen-canvas');
+      if (!canvas) return { width: 1000, height: 400 };
+      const w = parseFloat(canvas.dataset.logW) || canvas.getBoundingClientRect().width || 1000;
+      const h = parseFloat(canvas.dataset.logH) || canvas.getBoundingClientRect().height || 400;
+      return {
+        width: Math.round(Math.max(200, Math.min(2400, w))),
+        height: Math.round(Math.max(200, Math.min(2400, h)))
+      };
+    }
+
     function collectInkForApi() {
       const apiInk = [];
       const MAX_POINTS_PER_STROKE = 180;
       handwritingState.allStrokes.forEach(stroke => {
-        if (!stroke || stroke.length < 2) return;
-        let sampled = stroke;
-        if (stroke.length > MAX_POINTS_PER_STROKE) {
-          const step = Math.ceil(stroke.length / MAX_POINTS_PER_STROKE);
-          sampled = stroke.filter((_, idx) => idx % step === 0);
-          if (sampled[sampled.length - 1] !== stroke[stroke.length - 1]) {
-            sampled.push(stroke[stroke.length - 1]);
+        if (!stroke || stroke.length < 1) return;
+        let strokeForApi = stroke;
+        if (stroke.length === 1) {
+          const p0 = stroke[0];
+          strokeForApi = [p0, { x: p0.x, y: p0.y, t: (p0.t != null ? p0.t : Date.now()) + 1 }];
+        }
+        let sampled = strokeForApi;
+        if (strokeForApi.length > MAX_POINTS_PER_STROKE) {
+          const step = Math.ceil(strokeForApi.length / MAX_POINTS_PER_STROKE);
+          sampled = strokeForApi.filter((_, idx) => idx % step === 0);
+          if (sampled[sampled.length - 1] !== strokeForApi[strokeForApi.length - 1]) {
+            sampled.push(strokeForApi[strokeForApi.length - 1]);
           }
         }
         const xArr = [];
         const yArr = [];
         const tArr = [];
-        const startTime = sampled[0].t;
-        sampled.forEach(p => {
+        const t0 = (typeof sampled[0].t === 'number' && !isNaN(sampled[0].t)) ? sampled[0].t : 0;
+        sampled.forEach((p, i) => {
           xArr.push(p.x);
           yArr.push(p.y);
-          tArr.push(p.t - startTime);
+          const t = (typeof p.t === 'number' && !isNaN(p.t)) ? p.t : t0 + i * 16;
+          tArr.push(Math.max(0, t - t0));
         });
         apiInk.push([xArr, yArr, tArr]);
       });
@@ -6697,14 +6729,23 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         setPenStatus('先に手書きで文字を書いてください。');
         return;
       }
+      const writingGuide = getPenWritingGuideForApi();
       isPenRecognitionInFlight = true;
       setPenRecognizeButtonState(true);
-      setPenStatus('Recognizing...');
+      setPenStatus('文字起こし中（サーバーと通信）…');
+      const ac = new AbortController();
+      const PEN_RECOGNIZE_TIMEOUT_MS = 38000;
+      const timeoutId = setTimeout(() => ac.abort(), PEN_RECOGNIZE_TIMEOUT_MS);
       fetch(GAS_API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk, writingGuide: writingGuide }),
+        signal: ac.signal
       })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
+        return r.json();
+      })
       .then(d => {
         if (d.status !== "success") {
           setPenStatus(d.message || "認識に失敗しました。");
@@ -6730,10 +6771,15 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         setPenStatus(`仮入力: ${text}`);
       })
-      .catch(() => {
-        setPenStatus("通信エラー");
+      .catch(err => {
+        if (err && err.name === 'AbortError') {
+          setPenStatus('時間がかかりすぎて止めました。通信やGASの状態を確認し、もう一度「文字起こし」を押してください。');
+        } else {
+          setPenStatus('通信エラー（応答を読めませんでした）。ネットワークを確認して再度お試しください。');
+        }
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         isPenRecognitionInFlight = false;
         setPenRecognizeButtonState(false);
       });

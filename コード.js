@@ -335,7 +335,7 @@ function doPost(e) {
     else if (action === "approve_external_request") return handleApproveExternalRequest(requestData);
     else if (action === "reject_external_request") return handleRejectExternalRequest(requestData);
     else if (action === "get_my_external_learning_requests") return handleGetMyExternalLearningRequests(requestData);
-    else if (action === "recognize_handwriting") return recognizeSentence(requestData.ink || []);
+    else if (action === "recognize_handwriting") return recognizeSentence(requestData);
     else if (action === "get_kanji_init_data") return handleGetKanjiInitData(requestData);
     else if (action === "get_kanji_data_from_sheet") return handleGetKanjiDataFromSheet(requestData);
     else if (action === "get_kanji_quiz_sets") return handleGetKanjiQuizSets(requestData);
@@ -354,13 +354,27 @@ function doPost(e) {
 
 function doOptions(e) { return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT); }
 
-function recognizeSentence(allStrokes) {
+function recognizeSentence(requestOrInk) {
+  var allStrokes = [];
+  var wgW = 1000;
+  var wgH = 400;
+  if (Array.isArray(requestOrInk)) {
+    allStrokes = requestOrInk;
+  } else if (requestOrInk && typeof requestOrInk === "object") {
+    allStrokes = requestOrInk.ink || [];
+    var wg = requestOrInk.writingGuide;
+    if (wg && typeof wg.width === "number" && typeof wg.height === "number") {
+      wgW = Math.round(Math.max(200, Math.min(2400, wg.width)));
+      wgH = Math.round(Math.max(200, Math.min(2400, wg.height)));
+    }
+  }
   if (!Array.isArray(allStrokes) || allStrokes.length === 0) {
     return sendResponse({ status: "error", message: "ストロークが空です。" });
   }
 
   const endpoints = [
     "https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8",
+    "https://www.google.com/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8",
     "https://www.google.com.hk/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8"
   ];
   const languages = ["en", "en-US"];
@@ -371,7 +385,7 @@ function recognizeSentence(allStrokes) {
     const payload = {
       options: "enable_pre_space",
       requests: [{
-        writing_guide: { writing_area_width: 1000, writing_area_height: 400 },
+        writing_guide: { writing_area_width: wgW, writing_area_height: wgH },
         ink: allStrokes,
         language: lang
       }]
