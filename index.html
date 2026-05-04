@@ -4536,6 +4536,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     let kanjiQuizStrokeStartTime = 0;
     let kanjiQuizScrollLockUntil = 0;
     let __kanjiQuizWriteCanvasBound = false;
+    let __kanjiQuizWriteReflowListenersBound = false;
     let __kanjiQuizHwFrameReadyP = null;
     let __kanjiQuizScrollGuardBound = false;
     let __kanjiQuizTouchLockLastBump = 0;
@@ -4799,7 +4800,45 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           endStroke();
         });
       }
+      bindKanjiQuizWriteCanvasReflowListeners();
       kanjiQuizRedrawParentCanvas();
+    }
+    /** レイアウト確定後にキャンバス解像度・スケールを取り直す（回転・リサイズと同じ経路） */
+    function kanjiQuizReflowWriteCanvasForCurrentLayout() {
+      const sec = document.getElementById("section-kanji-quiz-play");
+      if (!sec || !sec.classList.contains("active")) return;
+      if (!kanjiQuizSession) return;
+      const q = kanjiQuizSession.questions[kanjiQuizSession.index];
+      if (!q || q.type !== "ruby_to_kanji") return;
+      const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
+      if (!drillHand || drillHand.style.display === "none") return;
+      kanjiQuizSetupWriteCanvas();
+    }
+    function kanjiQuizScheduleWriteCanvasReflow() {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          kanjiQuizReflowWriteCanvasForCurrentLayout();
+        });
+      });
+    }
+    function bindKanjiQuizWriteCanvasReflowListeners() {
+      if (__kanjiQuizWriteReflowListenersBound) return;
+      __kanjiQuizWriteReflowListenersBound = true;
+      let debounceTimer = 0;
+      function onLayoutChange() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          debounceTimer = 0;
+          kanjiQuizReflowWriteCanvasForCurrentLayout();
+        }, 100);
+      }
+      window.addEventListener("resize", onLayoutChange);
+      window.addEventListener("orientationchange", onLayoutChange);
+      try {
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", onLayoutChange);
+        }
+      } catch (eVv) {}
     }
     function getKanjiQuizStrokeThresholds() {
       const def = { minVelocity: 1.2, hookAngleDiff: 0.6 };
@@ -5006,6 +5045,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const sum = document.getElementById("kanji-play-summary");
       if (sum) sum.innerHTML = "";
       kanjiQuizClearWritePad(true);
+      kanjiQuizSetupWriteCanvas();
+      kanjiQuizScheduleWriteCanvasReflow();
     }
     function kanjiQuizSkipHandwritingQuestion() {
       if (!kanjiQuizSession) return;
@@ -5846,6 +5887,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiYomiSetRecognizedLine("", false);
       } catch (eY) {}
       try {
+        kanjiQuizClearWritePad(false);
+      } catch (eHw) {}
+      try {
         if (kanjiQuizSession) kanjiQuizSession.sentenceYomiRecognized = "";
       } catch (eY2) {}
       const subBtn = document.getElementById("kanji-play-submit-btn");
@@ -5971,6 +6015,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiQuizSyncPenUiFromStrokeParams();
         kanjiQuizClearWritePad(false);
         kanjiQuizSetupWriteCanvas();
+        kanjiQuizScheduleWriteCanvasReflow();
         if (summary) {
           summary.innerHTML =
             "<span style=\"color:#607d8b;font-size:clamp(12px,3vw,14px);\">さいてんようの データを じゅんびしています…</span>";
@@ -6011,6 +6056,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           kanjiQuizSyncPenUiFromStrokeParams();
           kanjiQuizClearWritePad(true);
           kanjiQuizSetupWriteCanvas();
+          kanjiQuizScheduleWriteCanvasReflow();
           if (summary) summary.innerHTML = "";
         });
       } else {
