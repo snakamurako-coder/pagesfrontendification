@@ -1179,11 +1179,70 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
-    #section-kanji-quiz-play.kanji-quiz-drill-section #kanji-play-input {
+    .kanji-yomi-sentence-block {
+      margin: 22px auto 28px;
+      padding: 20px 18px;
+      max-width: min(560px, 96vw);
+      font-size: clamp(22px, 5.2vw, 36px);
+      font-weight: 800;
+      line-height: 1.6;
+      color: #141820;
+      text-align: center;
+      background: linear-gradient(180deg, #fff 0%, #f4f7fc 100%);
+      border: 2px solid #3949ab;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      box-sizing: border-box;
+    }
+    .kanji-yomi-sentence-block .kanji-yomi-target-char {
+      color: #c62828;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+    .kanji-yomi-typing-wrap .kanji-yomi-recognized-line {
       background: #fff !important;
       color: #111 !important;
       border: 3px solid #333 !important;
       font-size: clamp(22px, 5vw, 32px) !important;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 12px 14px;
+      min-height: 2.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-sizing: border-box;
+      line-height: 1.35;
+    }
+    .kanji-yomi-pen-canvas-outer {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid #333;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      background: #fafafa;
+    }
+    #kanji-yomi-pen-canvas.kanji-yomi-pen-canvas {
+      display: block;
+      width: 100%;
+      height: min(220px, 38vh);
+      max-height: 280px;
+      touch-action: none;
+      cursor: crosshair;
+      background-color: #fff;
+      background-image: linear-gradient(#eee 1px, transparent 1px),
+        linear-gradient(90deg, #eee 1px, transparent 1px);
+      background-size: 50% 50%;
+    }
+    .kanji-yomi-hint-foot {
+      font-size: clamp(14px, 3.2vw, 17px);
+      color: #444;
+      margin: 14px 0 0;
+      line-height: 1.55;
+      text-align: center;
     }
     #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-play-footer-btns .kanji-drill-footer-v {
       writing-mode: vertical-rl;
@@ -1484,9 +1543,20 @@
       <div id="kanji-play-prompt"></div>
       <div id="kanji-play-detail"></div>
       <div id="kanji-play-choices" class="kanji-quiz-ui-horizontal" style="display:none;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:stretch;"></div>
-      <div id="kanji-play-typing-wrap" class="kanji-quiz-ui-horizontal" style="margin-top:12px;display:none;">
-        <input type="text" id="kanji-play-input" inputmode="text" autocomplete="off" lang="ja" placeholder="よみを入力" style="width:100%;max-width:400px;padding:14px;border-radius:8px;box-sizing:border-box;">
-        <p style="font-size:15px;color:#555;margin:8px 0 0;">音は<strong>カタカナ</strong>、訓は<strong>ひらがな</strong></p>
+      <div id="kanji-play-typing-wrap" class="kanji-quiz-ui-horizontal kanji-yomi-typing-wrap" style="margin-top:12px;display:none;flex-direction:column;align-items:center;width:100%;max-width:560px;margin-left:auto;margin-right:auto;box-sizing:border-box;">
+        <div id="kanji-yomi-pen-root" style="width:100%;box-sizing:border-box;">
+          <div id="kanji-yomi-recognized-line" class="kanji-yomi-recognized-line" aria-live="polite">（まだ 文字起こししていません）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:10px 0 8px;">
+            <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiYomiRecognizeHandwriting()">🔤 文字起こし</button>
+            <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiYomiClearPenCanvas()">手書きをけす</button>
+            <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiYomiUndoPenStroke()">ひとふでもどす</button>
+          </div>
+          <div class="kanji-yomi-pen-canvas-outer">
+            <canvas id="kanji-yomi-pen-canvas" class="kanji-yomi-pen-canvas" width="480" height="200" touch-action="none"></canvas>
+          </div>
+          <p class="kanji-yomi-hint-foot">訓読みは<strong>ひらがな</strong>、音読みは<strong>カタカナ</strong>で書いて正解すると、ポイントが<strong>2ばい</strong>になります。</p>
+        </div>
+        <input type="hidden" id="kanji-play-input" value="">
       </div>
       <div id="kanji-quiz-drill-handwriting" style="display:none;">
         <div class="kanji-drill-hw-row">
@@ -5425,10 +5495,289 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         return String(str || "").trim();
       }
     }
+    function kanjiYomiFormatSentenceBlockHtml(sentence, kanji) {
+      const s = String(sentence || "");
+      const k = String(kanji || "");
+      const idx = k && s.indexOf(k) >= 0 ? s.indexOf(k) : -1;
+      if (idx < 0) {
+        return '<div class="kanji-yomi-sentence-block">' + escapeHtml(s) + "</div>";
+      }
+      const before = escapeHtml(s.slice(0, idx));
+      const mid =
+        '<span class="kanji-yomi-target-char" title="このかんじのよみを書きます">' +
+        escapeHtml(k) +
+        "</span>";
+      const after = escapeHtml(s.slice(idx + k.length));
+      return '<div class="kanji-yomi-sentence-block">' + before + mid + after + "</div>";
+    }
+    function kanjiQuizIsAllHiraganaScript_(str) {
+      const s = normalizeKanjiQuizInput(str);
+      if (!s) return false;
+      for (const ch of s) {
+        const c = ch.codePointAt(0);
+        if (c >= 0x3041 && c <= 0x3096) continue;
+        if (c === 0x3099 || c === 0x309a) continue;
+        if (c === 0x30fc) continue;
+        return false;
+      }
+      return true;
+    }
+    function kanjiQuizIsAllKatakanaScript_(str) {
+      const s = normalizeKanjiQuizInput(str);
+      if (!s) return false;
+      for (const ch of s) {
+        const c = ch.codePointAt(0);
+        if (c >= 0x30a1 && c <= 0x30f6) continue;
+        if (c === 0x30fc || c === 0x30fd || c === 0x30fe) continue;
+        return false;
+      }
+      return true;
+    }
+    function kanjiQuizSentenceYomiScriptBonusMultiplier(userAnswerNorm, readingKind) {
+      const k = String(readingKind || "");
+      if (k === "kun") return kanjiQuizIsAllHiraganaScript_(userAnswerNorm) ? 2 : 1;
+      if (k === "on") return kanjiQuizIsAllKatakanaScript_(userAnswerNorm) ? 2 : 1;
+      return 1;
+    }
+    var kanjiYomiPenState = {
+      allStrokes: [],
+      currentStroke: null,
+      isDrawing: false,
+      pointerId: null,
+      penWidth: 7
+    };
+    var __kanjiYomiRecognizeInFlight = false;
+    function kanjiYomiGetCanvas() {
+      return document.getElementById("kanji-yomi-pen-canvas");
+    }
+    function kanjiYomiRelayoutPenCanvas() {
+      const canvas = kanjiYomiGetCanvas();
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(160, rect.width || 320);
+      const h = Math.max(100, rect.height || 180);
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = kanjiYomiPenState.penWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#202124";
+      canvas.dataset.logW = String(w);
+      canvas.dataset.logH = String(h);
+      kanjiYomiRedrawStrokes();
+    }
+    function kanjiYomiRedrawStrokes() {
+      const canvas = kanjiYomiGetCanvas();
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const lw = canvas.width / dpr;
+      const lh = canvas.height / dpr;
+      ctx.clearRect(0, 0, lw, lh);
+      kanjiYomiPenState.allStrokes.forEach(function (stroke) {
+        if (!stroke || stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (var i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+      });
+    }
+    function kanjiYomiClearPenCanvas() {
+      kanjiYomiPenState.allStrokes = [];
+      kanjiYomiPenState.currentStroke = null;
+      kanjiYomiPenState.isDrawing = false;
+      kanjiYomiPenState.pointerId = null;
+      kanjiYomiRedrawStrokes();
+    }
+    function kanjiYomiUndoPenStroke() {
+      if (kanjiYomiPenState.allStrokes.length > 0) {
+        kanjiYomiPenState.allStrokes.pop();
+        kanjiYomiRedrawStrokes();
+      }
+    }
+    function kanjiYomiGetCoords(e, canvas) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        t: Date.now()
+      };
+    }
+    function kanjiYomiAcceptPointer(e) {
+      if (!e) return false;
+      if (e.pointerType === "pen") return true;
+      if (e.pointerType === "mouse") return true;
+      if (e.pointerType === "touch") {
+        if (typeof shouldAcceptPenPointer === "function") return shouldAcceptPenPointer(e);
+        return true;
+      }
+      return false;
+    }
+    function kanjiYomiEnsurePenCanvasInitialized() {
+      const canvas = kanjiYomiGetCanvas();
+      if (!canvas || canvas.dataset.yomiPenBound === "1") return;
+      canvas.dataset.yomiPenBound = "1";
+      const ctx0 = canvas.getContext("2d");
+      ctx0.lineCap = "round";
+      ctx0.lineJoin = "round";
+      canvas.addEventListener("pointerdown", function (e) {
+        if (!kanjiYomiAcceptPointer(e)) return;
+        e.preventDefault();
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch (err) {}
+        kanjiYomiPenState.isDrawing = true;
+        kanjiYomiPenState.pointerId = e.pointerId;
+        kanjiYomiPenState.currentStroke = [];
+        const pt = kanjiYomiGetCoords(e, canvas);
+        kanjiYomiPenState.currentStroke.push(pt);
+        const ctx = canvas.getContext("2d");
+        ctx.lineWidth = kanjiYomiPenState.penWidth;
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+      });
+      canvas.addEventListener("pointermove", function (e) {
+        if (!kanjiYomiPenState.isDrawing || kanjiYomiPenState.pointerId !== e.pointerId) return;
+        if (!kanjiYomiAcceptPointer(e)) return;
+        e.preventDefault();
+        const pt = kanjiYomiGetCoords(e, canvas);
+        kanjiYomiPenState.currentStroke.push(pt);
+        const ctx = canvas.getContext("2d");
+        ctx.lineWidth = kanjiYomiPenState.penWidth;
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+      });
+      var stopY = function (e) {
+        if (!kanjiYomiPenState.isDrawing || kanjiYomiPenState.pointerId !== e.pointerId) return;
+        if (kanjiYomiPenState.currentStroke && kanjiYomiPenState.currentStroke.length > 1) {
+          kanjiYomiPenState.allStrokes.push(kanjiYomiPenState.currentStroke);
+        }
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch (err2) {}
+        kanjiYomiPenState.isDrawing = false;
+        kanjiYomiPenState.pointerId = null;
+        kanjiYomiPenState.currentStroke = null;
+      };
+      canvas.addEventListener("pointerup", stopY);
+      canvas.addEventListener("pointercancel", stopY);
+    }
+    function kanjiYomiCollectInkForApi() {
+      const apiInk = [];
+      const MAX_POINTS_PER_STROKE = 180;
+      kanjiYomiPenState.allStrokes.forEach(function (stroke) {
+        if (!stroke || stroke.length < 1) return;
+        var strokeForApi = stroke;
+        if (stroke.length === 1) {
+          var p0 = stroke[0];
+          strokeForApi = [p0, { x: p0.x, y: p0.y, t: p0.t != null ? p0.t : Date.now() + 1 }];
+        }
+        var sampled = strokeForApi;
+        if (strokeForApi.length > MAX_POINTS_PER_STROKE) {
+          var step = Math.ceil(strokeForApi.length / MAX_POINTS_PER_STROKE);
+          sampled = strokeForApi.filter(function (_, idx) {
+            return idx % step === 0;
+          });
+          if (sampled[sampled.length - 1] !== strokeForApi[strokeForApi.length - 1]) {
+            sampled.push(strokeForApi[strokeForApi.length - 1]);
+          }
+        }
+        var xArr = [];
+        var yArr = [];
+        var tArr = [];
+        var t0 = typeof sampled[0].t === "number" && !isNaN(sampled[0].t) ? sampled[0].t : 0;
+        sampled.forEach(function (p, i) {
+          xArr.push(p.x);
+          yArr.push(p.y);
+          var t = typeof p.t === "number" && !isNaN(p.t) ? p.t : t0 + i * 16;
+          tArr.push(Math.max(0, t - t0));
+        });
+        apiInk.push([xArr, yArr, tArr]);
+      });
+      return apiInk;
+    }
+    function kanjiYomiWritingGuideForApi() {
+      const canvas = kanjiYomiGetCanvas();
+      if (!canvas) return { width: 800, height: 360 };
+      var w = parseFloat(canvas.dataset.logW) || canvas.getBoundingClientRect().width || 800;
+      var h = parseFloat(canvas.dataset.logH) || canvas.getBoundingClientRect().height || 360;
+      return {
+        width: Math.round(Math.max(200, Math.min(2400, w))),
+        height: Math.round(Math.max(200, Math.min(2400, h)))
+      };
+    }
+    function kanjiYomiSetRecognizedLine(text, isTemp) {
+      const el = document.getElementById("kanji-yomi-recognized-line");
+      if (!el) return;
+      var t = String(text || "").trim();
+      if (!t) {
+        el.textContent = "（まだ 文字起こししていません）";
+        return;
+      }
+      el.textContent = isTemp ? "仮: " + t : t;
+    }
+    function kanjiYomiRecognizeHandwriting() {
+      if (__kanjiYomiRecognizeInFlight) {
+        alert("文字起こし中です。少し待ってください。");
+        return;
+      }
+      const apiInk = kanjiYomiCollectInkForApi();
+      if (apiInk.length === 0) {
+        alert("先にマスに よみを 手書きしてください。");
+        return;
+      }
+      __kanjiYomiRecognizeInFlight = true;
+      const ac = new AbortController();
+      var timeoutId = setTimeout(function () {
+        ac.abort();
+      }, 38000);
+      fetch(GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "recognize_handwriting",
+          ink: apiInk,
+          writingGuide: kanjiYomiWritingGuideForApi()
+        }),
+        signal: ac.signal
+      })
+        .then(function (r) {
+          if (!r.ok) return Promise.reject(new Error("HTTP " + r.status));
+          return r.json();
+        })
+        .then(function (d) {
+          if (d.status !== "success") {
+            alert(d.message || "認識に失敗しました。");
+            return;
+          }
+          var text = String(d.text || "").trim();
+          if (!text) {
+            alert("認識結果がありません。もう一度書いてください。");
+            return;
+          }
+          if (kanjiQuizSession) kanjiQuizSession.sentenceYomiRecognized = text;
+          kanjiYomiSetRecognizedLine(text, false);
+          var inp = document.getElementById("kanji-play-input");
+          if (inp) inp.value = text;
+        })
+        .catch(function () {
+          alert("通信エラーで文字起こしできませんでした。");
+        })
+        .finally(function () {
+          clearTimeout(timeoutId);
+          __kanjiYomiRecognizeInFlight = false;
+        });
+    }
     function kanjiQuizTypeBadgeText(type) {
       if (type === "okurigana_shift") return "問題タイプ: おくりがな（選択）";
       if (type === "ruby_to_kanji") return "問題タイプ: よみ→かんじ（しゅどく）";
-      if (type === "sentence_to_ruby") return "問題タイプ: れいぶん→よみ（タイピング）";
+      if (type === "sentence_to_ruby") return "問題タイプ: れいぶん→よみ（手書き）";
       if (type === "stroke_count") return "問題タイプ: かくすう";
       return "";
     }
@@ -5452,6 +5801,13 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (typingWrap) typingWrap.style.display = "none";
       const inp = document.getElementById("kanji-play-input");
       if (inp) inp.value = "";
+      try {
+        kanjiYomiClearPenCanvas();
+        kanjiYomiSetRecognizedLine("", false);
+      } catch (eY) {}
+      try {
+        if (kanjiQuizSession) kanjiQuizSession.sentenceYomiRecognized = "";
+      } catch (eY2) {}
       const subBtn = document.getElementById("kanji-play-submit-btn");
       if (subBtn) subBtn.style.display = "none";
       const summary = document.getElementById("kanji-play-summary");
@@ -5512,6 +5868,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (charEl) {
         charEl.style.fontSize = "";
         charEl.style.display = "";
+        charEl.style.fontWeight = "";
+        charEl.style.color = "";
         if (q.type === "okurigana_shift" || q.type === "stroke_count") {
           charEl.innerText = q.kanji || "？";
           if (q.type === "stroke_count") {
@@ -5520,6 +5878,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         } else if (q.type === "ruby_to_kanji") {
           charEl.innerText = "";
           charEl.style.display = "none";
+        } else if (q.type === "sentence_to_ruby") {
+          charEl.style.display = "";
+          charEl.style.fontSize = "clamp(18px, 4vw, 26px)";
+          charEl.style.fontWeight = "800";
+          charEl.style.color = "#5e35b1";
+          charEl.innerText = q.readingLabel ? String(q.readingLabel) : "このよみ";
         } else {
           charEl.innerText = "かな";
         }
@@ -5626,8 +5990,12 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         } else if (q.type === "stroke_count") {
           detail.innerHTML =
             '<div style="color:#333;font-size:clamp(15px,3.2vw,20px);line-height:1.5;">教材の字体に基づく<strong>画数</strong>です。教育字体とちがう場合があります。</div>';
+        } else if (q.type === "sentence_to_ruby") {
+          detail.innerHTML = kanjiYomiFormatSentenceBlockHtml(q.sentence, q.kanji);
         } else {
-          detail.innerHTML = `<div style="color:#222;font-size:clamp(20px,4.5vw,28px);line-height:1.5;">${escapeHtml(q.sentence || "")}</div>`;
+          detail.innerHTML = q.sentence
+            ? `<div style="color:#222;font-size:clamp(20px,4.5vw,28px);line-height:1.5;">${escapeHtml(q.sentence || "")}</div>`
+            : "";
         }
       }
       if (choicesBox) {
@@ -5655,18 +6023,20 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       if (typingWrap) {
         if (q.type === "sentence_to_ruby") {
-          typingWrap.style.display = "block";
-          const inp = document.getElementById('kanji-play-input');
-          if (inp) {
-            inp.value = "";
-            inp.onkeydown = function (e) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                submitKanjiQuizScore();
-              }
-            };
-            setTimeout(function () { inp.focus(); }, 80);
-          }
+          typingWrap.style.display = "flex";
+          kanjiYomiEnsurePenCanvasInitialized();
+          kanjiQuizSession.sentenceYomiRecognized = "";
+          const hidInp = document.getElementById("kanji-play-input");
+          if (hidInp) hidInp.value = "";
+          kanjiYomiSetRecognizedLine("", false);
+          kanjiYomiClearPenCanvas();
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              try {
+                kanjiYomiRelayoutPenCanvas();
+              } catch (eR) {}
+            });
+          });
         } else {
           typingWrap.style.display = "none";
         }
@@ -5887,6 +6257,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       let userRaw = "";
       let isCorrect = false;
+      var scriptBonusMult = 1;
       if (q.type === "okurigana_shift") {
         userRaw = kanjiQuizSession.selectedChoice != null ? String(kanjiQuizSession.selectedChoice) : "";
         if (!userRaw) {
@@ -5901,13 +6272,25 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         }
         isCorrect = !!kanjiQuizSession.rubyHandKanjiVgPass;
       } else if (q.type === "sentence_to_ruby") {
-        const inp = document.getElementById('kanji-play-input');
-        userRaw = inp ? String(inp.value || "") : "";
+        userRaw =
+          kanjiQuizSession && kanjiQuizSession.sentenceYomiRecognized != null
+            ? String(kanjiQuizSession.sentenceYomiRecognized || "")
+            : "";
+        const hidInp = document.getElementById("kanji-play-input");
+        if (!normalizeKanjiQuizInput(userRaw) && hidInp) {
+          userRaw = String(hidInp.value || "");
+        }
         if (!normalizeKanjiQuizInput(userRaw)) {
-          alert("よみを入力してください。");
+          alert("「文字起こし」で よみを きめてから、「こたえを決定」を おしてください。");
           return;
         }
         isCorrect = normalizeKanjiQuizInput(userRaw) === normalizeKanjiQuizInput(q.correctAnswer);
+        if (isCorrect) {
+          scriptBonusMult = kanjiQuizSentenceYomiScriptBonusMultiplier(
+            normalizeKanjiQuizInput(userRaw),
+            q.readingKind
+          );
+        }
       } else if (q.type === "stroke_count") {
         userRaw = kanjiQuizSession.selectedChoice != null ? String(kanjiQuizSession.selectedChoice) : "";
         if (!userRaw) {
@@ -5963,7 +6346,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         questionId: qid,
         questionCorrect: isCorrect,
         kanjiSetScopeId: kanjiSetScopeId,
-        kanjiSetContinuation: kanjiQuizSession.index > 0
+        kanjiSetContinuation: kanjiQuizSession.index > 0,
+        kanjiScriptBonusMult: scriptBonusMult
       };
       if (kanjiQuizSession.isTrainingMode) {
         payload.trainingStepIndex = kanjiQuizSession.trainingStepIndex;
@@ -5971,9 +6355,15 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       const summary = document.getElementById('kanji-play-summary');
       if (summary) {
-        summary.innerHTML = isCorrect
-          ? '<span style="color:#69F0AE;">せいかい！</span>'
-          : '<span style="color:#FF8A80;">ざんねん… 次はがんばろう</span>';
+        if (isCorrect && q.type === "sentence_to_ruby" && scriptBonusMult >= 2) {
+          summary.innerHTML =
+            '<span style="color:#69F0AE;">せいかい！（ポイント2ばい）</span>';
+        } else if (isCorrect) {
+          summary.innerHTML = '<span style="color:#69F0AE;">せいかい！</span>';
+        } else {
+          summary.innerHTML =
+            '<span style="color:#FF8A80;">ざんねん… 次はがんばろう</span>';
+        }
       }
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
       .then(r => r.json()).then(d => {

@@ -635,6 +635,15 @@ function handleSaveLearningSession(req) {
     if (!Array.isArray(cHist.highScoreDates)) cHist.highScoreDates = [];
     const recoveryRate = calcKanjiCharRecoveryRate_(cHist.highScoreDates, now, settings);
     sessionRawPoints = Math.round(basePt * recoveryRate * 100) / 100;
+    var scriptBonusMult = Number(req.kanjiScriptBonusMult);
+    if (
+      req.questionCorrect === true &&
+      !isNaN(scriptBonusMult) &&
+      scriptBonusMult > 1 &&
+      scriptBonusMult <= 2
+    ) {
+      sessionRawPoints = Math.round(sessionRawPoints * scriptBonusMult * 100) / 100;
+    }
     // 手書きの実スコアなどで60未満なら高得点カウントしない（アプリ設定の「合格」相当）
     if (score >= 60) cHist.highScoreDates.push(now.toISOString());
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -1315,16 +1324,24 @@ function buildSentenceToRubyQuizQuestion_(item) {
   const masked = maskKanjiInExampleOnce_(pick.ex, k);
   if (!masked.ok) return null;
   const ans = normalizedCorrectReadingAnswer_(pick.r.reading, pick.r.kind);
-  var hintOn = pick.r.kind === "on" ? "（音読みはカタカナ）" : "（訓読みはひらがな）";
-  const searchParts = [k, ans, pick.r.label, masked.masked, pick.ex].join(" ");
+  var hintOn = pick.r.kind === "on" ? "音読みはカタカナ" : "訓読みはひらがな";
+  const fullEx = String(pick.ex || "");
+  const searchParts = [k, ans, pick.r.label, masked.masked, fullEx].join(" ");
   return {
     type: "sentence_to_ruby",
     kanji: k,
     rowIndex: item.rowIndex,
     readingKind: pick.r.kind,
     readingLabel: pick.r.label,
-    sentence: masked.masked,
-    prompt: "空欄に当てはまる読みを、タイピングで入力しましょう。" + hintOn,
+    readingDisplay: readingDisplayForQuiz_(pick.r.reading, pick.r.kind),
+    sentence: fullEx,
+    maskedSentence: masked.masked,
+    prompt:
+      "下のれいぶんのうち、赤いかんじ「" +
+      k +
+      "」のよみを、マスに手書きし、「文字起こし」→「こたえを決定」で答えましょう。（" +
+      hintOn +
+      "で書けたとき、せいかいならポイント2ばい）",
     correctAnswer: ans,
     searchText: searchParts
   };

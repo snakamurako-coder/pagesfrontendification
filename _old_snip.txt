@@ -1,1 +1,0 @@
-\n      else mEl.innerText = `もう一歩。${sizeLabel}。ゆっくりなぞると形が安定しやすいです。\\n` + subLine;\n    }\n  }\n<\/script>\n<script>\n  // Data loading override for unified repository flow (KanjiVG.txt).\n  (function() {\n    function parseU
