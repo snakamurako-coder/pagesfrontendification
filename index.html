@@ -4577,9 +4577,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
       return def;
     }
+    const KANJI_QUIZ_MIN_STROKE_POINTS = 5;
     /* 漢字練習 iframe の detectStrokeType(..., true, ...) と同じしきい値（5点未満はとめ） */
     function kanjiQuizClassifyStroke(points, drawStartTime) {
-      if (points.length < 5) return "tome";
+      if (points.length < KANJI_QUIZ_MIN_STROKE_POINTS) return "tome";
       const n = points.length;
       const pStart = points[Math.max(0, n - 6)], pEnd = points[n - 1];
       const dt = Math.max(1, Date.now() - (drawStartTime || Date.now()));
@@ -4687,8 +4688,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         const slot = kanjiQuizSession ? kanjiQuizSession.rubyHandSlot || 0 : 0;
         const q = kanjiQuizSession ? kanjiQuizSession.questions[kanjiQuizSession.index] : null;
         const fallbackTargets = kanjiQuizHanOnlyChars((q && (q.correctAnswer || q.kanji)) || "");
-      const qKanjiTargets = kanjiQuizHanOnlyChars((q && q.kanji) || "");
-      const expectedChar = targets[slot] || qKanjiTargets[slot] || qKanjiTargets[0] || fallbackTargets[slot] || fallbackTargets[0] || "";
+        const qKanjiTargets = kanjiQuizHanOnlyChars((q && q.kanji) || "");
+        const expectedChar = targets[slot] || qKanjiTargets[slot] || qKanjiTargets[0] || fallbackTargets[slot] || fallbackTargets[0] || "";
         if (expectedChar && (!targets.length || targets[slot] !== expectedChar)) {
           kanjiQuizSession.rubyHandTargets = qKanjiTargets.length ? qKanjiTargets : (fallbackTargets.length ? fallbackTargets : [expectedChar]);
           kanjiQuizSession.rubyHandSlot = Math.max(0, Math.min(slot, kanjiQuizSession.rubyHandTargets.length - 1));
