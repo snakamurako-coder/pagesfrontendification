@@ -1774,7 +1774,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
   </script>
   <script>
     // ▼ GASのURLを貼り付けてください（※前回と同じURLならそのままで大丈夫） ▼
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwfgH_aiKL8gjeq3w7r6Y8zz2H38Dh8hRk1fnJIbsBpeDevlBV27ac9-WRx5GgGClKcsw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwlge5DwehGNIcovI9yPIvlxdnL4MG6mULsVSdHyiwbrUcopX-ea4R3JLxR6bLh_cSUZw/exec";
     
     let selectedUserId = null; let currentPin = ""; let isPinResetMode = false;
     let currentModeId = ""; let currentModeName = ""; let currentUnitName = "";
@@ -4568,7 +4568,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
      * 入力: { kanji, reading, sentence }
      * 出力: { question_sentence, target_kanji, options, correct_option } | null
      */
-    function generate_okurigana_quiz(input, rng) {
+    function generate_okurigana_quiz(input) {
       try {
         const src = input && typeof input === "object" ? input : {};
         const kanji = String(src.kanji || "").trim();
@@ -4577,7 +4577,6 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!kanji || !reading || !sentence) return null;
 
         // Step1: 読み2文字以上、かつ例文中に対象漢字があるもののみ対象
-        const randomFn = typeof rng === "function" ? rng : Math.random;
         const readingChars = Array.from(reading);
         if (readingChars.length < 2) return null;
 
@@ -4603,7 +4602,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!candidates.length) return null;
 
         // 候補のどれか1つを採用
-        const picked = candidates[Math.floor(randomFn() * candidates.length)];
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
         const idx = picked.idx;
         const okurigana = picked.okurigana;
         const afterIdx = idx + kanji.length;
@@ -4635,10 +4634,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (!uniqueOptions.includes(correctOption)) uniqueOptions.push(correctOption);
         if (uniqueOptions.length > 5) {
           const wrongs = uniqueOptions.filter(o => o !== correctOption);
-          shuffleInPlaceWithRng_(wrongs, rng);
+          shuffleInPlaceWithRng_(wrongs);
           uniqueOptions = [correctOption].concat(wrongs.slice(0, 4));
         }
-        shuffleInPlaceWithRng_(uniqueOptions, rng);
+        shuffleInPlaceWithRng_(uniqueOptions);
 
         const qSentence =
           sentence.slice(0, idx) + "【" + kanji + "】" + sentence.slice(afterIdx);
