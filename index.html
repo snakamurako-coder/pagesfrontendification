@@ -1798,14 +1798,77 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const uid = getUserIdForPref();
       localStorage.setItem(`${uid}_${key}`, val);
     }
+    /** 「データを最新に更新」で維持する localStorage キー（上記コメント参照） */
+    function collectLocalStoragePrefsPreservedOnFullDataRefresh() {
+      const uid = getUserIdForPref();
+      const candidateKeys = [
+        "app_kid_user",
+        "kanjiStrokeParamsV2",
+        "kanjiPenProfiles",
+        uid + "_kanji_quiz_hw_dominant_hand",
+        uid + "_pen_guide_line_spread",
+        uid + "_pen_width",
+        "kanji_quiz_hw_dominant_hand",
+        "pen_guide_line_spread",
+        "pen_width"
+      ];
+      const out = {};
+      for (let i = 0; i < candidateKeys.length; i++) {
+        const k = candidateKeys[i];
+        try {
+          const v = localStorage.getItem(k);
+          if (v !== null) out[k] = v;
+        } catch (e) {}
+      }
+      return out;
+    }
     function clearAppCacheAndReload() {
-      if (!confirm("最新の学習データと設定を読み込み直します。\\nよろしいですか？（画面が再読み込みされます）")) return;
-      Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('app_cached_')) {
-          localStorage.removeItem(k);
-        }
+      if (
+        !confirm(
+          "教材・問題・KanjiVG など、この端末に保存したデータをすべて破棄し、サーバーから取り直します。\\n" +
+            "（漢字のペン調整・利き腕・英語の目印線間隔とペンの太さだけそのままにします）\\n\\n" +
+            "よろしいですか？（画面が再読み込みされます）"
+        )
+      ) {
+        return;
+      }
+      const preserved = collectLocalStoragePrefsPreservedOnFullDataRefresh();
+      try {
+        localStorage.clear();
+      } catch (eClear) {
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k) localStorage.removeItem(k);
+          }
+        } catch (eRm) {}
+      }
+      Object.keys(preserved).forEach(function (k) {
+        try {
+          localStorage.setItem(k, preserved[k]);
+        } catch (eSet) {}
       });
-      location.reload();
+      try {
+        sessionStorage.clear();
+      } catch (eSs) {}
+      var doneReload = function () {
+        location.reload();
+      };
+      try {
+        if (typeof caches !== "undefined" && caches.keys) {
+          caches.keys().then(function (names) {
+            return Promise.all(
+              names.map(function (n) {
+                return caches.delete(n);
+              })
+            );
+          }).then(doneReload, doneReload);
+        } else {
+          doneReload();
+        }
+      } catch (eC) {
+        doneReload();
+      }
     }
     let appSettings = {}; let maxDeduction = 0; let autoNextTimer = null; let materialsData = []; let externalMenus = [];
     let kanjiQuizSession = null; let lastKanjiQuizContext = null;
