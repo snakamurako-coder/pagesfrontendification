@@ -4632,6 +4632,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         // Step5: 重複除去 + 最大5択（正解は必ず残す）+ シャッフル
         let uniqueOptions = Array.from(new Set(optionsRaw));
         if (!uniqueOptions.includes(correctOption)) uniqueOptions.push(correctOption);
+        if (uniqueOptions.length < 2) return null;
         if (uniqueOptions.length > 5) {
           const wrongs = uniqueOptions.filter(o => o !== correctOption);
           shuffleInPlaceWithRng_(wrongs);
