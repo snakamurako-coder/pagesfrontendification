@@ -2307,6 +2307,10 @@ window.KP_HTML_VERSION = "677d75004146";
     function fetchUsers() {
       const c = document.getElementById('user-container');
       if (c) c.innerHTML = "<p>よみこみ中...</p>";
+      if (typeof GAS_API_URL !== "string" || !GAS_API_URL) {
+        if (c) c.innerHTML = "<p style='color:#ffb4b4;'>API設定が見つかりません。設定を確認してください。</p>";
+        return;
+      }
       fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) })
         .then(r => r.json())
         .then(d => {
@@ -7726,12 +7730,21 @@ window.KP_HTML_VERSION = "677d75004146";
     });
 
     (function bootstrapApp() {
-      const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
-      if (user && user.id) {
-        showHome(user);
-      } else {
-        fetchUsers();
+      let user = null;
+      try {
+        user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
+      } catch (_) {
+        localStorage.removeItem('app_kid_user');
       }
+      if (user && user.id) {
+        try {
+          showHome(user);
+          return;
+        } catch (_) {
+          localStorage.removeItem('app_kid_user');
+        }
+      }
+      fetchUsers();
     })();
 
   </script>
