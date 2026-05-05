@@ -4546,9 +4546,121 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       }
       return a;
     }
+    function isHiraganaChar_(ch) {
+      if (!ch) return false;
+      const cp = ch.codePointAt(0);
+      if (cp >= 0x3041 && cp <= 0x3096) return true;
+      if (cp === 0x3099 || cp === 0x309a) return true;
+      if (cp === 0x30fc) return true;
+      return false;
+    }
+    function shuffleInPlaceWithRng_(arr, rng) {
+      const randomFn = typeof rng === "function" ? rng : Math.random;
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(randomFn() * (i + 1));
+        const t = arr[i];
+        arr[i] = arr[j];
+        arr[j] = t;
+      }
+      return arr;
+    }
+    /**
+     * 送り仮名境界クイズを自動生成する。
+     * 入力: { kanji, reading, sentence }
+     * 出力: { question_sentence, target_kanji, options, correct_option } | null
+     */
+    function generate_okurigana_quiz(input, rng) {
+      try {
+        const src = input && typeof input === "object" ? input : {};
+        const kanji = String(src.kanji || "").trim();
+        const reading = String(src.reading || "").trim();
+        const sentence = String(src.sentence || "");
+        if (!kanji || !reading || !sentence) return null;
+
+        // Step1: 読み2文字以上、かつ例文中に対象漢字があるもののみ対象
+        if (Array.from(reading).length < 2) return null;
+        const idx = sentence.indexOf(kanji);
+        if (idx < 0) return null;
+        const afterIdx = idx + kanji.length;
+        if (afterIdx >= sentence.length) return null;
+
+        // Step2: 対象漢字の直後に連続するひらがな（送り仮名）を抽出
+        let okurigana = "";
+        for (let i = afterIdx; i < sentence.length; i++) {
+          const ch = sentence.charAt(i);
+          if (!isHiraganaChar_(ch)) break;
+          okurigana += ch;
+        }
+        // 直後にひらがながないデータは対象外
+        if (!okurigana) return null;
+
+        // 抽出結果（例: 下る）
+        const extractedBlock = kanji + okurigana;
+        if (!extractedBlock) return null;
+
+        // Step3: フルカナ = 読み + 送り仮名
+        const fullKana = reading + okurigana;
+        const fullLen = Array.from(fullKana).length;
+        if (fullLen < 2) return null;
+
+        // Step4: 分割位置 k=1..N-1 で選択肢生成
+        const readingLen = Array.from(reading).length;
+        const optionsRaw = [];
+        let correctOption = "";
+        const fullChars = Array.from(fullKana);
+        for (let k = 1; k <= fullLen - 1; k++) {
+          const opt = kanji + fullChars.slice(k).join("");
+          if (!opt) continue;
+          optionsRaw.push(opt);
+          if (k === readingLen) correctOption = opt;
+        }
+        if (!correctOption) return null;
+
+        // Step5: 重複除去 + 最大5択（正解は必ず残す）+ シャッフル
+        let uniqueOptions = Array.from(new Set(optionsRaw));
+        if (!uniqueOptions.includes(correctOption)) uniqueOptions.push(correctOption);
+        if (uniqueOptions.length > 5) {
+          const wrongs = uniqueOptions.filter(o => o !== correctOption);
+          shuffleInPlaceWithRng_(wrongs, rng);
+          uniqueOptions = [correctOption].concat(wrongs.slice(0, 4));
+        }
+        shuffleInPlaceWithRng_(uniqueOptions, rng);
+
+        const qSentence =
+          sentence.slice(0, idx) + "【" + kanji + "】" + sentence.slice(afterIdx);
+        return {
+          question_sentence: qSentence,
+          target_kanji: kanji,
+          options: uniqueOptions,
+          correct_option: correctOption
+        };
+      } catch (e) {
+        console.warn("generate_okurigana_quiz failed:", e);
+        return null;
+      }
+    }
+    function rebuildOkuriganaQuestionByAlgorithm_(q) {
+      const src = q && typeof q === "object" ? q : {};
+      const generated = generate_okurigana_quiz({
+        kanji: src.kanji,
+        reading: src.readingDisplay || src.reading || "",
+        sentence: src.sentence || src.exampleSentence || ""
+      });
+      if (!generated) return src;
+      const out = Object.assign({}, src);
+      out.kanji = generated.target_kanji;
+      out.correctAnswer = generated.correct_option;
+      out.choices = generated.options.slice();
+      out.questionSentence = generated.question_sentence;
+      return out;
+    }
     function prepareKanjiQuizQuestionsForPlay(rawList) {
       var mode = getKanjiQuizFormatMode();
-      var filtered = filterKanjiQuizQuestionsByFormat(rawList, mode);
+      var normalized = (Array.isArray(rawList) ? rawList : []).map(function (q) {
+        if (!q || q.type !== "okurigana_shift") return q;
+        return rebuildOkuriganaQuestionByAlgorithm_(q);
+      });
+      var filtered = filterKanjiQuizQuestionsByFormat(normalized, mode);
       if (!filtered.length) {
         alert('この しかた では もんだいがありません。\nほかの しかたを えらぶか、混合にしてください。');
         return null;
