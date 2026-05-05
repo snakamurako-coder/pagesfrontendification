@@ -1337,11 +1337,11 @@ function buildSentenceToRubyQuizQuestion_(item) {
     sentence: fullEx,
     maskedSentence: masked.masked,
     prompt:
-      "下のれいぶんのうち、赤いかんじ「" +
+      "下のれいぶんを読み、対象のかんじ「" +
       k +
-      "」のよみを、マスに手書きし、「文字起こし」→「こたえを決定」で答えましょう。（" +
+      "」のよみを入力し、「こたえを決定」で答えましょう。（" +
       hintOn +
-      "で書けたとき、せいかいならポイント2ばい）",
+      "で入力できたとき、せいかいならポイント2ばい）",
     correctAnswer: ans,
     searchText: searchParts
   };
