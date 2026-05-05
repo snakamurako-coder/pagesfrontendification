@@ -1526,6 +1526,7 @@
         <button type="button" class="kanji-drill-vbtn-small is-active-prior" id="kanji-pen-mid" onclick="kanjiQuizSetPenWidth(8)">ふつう</button>
         <button type="button" class="kanji-drill-vbtn-small" id="kanji-pen-fine" onclick="kanjiQuizSetPenWidth(4)">ほそめ</button>
       </div>
+      <button type="button" id="kanji-quiz-layout-refresh-btn" class="kanji-drill-vbtn-small" style="display:none;max-width:132px;white-space:normal;line-height:1.25;text-align:center;padding:10px 8px;" onclick="kanjiQuizRefreshHandwritingLayout()" title="表示がずれたとき、レイアウトを取り直します">🔄 画面をなおす</button>
       <div style="display:flex; flex-direction:row; gap:12px; align-items:flex-end;">
         <button type="button" class="kanji-drill-vbtn-small" style="background:#f44336; color:#fff; border-color:#d32f2f;" onclick="cancelKanjiQuizPlay()">ちゅうだん</button>
         <button type="button" class="kanji-drill-vbtn-small submit-btn-small" id="kanji-play-submit-btn" style="display:none;" onclick="submitKanjiQuizScore()">こたえを決定</button>
@@ -4824,6 +4825,28 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         });
       });
     }
+    /** 手書きクイズ：iframe の高さ・親キャンバスを取り直す（表示ずれ対策の手動トリガー） */
+    function kanjiQuizRefreshHandwritingLayout() {
+      try {
+        kanjiQuizReflowWriteCanvasForCurrentLayout();
+      } catch (e0) {}
+      try {
+        kpResizeFrameToContent();
+      } catch (e1) {}
+      try {
+        kanjiQuizScheduleWriteCanvasReflow();
+      } catch (e2) {}
+      setTimeout(function () {
+        try {
+          kpResizeFrameToContent();
+        } catch (e3) {}
+      }, 120);
+      setTimeout(function () {
+        try {
+          kanjiQuizReflowWriteCanvasForCurrentLayout();
+        } catch (e4) {}
+      }, 240);
+    }
     function bindKanjiQuizWriteCanvasReflowListeners() {
       if (__kanjiQuizWriteReflowListenersBound) return;
       __kanjiQuizWriteReflowListenersBound = true;
@@ -5904,6 +5927,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } catch (e) {}
       const drillHand = document.getElementById("kanji-quiz-drill-handwriting");
       if (drillHand) drillHand.style.display = "none";
+      const refreshLayoutBtn = document.getElementById("kanji-quiz-layout-refresh-btn");
+      if (refreshLayoutBtn) refreshLayoutBtn.style.display = "none";
       const penCtrls = document.getElementById("kanji-drill-pen-controls");
       if (penCtrls) penCtrls.style.display = "none";
       const cvsActions = document.getElementById("kanji-hw-canvas-actions");
@@ -5991,6 +6016,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           kanjiQuizHideWrongFeedback();
         } catch (e) {}
         if (drillHand) drillHand.style.display = "block";
+        const refreshLayoutBtn = document.getElementById("kanji-quiz-layout-refresh-btn");
+        if (refreshLayoutBtn) refreshLayoutBtn.style.display = "inline-block";
         const penCtrls = document.getElementById("kanji-drill-pen-controls");
         if (penCtrls) penCtrls.style.display = "none";
         const cvsActions = document.getElementById("kanji-hw-canvas-actions");
