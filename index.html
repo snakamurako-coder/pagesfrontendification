@@ -7483,14 +7483,13 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const writingGuide = getPenWritingGuideForApi();
       isPenRecognitionInFlight = true;
       setPenRecognizeButtonState(true);
-      setPenStatus('文字起こし中（サーバーと通信）…');
+      setPenStatus('文字起こし中（サーバーと通信）… 画数: ' + String(apiInk.length));
       const ac = new AbortController();
       const PEN_RECOGNIZE_TIMEOUT_MS = 38000;
       const timeoutId = setTimeout(() => ac.abort(), PEN_RECOGNIZE_TIMEOUT_MS);
       function postRecognizeWithRetry(retryCount) {
         return fetch(GAS_API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk, writingGuide: writingGuide }),
           signal: ac.signal
         })
@@ -7513,12 +7512,25 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           setPenStatus(d.message || "認識に失敗しました。");
           return;
         }
-        const text = String(d.text || "").trim();
+        const text = String(
+          d.text != null ? d.text :
+          d.result != null ? d.result :
+          d.recognizedText != null ? d.recognizedText :
+          d.bestCandidate != null ? d.bestCandidate :
+          d.candidate != null ? d.candidate :
+          ""
+        ).trim();
         if (!text) {
-          setPenStatus("認識結果なし。もう一度書いてください。");
+          const keys = d && typeof d === "object" ? Object.keys(d).slice(0, 8).join(", ") : "";
+          setPenStatus("認識結果なし。もう一度書いてください。返却キー: " + (keys || "なし"));
           return;
         }
-        const candidates = Array.isArray(d.candidates) ? d.candidates.map(v => String(v || '').trim()).filter(v => v) : [text];
+        const rawCandidates =
+          Array.isArray(d.candidates) ? d.candidates :
+          Array.isArray(d.alternatives) ? d.alternatives :
+          Array.isArray(d.results) ? d.results :
+          [];
+        const candidates = rawCandidates.map(v => String(v || '').trim()).filter(v => v);
         handwritingState.pendingCandidates = candidates.filter(v => v !== text);
         const target = getPenTargetInput();
         if (target) {
