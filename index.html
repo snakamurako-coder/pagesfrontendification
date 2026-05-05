@@ -5887,7 +5887,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kanjiYomiSetRecognizedLine("", false);
       } catch (eY) {}
       try {
-        kanjiQuizClearWritePad(false);
+        kanjiQuizClearWritePad(true);
       } catch (eHw) {}
       try {
         if (kanjiQuizSession) kanjiQuizSession.sentenceYomiRecognized = "";
@@ -6470,6 +6470,11 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         localStorage.setItem('app_kid_user', JSON.stringify(user));
         const ptsEl = document.getElementById("user-points");
         if (ptsEl) ptsEl.innerText = String(d.newTotal);
+        /* 次の問題へ進む直前：保存完了後でも render 前は旧ドリルが残り得るため、親キャンバス＋採点 iframe を先に空にする */
+        try {
+          kanjiQuizClearWritePad(true);
+          kanjiQuizSetupWriteCanvas();
+        } catch (ePreAdv) {}
         kanjiQuizSession.index += 1;
         if (kanjiQuizSession.index >= kanjiQuizSession.questions.length) {
           const finished = {
