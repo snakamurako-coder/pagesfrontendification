@@ -6495,7 +6495,45 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         saveKanjiQuizRecoveryDraft();
         renderKanjiQuizQuestion();
       }).catch(e => {
-        alert("保存に失敗しました: " + (e.message || e));
+        console.warn("kanji save failed, continue quiz:", e);
+        const summaryEl = document.getElementById('kanji-play-summary');
+        if (summaryEl) {
+          summaryEl.innerHTML = '<span style="color:#FF9800;">通信が不安定です。保存はあとで再試行し、次の問題へ進みます。</span>';
+        }
+        kanjiQuizSession.logs.push({
+          kanji: q.kanji,
+          score: scoreForServer,
+          earned: 0,
+          isCorrect: isCorrect,
+          qType: q.type,
+          saveFailed: true
+        });
+        try {
+          kanjiQuizClearWritePad(true);
+          kanjiQuizSetupWriteCanvas();
+        } catch (ePreAdv2) {}
+        kanjiQuizSession.index += 1;
+        if (kanjiQuizSession.index >= kanjiQuizSession.questions.length) {
+          const finished = {
+            totalEarned: kanjiQuizSession.totalEarned,
+            logs: kanjiQuizSession.logs.slice(),
+            isTrainingMode: !!kanjiQuizSession.isTrainingMode,
+            newTotalPoints: Number(kanjiQuizSession.newTotalPoints)
+          };
+          const nFb = kanjiQuizSession.nigateTraining ? kanjiQuizSession.nigateFeedback : null;
+          if (lastKanjiQuizContext && nFb) {
+            lastKanjiQuizContext.nigateFeedbackSnapshot = nFb;
+          }
+          if (kanjiQuizSession.isTrainingMode) {
+            fetchTrainingRoute(user.id);
+          }
+          kanjiQuizSession = null;
+          clearKanjiQuizRecoveryDraft();
+          showKanjiQuizResult(finished.totalEarned, finished.logs, finished.isTrainingMode, finished.newTotalPoints);
+          return;
+        }
+        saveKanjiQuizRecoveryDraft();
+        renderKanjiQuizQuestion();
       }).finally(function () {
         __kanjiQuizSubmitInFlight = false;
       });
@@ -6613,6 +6651,30 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       } else {
         blankGroup.style.display = "none";
       }
+    }
+    function normalizeAnswerTypeForFormat(format, answerType) {
+      const f = String(format || "").trim();
+      const a = String(answerType || "").trim();
+      if (f === "en_to_ja" || f === "en_audio_to_ja") return "4choice";
+      return a;
+    }
+    function syncAnswerTypeWithFormat(format) {
+      const ansTypeEl = document.getElementById('setting-answer-type');
+      if (!ansTypeEl) return "";
+      const current = String(ansTypeEl.value || "").trim();
+      const normalized = normalizeAnswerTypeForFormat(format, current);
+      if (normalized !== current) {
+        const hasOption = Array.from(ansTypeEl.options || []).some(opt => String(opt.value) === normalized);
+        if (!hasOption) {
+          if (normalized === "4choice") {
+            ansTypeEl.innerHTML = `<option value="4choice" selected>４択（えらぶ）</option>`;
+          } else {
+            ansTypeEl.innerHTML = `<option value="${normalized}" selected>${normalized}</option>`;
+          }
+        }
+        ansTypeEl.value = normalized;
+      }
+      return String(ansTypeEl.value || "").trim();
     }
 
     let shiftMode = 0; let isShiftHoldMode = false; let shiftPressStartTime = 0; let shiftTimer1s = null; let shiftTimer2s = null;
@@ -7425,16 +7487,27 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       const ac = new AbortController();
       const PEN_RECOGNIZE_TIMEOUT_MS = 38000;
       const timeoutId = setTimeout(() => ac.abort(), PEN_RECOGNIZE_TIMEOUT_MS);
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk, writingGuide: writingGuide }),
-        signal: ac.signal
-      })
-      .then(r => {
-        if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
-        return r.json();
-      })
+      function postRecognizeWithRetry(retryCount) {
+        return fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: "recognize_handwriting", ink: apiInk, writingGuide: writingGuide }),
+          signal: ac.signal
+        })
+        .then(r => {
+          if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
+          return r.json();
+        })
+        .catch(err => {
+          if (err && err.name === 'AbortError') throw err;
+          const msg = String((err && (err.message || err)) || "");
+          const canRetry = retryCount > 0 && /Load failed|Failed to fetch|NetworkError|fetch/i.test(msg);
+          if (!canRetry) throw err;
+          setPenStatus('通信が不安定です。文字起こしを再試行中…');
+          return new Promise(resolve => setTimeout(resolve, 450)).then(() => postRecognizeWithRetry(retryCount - 1));
+        });
+      }
+      postRecognizeWithRetry(1)
       .then(d => {
         if (d.status !== "success") {
           setPenStatus(d.message || "認識に失敗しました。");
@@ -7464,7 +7537,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (err && err.name === 'AbortError') {
           setPenStatus('時間がかかりすぎて止めました。通信やGASの状態を確認し、もう一度「文字起こし」を押してください。');
         } else {
-          setPenStatus('通信エラー（応答を読めませんでした）。ネットワークを確認して再度お試しください。');
+          const msg = String((err && (err.message || err)) || "");
+          setPenStatus('通信エラー（' + (msg || '応答を読めませんでした') + '）。ネットワークを確認して再度お試しください。');
         }
       })
       .finally(() => {
@@ -7535,8 +7609,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     function prepareQuiz() {
       currentIsReviewMode = document.getElementById('setting-play-mode').value === 'review';
       const order = document.getElementById('setting-order').value; 
-      const ansType = document.getElementById('setting-answer-type').value;
       const format = document.getElementById('setting-format').value;
+      const ansType = syncAnswerTypeWithFormat(format);
 
       filteredQuestions = [...currentQuestions];
 
@@ -7624,7 +7698,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       
       const q = filteredQuestions[currentQuestionIndex]; 
       const format = document.getElementById('setting-format').value; 
-      const answerType = String(document.getElementById('setting-answer-type').value || '').trim();
+      const answerType = syncAnswerTypeWithFormat(format);
       const isWord = currentModeName.includes("単語");
 
       const kbdPanel = document.getElementById('quiz-keyboard-settings-panel');
@@ -7948,6 +8022,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         updateSessionScoreDisplay();
         advanceScheduled = true;
       } finally {
+        setPenTypingSubmitBusy(false);
         const nextBtn = document.getElementById('quiz-next-btn');
         nextBtn.disabled = false;
         nextBtn.style.display = "block";
