@@ -16,6 +16,9 @@
     .action-btn { font-size: 20px; background: #555; }
     .menu-btn { padding: 15px 20px; font-size: 20px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; width: 90%; max-width: 350px; margin: 10px 0; transition: 0.2s; }
     .btn-red { background: #e50914; color: white; } .btn-orange { background: #FF9800; color: white; } .btn-blue { background: #2196F3; color: white; } .btn-green { background: #4CAF50; color: white; } .btn-gray { background: #555; color: white; } .btn-purple { background: #9C27B0; color: white; }
+    /* ホーム「漢字の自由学習」のみ：白背景・黒字 */
+    .menu-btn.btn-kanji-learning-home { background: #ffffff; color: #111111; border: 1px solid #bdbdbd; }
+    .menu-btn.btn-kanji-learning-home:hover { background: #f5f5f5; }
     .btn-loading { background: #666 !important; color: #ccc !important; pointer-events: none; opacity: 0.8; }
     .cancel-btn { background: none; color: #aaa; border: none; font-size: 16px; cursor: pointer; padding: 10px; }
     .setting-group { margin: 20px auto; background: #222; padding: 15px; border-radius: 10px; max-width: 350px; text-align: left;}
@@ -1381,7 +1384,7 @@
     
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
       <button class="menu-btn btn-red" onclick="loadEnglishMaterials(this)">英語の自由学習</button>
-      <button class="menu-btn btn-purple" onclick="openKanjiLearningMenu()">漢字の自由学習</button>
+      <button type="button" class="menu-btn btn-kanji-learning-home" onclick="openKanjiLearningMenu()">漢字の自由学習</button>
       <button class="menu-btn btn-purple" onclick="openTrainingMenu()">🎯 特訓メニューへ</button>
       <button class="menu-btn btn-blue" onclick="loadExternalLearning(this)">📚 アプリ以外の勉強を記録</button>
       <button type="button" class="menu-btn btn-gray" style="margin-top:8px; font-size:15px; padding:12px 16px;" onclick="openExternalAdminApproval()">🔐 おうちの人：外部学習の承認</button>
