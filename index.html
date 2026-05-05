@@ -117,6 +117,13 @@
     .pen-candidates { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .pen-candidate-btn { border:1px solid #666; border-radius:16px; background:#2a2a2a; color:#fff; padding:6px 12px; cursor:pointer; }
     .pen-recognize-btn { position: relative; min-width: 110px; }
+    .kanji-hw-submit-btn.is-loading {
+      background: #1565C0 !important;
+      color: #fff !important;
+      opacity: 0.95;
+      animation: pen-recognize-pulse 1s ease-in-out infinite;
+      pointer-events: none;
+    }
     .pen-recognize-btn.is-busy {
       background: #1565C0 !important;
       opacity: 0.95;
@@ -1572,7 +1579,7 @@
           </div>
           <div class="kanji-drill-hw-canvas-panel">
             <div id="kanji-hw-canvas-actions" class="kanji-drill-hw-panel-btns" style="display:none;">
-              <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
+              <button type="button" id="kanji-hw-submit-btn" class="kanji-drill-vbtn-small submit-btn-small kanji-hw-submit-btn" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
             </div>
@@ -5120,12 +5127,38 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizParentStrokes[kanjiQuizParentStrokes.length - 1].type = "none";
       kanjiQuizRedrawParentCanvas();
     }
+    let kanjiQuizHandSubmitBusy = false;
+    let kanjiQuizHandSubmitAnimTimer = null;
+    function setKanjiQuizHandSubmitBusy(isBusy) {
+      const btn = document.getElementById("kanji-hw-submit-btn");
+      if (!btn) return;
+      kanjiQuizHandSubmitBusy = !!isBusy;
+      btn.disabled = !!isBusy;
+      btn.classList.toggle("is-loading", !!isBusy);
+      btn.setAttribute("aria-busy", isBusy ? "true" : "false");
+      if (kanjiQuizHandSubmitAnimTimer) {
+        clearInterval(kanjiQuizHandSubmitAnimTimer);
+        kanjiQuizHandSubmitAnimTimer = null;
+      }
+      if (isBusy) {
+        let tick = 0;
+        btn.textContent = "さいてん中.";
+        kanjiQuizHandSubmitAnimTimer = setInterval(function () {
+          tick = (tick + 1) % 3;
+          btn.textContent = "さいてん中" + ".".repeat(tick + 1);
+        }, 280);
+      } else {
+        btn.textContent = "これでかいとう";
+      }
+    }
     function kanjiQuizRunHandwritingAnswer() {
+      if (kanjiQuizHandSubmitBusy) return;
       if (!kanjiQuizParentStrokes.length) {
         alert("かんじを かいてください。");
         return;
       }
       if (!kanjiQuizSession) return;
+      setKanjiQuizHandSubmitBusy(true);
       function postEvalToFrame() {
         return (function () {
           const frame = document.getElementById("kp-pro-frame");
@@ -5173,11 +5206,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (frame) patchKanjiFrameForQuizPostMessage(frame);
         ensureKanjiFrameForQuizEval();
         if (!postEvalToFrame()) {
+          setKanjiQuizHandSubmitBusy(false);
           alert("さいてんようのびゅうが みつかりません。");
         }
+      }).catch(function () {
+        setKanjiQuizHandSubmitBusy(false);
+        alert("さいてんのじゅんびに しっぱいしました。もういちどためしてください。");
       });
     }
     function kanjiQuizOnHandwritingScored(sc) {
+      setKanjiQuizHandSubmitBusy(false);
       if (!kanjiQuizSession) return;
       const secHand = document.getElementById("section-kanji-quiz-play");
       if (!secHand || !secHand.classList.contains("active")) return;
@@ -5813,6 +5851,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       return "";
     }
     function resetKanjiQuizDrillPlayShell() {
+      setKanjiQuizHandSubmitBusy(false);
       const charEl = document.getElementById("kanji-play-char");
       if (charEl) {
         charEl.style.display = "";
