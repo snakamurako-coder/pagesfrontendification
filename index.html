@@ -501,64 +501,61 @@
       box-sizing: border-box;
     }
     body.kanji-study-mode #section-kanji-practice.active {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      padding: 14px 10px 40px;
+      display: block;
+      padding: 16px 12px 34px;
       box-sizing: border-box;
+      text-align: center;
     }
     body.kanji-study-mode #section-kanji-practice.active .kanji-practice-vertical-head {
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      max-height: min(88vh, 720px);
-      margin: 0 0 10px 0;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      margin: 0 auto 10px;
       display: block;
-      text-align: start;
+      text-align: center;
+      max-width: 1200px;
     }
     body.kanji-study-mode #section-kanji-practice.active .kanji-practice-vertical-head p {
-      font-size: clamp(16px, 3.2vw, 20px) !important;
-      color: #333 !important;
-      line-height: 1.65 !important;
+      font-size: 14px !important;
+      color: #666 !important;
+      line-height: 1.5 !important;
+      margin: 0 auto 10px !important;
     }
     body.kanji-study-mode #section-kanji-practice.active .kp-controls-row {
       writing-mode: horizontal-tb;
       text-orientation: mixed;
       direction: ltr;
-      width: 100% !important;
+      width: 96vw !important;
       max-width: 1200px;
-      margin-left: auto !important;
-      margin-right: 0 !important;
+      margin: 0 auto 10px !important;
     }
     body.kanji-study-mode #section-kanji-practice.active #kp-practice-status {
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      text-align: start;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      text-align: center;
       margin: 8px 0 !important;
-      font-size: clamp(14px, 2.8vw, 17px) !important;
+      font-size: 13px !important;
       color: #607080 !important;
     }
     body.kanji-study-mode #section-kanji-practice.active > div[style*="width:96vw"],
     body.kanji-study-mode #section-kanji-practice.active #kp-iframe-slot-practice {
-      width: 100% !important;
+      width: 96vw !important;
       max-width: 1200px;
-      margin-left: auto !important;
-      margin-right: 0 !important;
+      margin: 0 auto 10px !important;
     }
     body.kanji-study-mode #section-kanji-practice.active > .cancel-btn {
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      align-self: flex-end;
-      width: clamp(52px, 12vw, 64px);
-      min-height: 180px;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      width: auto;
+      min-height: 0;
       max-width: none;
-      padding: 14px 10px;
-      margin-top: 18px;
-      font-size: clamp(17px, 3.2vw, 22px);
-      font-weight: 800;
-      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 10px;
       background: #eef2f7 !important;
       color: #333 !important;
-      border: 2px solid #90a4ae !important;
+      border: 1px solid #90a4ae !important;
     }
     /* Removed duplicate kanji-quiz-drill-wrap styles */
     body.kanji-study-mode #section-kanji-quiz-play.kanji-quiz-drill-section .kanji-quiz-play-footer-btns {
