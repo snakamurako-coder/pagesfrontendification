@@ -938,17 +938,41 @@ function handleGetMaterialsList(req) {
     const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
     while (files.hasNext()) {
       const file = files.next();
+      let units = [];
+      try {
+        units = SpreadsheetApp.open(file).getSheets().map(s => s.getName());
+      } catch (_) {
+        units = [];
+      }
       materials.push({
         modeId: file.getId(),
         modeName: file.getName(),
         category: category,
-        units: SpreadsheetApp.open(file).getSheets().map(s => s.getName())
+        units: units,
+        __mtime: file.getLastUpdated().getTime()
       });
     }
   };
   pushFolderFiles(props.getProperty('MATERIALS_FOLDER_ID'), "english");
   pushFolderFiles(props.getProperty('KANJI_MATERIALS_FOLDER_ID'), "kanji");
-  return sendResponse({ status: "success", materials: materials });
+
+  /** 新規ブック・シート追加を検知するため（一覧のサイレント同期用）。 */
+  let materialsFingerprint = "";
+  try {
+    const rows = materials.map(m => {
+      const uid = String(m.modeId || "");
+      const ustr = Array.isArray(m.units) ? m.units.slice().map(x => String(x || "")).sort().join("\u001f") : "";
+      return uid + "\u001e" + String(m.__mtime || 0) + "\u001e" + ustr;
+    });
+    rows.sort();
+    const digestBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, rows.join("\u001d"), Utilities.Charset.UTF_8);
+    materialsFingerprint = Utilities.base64Encode(digestBytes);
+  } catch (_) {
+    materialsFingerprint = "";
+  }
+  materials.forEach(m => { delete m.__mtime; });
+
+  return sendResponse({ status: "success", materials: materials, materialsFingerprint: materialsFingerprint });
 }
 function handleGetQuestions(req) { const data = SpreadsheetApp.openById(req.modeId).getSheetByName(req.unitName).getDataRange().getValues(); const headers = data[0]; const questions = []; for (let i = 1; i < data.length; i++) { let qObj = {}; for (let j = 0; j < headers.length; j++) qObj[headers[j]] = data[i][j]; if (qObj["通し番号"]) questions.push(qObj); } return sendResponse({ status: "success", questions: questions }); }
 function handleGetRewards(req) { const data = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('ADMIN_SS_ID')).getSheetByName("rewards").getDataRange().getValues(); const rewards = []; for (let i = 1; i < data.length; i++) { if (data[i][0] && i > 0) rewards.push({ id: data[i][0], name: data[i][1], points: Number(data[i][2]), desc: data[i][3] }); } return sendResponse({ status: "success", rewards: rewards }); }

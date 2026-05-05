@@ -1392,6 +1392,9 @@
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 30px;">
       <button class="menu-btn btn-red" onclick="loadEnglishMaterials(this)">英語の自由学習</button>
       <button type="button" class="menu-btn btn-kanji-learning-home" onclick="openKanjiLearningMenu()">漢字の自由学習</button>
+      <p style="text-align:center;color:#888;font-size:13px;max-width:400px;margin:14px auto 0;line-height:1.45;">Drive にブックやシートを追加したあと一覧が古いときは、下のボタンで再取得できます。ホームを開いたときにも自動で照合します。</p>
+      <p id="home-materials-sync-status" style="text-align:center;color:#8bc34a;font-size:13px;max-width:400px;margin:6px auto 0;min-height:1.3em;"></p>
+      <button type="button" class="menu-btn btn-gray" onclick="refreshMaterialsManualFromHome(this)" style="margin-top:6px;width:auto;padding:10px 18px;font-size:15px;">📚 英語・漢字の教材一覧を更新</button>
       <button class="menu-btn btn-purple" onclick="openTrainingMenu()">🎯 特訓メニューへ</button>
       <button class="menu-btn btn-blue" onclick="loadExternalLearning(this)">📚 アプリ以外の勉強を記録</button>
       <button type="button" class="menu-btn btn-gray" style="margin-top:8px; font-size:15px; padding:12px 16px;" onclick="openExternalAdminApproval()">🔐 おうちの人：外部学習の承認</button>
@@ -2260,7 +2263,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         initKeyboardAndSoundSettings();
         applyKanjiHwDominantHandToBody();
         syncKanjiHwHandSwitchUI();
-        if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); prefetchMaterials(); }
+        if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); }
         else fetchUsers(); 
     };
 
@@ -2530,7 +2533,110 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     }
     
     const LS_APP_CACHED_MATERIALS = "app_cached_materials";
-    /** 教材一覧（英語・漢字共通）。メモリ → localStorage → GAS の順で取得（prefetch と同一キャッシュ）。 */
+
+    function normalizeMaterialsSig(materials) {
+      return JSON.stringify((Array.isArray(materials) ? materials : []).map(m => ({
+        i: String(m.modeId || ""),
+        n: String(m.modeName || ""),
+        c: String(m.category || ""),
+        u: (Array.isArray(m.units) ? m.units : []).map(x => String(x || "")).sort()
+      })).sort((a, b) => a.i.localeCompare(b.i)));
+    }
+
+    function getCachedMaterialsFingerprint() {
+      try {
+        const raw = localStorage.getItem(LS_APP_CACHED_MATERIALS);
+        if (!raw) return null;
+        const d = JSON.parse(raw);
+        return d.materialsFingerprint || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function invalidateKanjiPracticeCatalog() {
+      try {
+        kpCatalogState.materials = [];
+        kpCatalogState.sets = [];
+        kpCatalogState.setQuestions = [];
+        kpCatalogState.filteredChars = [];
+        kpCatalogState.loaded = false;
+      } catch (_) {}
+    }
+
+    function persistMaterialsPayload(d) {
+      if (!d || d.status !== "success") return;
+      const mats = Array.isArray(d.materials) ? d.materials : [];
+      materialsData = mats;
+      invalidateKanjiPracticeCatalog();
+      const nextNormSig = normalizeMaterialsSig(mats);
+      try {
+        localStorage.setItem(LS_APP_CACHED_MATERIALS, JSON.stringify({
+          status: "success",
+          materials: materialsData,
+          materialsFingerprint: d.materialsFingerprint || "",
+          materialsNormalizedSig: nextNormSig
+        }));
+      } catch (e) {}
+    }
+
+    function fetchMaterialsListFromServer() {
+      return fetch(GAS_API_URL, { method: "POST", body: JSON.stringify({ action: "get_materials_list" }) }).then(r => r.json());
+    }
+
+    /** サーバのフィンガープリント（または一覧の正規化署名）が変わったときだけ英語・漢字の教材一覧を差し替える。 */
+    function applyMaterialsResponseIfChanged(d) {
+      if (!d || d.status !== "success") return false;
+      const prevFp = getCachedMaterialsFingerprint();
+      let prevNormSig = "";
+      try {
+        const raw = localStorage.getItem(LS_APP_CACHED_MATERIALS);
+        if (raw) {
+          const c = JSON.parse(raw);
+          prevNormSig = c.materialsNormalizedSig || normalizeMaterialsSig(c.materials);
+        }
+      } catch (e) {}
+      const newFp = d.materialsFingerprint || "";
+      const nextNormSig = normalizeMaterialsSig(d.materials);
+      let changed = false;
+      if (newFp) changed = newFp !== prevFp;
+      else changed = nextNormSig !== prevNormSig;
+      if (!changed && materialsData.length === 0) changed = true;
+      if (!changed) return false;
+      persistMaterialsPayload(d);
+      return true;
+    }
+
+    function syncMaterialsListFromServerIfChanged() {
+      const statusEl = document.getElementById("home-materials-sync-status");
+      return fetchMaterialsListFromServer()
+        .then(d => {
+          if (applyMaterialsResponseIfChanged(d) && statusEl) {
+            statusEl.textContent = "教材一覧を最新にしました（英語・漢字）。";
+            setTimeout(() => { if (statusEl.textContent.indexOf("最新にしました") >= 0) statusEl.textContent = ""; }, 6000);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function refreshMaterialsManualFromHome(btn) {
+      const orig = toggleBtnLoading(btn, true);
+      const statusEl = document.getElementById("home-materials-sync-status");
+      if (statusEl) statusEl.textContent = "";
+      fetchMaterialsListFromServer()
+        .then(d => {
+          if (!d || d.status !== "success") throw new Error((d && d.message) || "取得に失敗しました");
+          persistMaterialsPayload(d);
+          if (statusEl) statusEl.textContent = "英語・漢字の教材一覧を更新しました。";
+          toggleBtnLoading(btn, false, orig);
+        })
+        .catch(() => {
+          if (statusEl) statusEl.textContent = "更新に失敗しました。通信を確認してください。";
+          toggleBtnLoading(btn, false, orig);
+        });
+    }
+
+    /** 教材一覧（英語・漢字共通）。メモリ → localStorage → GAS の順で取得。 */
     function ensureMaterialsListLoaded() {
       if (materialsData.length > 0) return Promise.resolve(materialsData);
       const cached = localStorage.getItem(LS_APP_CACHED_MATERIALS);
@@ -2543,17 +2649,10 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
           }
         } catch (e) {}
       }
-      return fetch(GAS_API_URL, { method: "POST", body: JSON.stringify({ action: "get_materials_list" }) })
-        .then(r => r.json())
-        .then(d => {
-          if (d.status === "success") {
-            materialsData = Array.isArray(d.materials) ? d.materials : [];
-            try {
-              localStorage.setItem(LS_APP_CACHED_MATERIALS, JSON.stringify(d));
-            } catch (e) {}
-          }
-          return materialsData;
-        });
+      return fetchMaterialsListFromServer().then(d => {
+        if (d.status === "success") persistMaterialsPayload(d);
+        return materialsData;
+      });
     }
     function prefetchMaterials() {
       return ensureMaterialsListLoaded().catch(() => {});
@@ -2984,6 +3083,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       promptQuizResumeIfNeeded(user);
       applyKanjiHwDominantHandToBody();
       syncKanjiHwHandSwitchUI();
+      syncMaterialsListFromServerIfChanged();
     }
 
     function toggleBtnLoading(btn, isLoading, originalText = "") { if(!btn) return ""; if(isLoading) { const text = btn.innerHTML; btn.innerHTML = "⏳ よみこみ中..."; btn.classList.add("btn-loading"); return text; } else { btn.innerHTML = originalText; btn.classList.remove("btn-loading"); } }
@@ -4061,8 +4161,8 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_materials_list" }) })
         .then(r=>r.json()).then(d=>{
           if (d.status !== "success") throw new Error(d.message || "教材取得失敗");
-          kpSetCachedJson(LS_APP_CACHED_MATERIALS, d);
-          applyMaterials(d.materials);
+          persistMaterialsPayload(d);
+          applyMaterials(materialsData);
           if (!kpCatalogState.materials.length) {
             setKpStatus("漢字教材が0件です（設定または分類を確認してください）。");
           }
