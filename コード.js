@@ -1302,6 +1302,129 @@ function maskKanjiInExampleOnce_(sentence, kanjiCol) {
 }
 
 /**
+ * 送り仮名境界クイズを生成する。
+ *
+ * 入力:
+ * - kanji: ターゲット漢字（例: "下"）
+ * - reading: 訓読み（例: "くだ"）
+ * - sentence: 例文（例: "さかを下る。"）
+ *
+ * 出力:
+ * { question_sentence, target_kanji, options, correct_option } | null
+ */
+function generate_okurigana_quiz(input) {
+  try {
+    const src = input && typeof input === "object" ? input : {};
+    const kanji = String(src.kanji || "").trim();
+    const reading = String(src.reading || "").trim();
+    const sentence = String(src.sentence || "");
+    if (!kanji || !reading || !sentence) return null;
+
+    // -----------------------
+    // Step1: 対象データのフィルタリング
+    // -----------------------
+    // reading（読み）の文字数が 2文字以上
+    const readingChars = Array.from(reading);
+    if (readingChars.length < 2) return null;
+
+    // 送り仮名抽出用: 「ひらがな」判定（濁点/半濁点の結合文字も許容）
+    function isHiraganaChar_(ch) {
+      if (!ch) return false;
+      const cp = ch.codePointAt(0);
+      if (cp >= 0x3041 && cp <= 0x3096) return true;
+      if (cp === 0x3099 || cp === 0x309a) return true;
+      return false; // 0x30fc(ー) は送り仮名として扱わない
+    }
+
+    // sentence 内で「ターゲット漢字の直後に連続したひらがな」が続く位置だけ候補にする
+    const candidates = [];
+    let searchFrom = 0;
+    while (true) {
+      const idx = sentence.indexOf(kanji, searchFrom);
+      if (idx < 0) break;
+      const afterIdx = idx + kanji.length;
+      if (afterIdx < sentence.length) {
+        // -----------------------
+        // Step2: 出題ブロックの抽出（連続ひらがな）
+        // -----------------------
+        let okurigana = "";
+        for (let i = afterIdx; i < sentence.length; i++) {
+          const ch = sentence.charAt(i);
+          if (!isHiraganaChar_(ch)) break;
+          okurigana += ch;
+        }
+        if (okurigana) candidates.push({ idx: idx, okurigana: okurigana });
+      }
+      searchFrom = idx + 1; // 次の出現へ
+    }
+    if (!candidates.length) return null;
+
+    // 候補の中から1つ採用（文中に複数あるケース対策）
+    const picked = candidates[Math.floor(Math.random() * candidates.length)];
+    const idx = picked.idx;
+    const okurigana = picked.okurigana;
+    const afterIdx = idx + kanji.length;
+
+    // 抽出結果（例）: "下る"
+    const extractedBlock = kanji + okurigana;
+    if (!extractedBlock) return null;
+
+    // -----------------------
+    // Step3: フルカナ文字列の生成
+    // -----------------------
+    const fullKana = reading + okurigana; // 例: "くだ" + "る" = "くだる"
+    const fullChars = Array.from(fullKana);
+    const fullLen = fullChars.length;
+    if (fullLen < 2) return null;
+
+    // -----------------------
+    // Step4: 選択肢（分割パターン）の生成
+    // -----------------------
+    const readingLen = readingChars.length;
+    const optionsRaw = [];
+    let correctOption = "";
+    for (let k = 1; k <= fullLen - 1; k++) {
+      // "ターゲット漢字" + "フルカナ文字列のk文字目以降"
+      const opt = kanji + fullChars.slice(k).join("");
+      if (!opt) continue;
+      optionsRaw.push(opt);
+      if (k === readingLen) correctOption = opt;
+    }
+    if (!correctOption) return null;
+
+    // -----------------------
+    // Step5: 出力の整形（重複除去→最大5択→シャッフル）
+    // -----------------------
+    let uniqueOptions = Array.from(new Set(optionsRaw));
+    if (!uniqueOptions.includes(correctOption)) uniqueOptions.push(correctOption);
+    if (uniqueOptions.length < 2) return null;
+
+    // 長い単語で6択以上になる場合、正解を必ず含めてランダムに最大5択へ
+    if (uniqueOptions.length > 5) {
+      const wrongs = uniqueOptions.filter(o => o !== correctOption);
+      const shuffledWrongs = shuffleKanjiQuizArray_(wrongs);
+      uniqueOptions = [correctOption].concat(shuffledWrongs.slice(0, 4));
+    }
+
+    uniqueOptions = shuffleKanjiQuizArray_(uniqueOptions);
+
+    // question_sentence: ターゲット漢字のみを括弧で強調
+    const question_sentence =
+      sentence.slice(0, idx) + "【" + kanji + "】" + sentence.slice(afterIdx);
+
+    return {
+      question_sentence: question_sentence,
+      target_kanji: kanji,
+      options: uniqueOptions,
+      correct_option: correctOption
+    };
+  } catch (e) {
+    console.warn("generate_okurigana_quiz failed:", e);
+    return null;
+  }
+}
+
+/**
  * 送り仮名ダミー候補プール（漢字ごと）。
  * 問題の漢字と同じ漢字からのみダミーを出し、他漢字の混入を防ぐ。
  */
@@ -1339,42 +1462,39 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
   const k = String(item.kanji || "");
   if (k.length !== 1) return null;
   const readings = (Array.isArray(item.readings) ? item.readings : []).filter(function (r) {
-    return r.kind === "kun" && String(r.reading || "").length >= 2;
+    return r.kind === "kun" && Array.from(String(r.reading || "")).length >= 2;
   });
   if (!readings.length) return null;
-  const r = readings[Math.floor(Math.random() * readings.length)];
-  const reading = String(r.reading || "");
-  let bestSplitPos = 1;
-  for (let s = 1; s <= reading.length; s++) {
-    const cand = k + reading.substring(s);
-    if (Array.isArray(r.examples) && r.examples.some(function(ex) { return String(ex).indexOf(cand) >= 0; })) {
-      bestSplitPos = s;
-      break;
-    }
-  }
-  const correct = k + reading.substring(bestSplitPos);
-  const wrongSet = {};
-  const sameKanjiPool = (dummyPoolByKanji && dummyPoolByKanji[k]) || [];
-  sameKanjiPool.forEach(function (d) {
-    if (d && d !== correct) wrongSet[d] = true;
+
+  // requirements に沿って「sentence 中の漢字直後のひらがな」を抽出して候補を生成する
+  const candidates = [];
+  readings.forEach(function (r) {
+    const reading = String(r.reading || "");
+    const examples = Array.isArray(r.examples) ? r.examples : [];
+    examples.forEach(function (ex) {
+      const sentence = String(ex || "");
+      const generated = generate_okurigana_quiz({
+        kanji: k,
+        reading: reading,
+        sentence: sentence
+      });
+      if (generated && Array.isArray(generated.options) && generated.options.length >= 2) {
+        candidates.push({ r: r, reading: reading, generated: generated });
+      }
+    });
   });
-  for (let splitPos = 1; splitPos <= reading.length; splitPos++) {
-    const cand = k + reading.substring(splitPos);
-    if (cand !== correct) wrongSet[cand] = true;
-  }
-  const wrongList = shuffleKanjiQuizArray_(Object.keys(wrongSet));
-  const picks = wrongList.slice(0, 3);
-  const choices = shuffleKanjiQuizArray_([correct].concat(picks));
-  const uniq = [];
-  const seen = {};
-  choices.forEach(function (c) {
-    if (c && !seen[c]) {
-      seen[c] = true;
-      uniq.push(c);
-    }
-  });
-  if (uniq.length < 2) return null;
-  const searchParts = [k, reading, r.label].concat(uniq).join(" ");
+
+  if (!candidates.length) return null;
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  const r = picked.r;
+  const reading = picked.reading;
+  const generated = picked.generated;
+
+  const choices = Array.isArray(generated.options) ? generated.options : [];
+  const correct = String(generated.correct_option || "");
+  if (!correct || !choices.length) return null;
+
+  const searchParts = [k, reading, r.label].concat(choices).join(" ");
   return {
     type: "okurigana_shift",
     kanji: k,
@@ -1383,8 +1503,11 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
     readingKind: "kun",
     readingHint: reading,
     prompt: "訓読みのつながりとして正しい表記を選びましょう。",
-    choices: uniq,
+    choices: choices,
     correctAnswer: correct,
+    // 将来の表示/ログ用途（現状 UI は okurigana_shift で question_sentence を直接使わない）
+    questionSentence: generated.question_sentence,
+    sentence: generated.question_sentence,
     searchText: searchParts
   };
 }
