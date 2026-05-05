@@ -2304,8 +2304,38 @@ window.KP_HTML_VERSION = "677d75004146";
       }
     }
 
-    function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
-    function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
+    function fetchUsers() {
+      const c = document.getElementById('user-container');
+      if (c) c.innerHTML = "<p>よみこみ中...</p>";
+      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) })
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.status === "success" && Array.isArray(d.users)) {
+            renderUsers(d.users);
+            return;
+          }
+          throw new Error((d && d.message) ? d.message : "ユーザー一覧の取得に失敗しました。");
+        })
+        .catch(() => {
+          if (!c) return;
+          c.innerHTML = "<p style='color:#ffb4b4;'>ユーザーの読み込みに失敗しました。</p><button class='menu-btn btn-gray' style='width:auto; padding:10px 20px; font-size:16px; margin-top:10px;' onclick='fetchUsers()'>再読み込み</button>";
+        });
+    }
+    function renderUsers(users) {
+      const c = document.getElementById('user-container');
+      c.innerHTML = "";
+      if (!Array.isArray(users) || users.length === 0) {
+        c.innerHTML = "<p>登録されたユーザーがいません。</p>";
+        return;
+      }
+      users.forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'user-card';
+        div.onclick = () => showPinScreen(u.id, u.name, false);
+        div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`;
+        c.appendChild(div);
+      });
+    }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
     function addPin(num) { if(currentPin.length<4){ currentPin+=num; updatePinDisplay(); if(currentPin.length===4) { if(isPinResetMode) executePinReset(); else verifyPin(); } } }
     function deletePin() { currentPin = currentPin.slice(0,-1); updatePinDisplay(); }
@@ -7694,6 +7724,15 @@ window.KP_HTML_VERSION = "677d75004146";
         else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) { handleFillInput(e.key); }
       }
     });
+
+    (function bootstrapApp() {
+      const user = JSON.parse(localStorage.getItem('app_kid_user') || 'null');
+      if (user && user.id) {
+        showHome(user);
+      } else {
+        fetchUsers();
+      }
+    })();
 
   </script>
   <div id="kp-pro-frame-quiz-hidden" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:4px;height:4px;overflow:hidden;clip:rect(0,0,0,0);pointer-events:none;"></div>
