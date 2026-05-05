@@ -635,6 +635,15 @@ function handleSaveLearningSession(req) {
     if (!Array.isArray(cHist.highScoreDates)) cHist.highScoreDates = [];
     const recoveryRate = calcKanjiCharRecoveryRate_(cHist.highScoreDates, now, settings);
     sessionRawPoints = Math.round(basePt * recoveryRate * 100) / 100;
+    var scriptBonusMult = Number(req.kanjiScriptBonusMult);
+    if (
+      req.questionCorrect === true &&
+      !isNaN(scriptBonusMult) &&
+      scriptBonusMult > 1 &&
+      scriptBonusMult <= 2
+    ) {
+      sessionRawPoints = Math.round(sessionRawPoints * scriptBonusMult * 100) / 100;
+    }
     // 手書きの実スコアなどで60未満なら高得点カウントしない（アプリ設定の「合格」相当）
     if (score >= 60) cHist.highScoreDates.push(now.toISOString());
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -1301,41 +1310,88 @@ function maskKanjiInExampleOnce_(sentence, kanjiCol) {
   return { ok: true, masked: s.slice(0, idx) + "＿" + s.slice(idx + k.length) };
 }
 
-/**
- * 送り仮名ダミー候補プール（漢字ごと）。
- * 問題の漢字と同じ漢字からのみダミーを出し、他漢字の混入を防ぐ。
- */
-function collectOkuriganaDummyPoolByKanjiKanjiQuiz_(items) {
-  const poolMap = {};
-  if (!items || !items.length) return poolMap;
-  items.forEach(function (item) {
-    const k = String(item.kanji || "");
-    if (k.length !== 1) return;
-    if (!poolMap[k]) poolMap[k] = [];
-    const readings = Array.isArray(item.readings) ? item.readings : [];
-    readings.forEach(function (r) {
-      if (r.kind !== "kun") return;
-      const reading = String(r.reading || "");
-      if (reading.length < 2) return;
-      let bestSplitPos = 1;
-      for (let s = 1; s <= reading.length; s++) {
-        const cand = k + reading.substring(s);
-        if (Array.isArray(r.examples) && r.examples.some(function(ex) { return String(ex).indexOf(cand) >= 0; })) {
-          bestSplitPos = s;
-          break;
-        }
-      }
-      const correct = k + reading.substring(bestSplitPos);
-      for (let splitPos = 1; splitPos <= reading.length; splitPos++) {
-        const cand = k + reading.substring(splitPos);
-        if (cand !== correct) poolMap[k].push(cand);
-      }
-    });
-  });
-  return poolMap;
+/** 送り仮名クイズ用: ひらがな・カタカナ・長音など（漢字直後の「かな連続」判定） */
+function kanjiQuizIsKanaCharForOkurigana_(ch) {
+  if (!ch || ch.length === 0) return false;
+  const c = ch.codePointAt(0);
+  return (
+    (c >= 0x3040 && c <= 0x309f) ||
+    (c >= 0x30a0 && c <= 0x30ff) ||
+    (c >= 0xff65 && c <= 0xff9f) ||
+    c === 0x30fc
+  );
 }
 
-function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
+/** 次の語に続く漢字（CJK統合） */
+function kanjiQuizIsHanForOkurigana_(ch) {
+  if (!ch || ch.length === 0) return false;
+  const c = ch.codePointAt(0);
+  return (
+    (c >= 0x4e00 && c <= 0x9fff) ||
+    (c >= 0x3400 && c <= 0x4dbf) ||
+    (c >= 0xf900 && c <= 0xfaff)
+  );
+}
+
+/**
+ * 次の漢字の直前までを「この語の表記レンジ」とみなす。
+ * 例: 「幸せな時」で k=幸 → 表面は「幸せな」までかなが続くが、直後が漢字「時」のとき末尾の助詞ひらがな（な 等）をはずし「幸せ」に丸める。
+ */
+var KANJI_OKURIGANA_TRAILING_HIRAGANA_PARTICLE_ = {
+  の: 1,
+  な: 1,
+  に: 1,
+  が: 1,
+  を: 1,
+  は: 1,
+  も: 1,
+  と: 1,
+  で: 1,
+  へ: 1,
+  や: 1,
+  か: 1,
+  さ: 1,
+  よ: 1,
+  ね: 1,
+  ぞ: 1,
+  わ: 1
+};
+
+function kanjiQuizIsTrailingHiraganaParticle_(ch) {
+  return !!ch && ch.length === 1 && !!KANJI_OKURIGANA_TRAILING_HIRAGANA_PARTICLE_[ch];
+}
+
+/**
+ * 例文 ex 内の最初の k 位置から、「次の漢字の手前まで」で切った表記ウィンドウ（先頭は k）。
+ * @returns {{ i: number, end: number, win: string } | null}
+ */
+function kanjiOkuriganaSurfaceWindow_(ex, k) {
+  const s = String(ex || "");
+  const K = String(k || "");
+  if (!K || K.length !== 1) return null;
+  const i = s.indexOf(K);
+  if (i < 0) return null;
+  const afterK0 = i + K.length;
+  let j = afterK0;
+  while (j < s.length && kanjiQuizIsKanaCharForOkurigana_(s.charAt(j))) j++;
+  let end = j;
+  if (j < s.length && kanjiQuizIsHanForOkurigana_(s.charAt(j))) {
+    let t = j;
+    while (t > afterK0 && kanjiQuizIsTrailingHiraganaParticle_(s.charAt(t - 1))) t--;
+    end = t;
+  }
+  return { i: i, end: end, win: s.slice(i, end) };
+}
+
+/** 候補表記が「語ウィンドウ」の先頭にアンカーされているか（全文 indexOf では な時 まで誤一致しない） */
+function okuriganaCandAnchoredInExample_(ex, k, cand) {
+  const a = kanjiOkuriganaSurfaceWindow_(ex, k);
+  if (!a || !cand) return false;
+  const win = a.win;
+  return win.length >= cand.length && win.indexOf(cand) === 0;
+}
+
+function buildOkuriganaShiftQuizQuestion_(item) {
   const k = String(item.kanji || "");
   if (k.length !== 1) return null;
   const readings = (Array.isArray(item.readings) ? item.readings : []).filter(function (r) {
@@ -1344,34 +1400,27 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
   if (!readings.length) return null;
   const r = readings[Math.floor(Math.random() * readings.length)];
   const reading = String(r.reading || "");
-  let bestSplitPos = 1;
+  const examples = Array.isArray(r.examples) ? r.examples : [];
+  let bestSplitPos = -1;
   for (let s = 1; s <= reading.length; s++) {
     const cand = k + reading.substring(s);
-    if (Array.isArray(r.examples) && r.examples.some(function(ex) { return String(ex).indexOf(cand) >= 0; })) {
+    if (examples.some(function (ex) { return okuriganaCandAnchoredInExample_(ex, k, cand); })) {
       bestSplitPos = s;
       break;
     }
   }
-  const correct = k + reading.substring(bestSplitPos);
-  const wrongSet = {};
-  const sameKanjiPool = (dummyPoolByKanji && dummyPoolByKanji[k]) || [];
-  sameKanjiPool.forEach(function (d) {
-    if (d && d !== correct) wrongSet[d] = true;
-  });
-  for (let splitPos = 1; splitPos <= reading.length; splitPos++) {
-    const cand = k + reading.substring(splitPos);
-    if (cand !== correct) wrongSet[cand] = true;
+  if (bestSplitPos < 0) {
+    if (!examples.length) bestSplitPos = 1;
+    else return null;
   }
-  const wrongList = shuffleKanjiQuizArray_(Object.keys(wrongSet));
-  const picks = wrongList.slice(0, 3);
-  const choices = shuffleKanjiQuizArray_([correct].concat(picks));
-  const uniq = [];
-  const seen = {};
-  choices.forEach(function (c) {
-    if (c && !seen[c]) {
-      seen[c] = true;
-      uniq.push(c);
-    }
+  const correct = k + reading.substring(bestSplitPos);
+  /** 訓よみの各分割: ① かんじのみ（よみはルビ想定）… k+reading.substring(reading.length)==k 、②〜 かんじ+よみの後ろからの切り落とし */
+  const orderedChoices = [];
+  for (let sp = 1; sp <= reading.length; sp++) {
+    orderedChoices.push(k + reading.substring(sp));
+  }
+  const uniq = shuffleKanjiQuizArray_(orderedChoices.slice()).filter(function (c) {
+    return !!c;
   });
   if (uniq.length < 2) return null;
   const searchParts = [k, reading, r.label].concat(uniq).join(" ");
@@ -1382,7 +1431,10 @@ function buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji) {
     readingLabel: r.label,
     readingKind: "kun",
     readingHint: reading,
-    prompt: "訓読みのつながりとして正しい表記を選びましょう。",
+    prompt:
+      "「" +
+      reading +
+      "」の ただしい ひょうきを えらびましょう。（かんじ＋おくりがなの つながりの パターン ぜんぶ です）",
     choices: uniq,
     correctAnswer: correct,
     searchText: searchParts
@@ -1436,16 +1488,24 @@ function buildSentenceToRubyQuizQuestion_(item) {
   const masked = maskKanjiInExampleOnce_(pick.ex, k);
   if (!masked.ok) return null;
   const ans = normalizedCorrectReadingAnswer_(pick.r.reading, pick.r.kind);
-  var hintOn = pick.r.kind === "on" ? "（音読みはカタカナ）" : "（訓読みはひらがな）";
-  const searchParts = [k, ans, pick.r.label, masked.masked, pick.ex].join(" ");
+  var hintOn = pick.r.kind === "on" ? "音読みはカタカナ" : "訓読みはひらがな";
+  const fullEx = String(pick.ex || "");
+  const searchParts = [k, ans, pick.r.label, masked.masked, fullEx].join(" ");
   return {
     type: "sentence_to_ruby",
     kanji: k,
     rowIndex: item.rowIndex,
     readingKind: pick.r.kind,
     readingLabel: pick.r.label,
-    sentence: masked.masked,
-    prompt: "空欄に当てはまる読みを、タイピングで入力しましょう。" + hintOn,
+    readingDisplay: readingDisplayForQuiz_(pick.r.reading, pick.r.kind),
+    sentence: fullEx,
+    maskedSentence: masked.masked,
+    prompt:
+      "下のれいぶんのうち、赤いかんじ「" +
+      k +
+      "」のよみを、マスに手書きし、「文字起こし」→「こたえを決定」で答えましょう。（" +
+      hintOn +
+      "で書けたとき、せいかいならポイント2ばい）",
     correctAnswer: ans,
     searchText: searchParts
   };
@@ -1476,10 +1536,9 @@ function mergeKanjiQuizBucketsBalanced_(buckets) {
 function buildKanjiQuizProblemList_(group) {
   const items = group.items || [];
   if (!items.length) return [];
-  const dummyPoolByKanji = collectOkuriganaDummyPoolByKanjiKanjiQuiz_(items);
   const buckets = { okurigana_shift: [], ruby_to_kanji: [], sentence_to_ruby: [] };
   items.forEach(function (item) {
-    const o = buildOkuriganaShiftQuizQuestion_(item, dummyPoolByKanji);
+    const o = buildOkuriganaShiftQuizQuestion_(item);
     if (o) buckets.okurigana_shift.push(o);
     const r2 = buildRubyToKanjiQuizQuestion_(item);
     if (r2) buckets.ruby_to_kanji.push(r2);
@@ -1563,4 +1622,302 @@ function handleGetKanjiQuizQuestions(req) {
   } catch (e) {
     return sendResponse({ status: "error", message: "漢字問題取得に失敗しました: " + e.message });
   }
+}
+
+// ==========================================
+// 漢字ニガテ（弱みシグナル・復習プラン）
+// ==========================================
+var KANJI_WEAK_MAX_KEYS_ = 120;
+var KANJI_WEAK_RECENT_MAX_ = 6;
+
+function kanjiWeakEntryKey_(modeId, unitName, setId, kanji) {
+  return String(modeId) + "\x1f" + String(unitName) + "\x1f" + String(setId) + "\x1f" + String(kanji);
+}
+
+function trimKanjiWeakEntries_(weakRoot) {
+  if (!weakRoot || typeof weakRoot !== "object") return;
+  var ent = weakRoot.entries;
+  if (!ent || typeof ent !== "object") return;
+  var keys = Object.keys(ent);
+  if (keys.length <= KANJI_WEAK_MAX_KEYS_) return;
+  var scored = keys.map(function (k) {
+    var e = ent[k] || {};
+    var sum =
+      (Number(e.w_strokeOrder) || 0) +
+      (Number(e.w_brush) || 0) +
+      (Number(e.w_strokeCount) || 0) +
+      (Number(e.w_reading) || 0);
+    return { k: k, s: sum };
+  });
+  scored.sort(function (a, b) {
+    return a.s - b.s;
+  });
+  var drop = keys.length - KANJI_WEAK_MAX_KEYS_;
+  for (var i = 0; i < drop && i < scored.length; i++) {
+    delete ent[scored[i].k];
+  }
+}
+
+/** 中央 KanjiVG シートから画数マップ（1文字→画数） */
+function loadKanjiVgStrokeCounts_() {
+  var prop = PropertiesService.getScriptProperties();
+  var sheetId = prop.getProperty("KANJI_SHEET_ID");
+  if (!sheetId) {
+    var folderId = prop.getProperty("KANJI_MATERIALS_FOLDER_ID");
+    if (folderId) {
+      try {
+        var files = DriveApp.getFolderById(folderId).getFilesByType(MimeType.GOOGLE_SHEETS);
+        if (files.hasNext()) sheetId = files.next().getId();
+      } catch (_) {}
+    }
+  }
+  var out = {};
+  if (!sheetId) return out;
+  try {
+    var ss = SpreadsheetApp.openById(sheetId);
+    var sheet = ss.getSheetByName("KanjiVG.txt");
+    if (!sheet) return out;
+    var values = sheet.getDataRange().getValues();
+    for (var i = 0; i < values.length; i++) {
+      var kanji = values[i][0];
+      if (!kanji || String(kanji).trim().length !== 1) continue;
+      var paths = [];
+      for (var j = 2; j < values[i].length; j++) {
+        var cellValue = values[i][j];
+        if (!cellValue) continue;
+        var strVal = String(cellValue).trim();
+        if (!strVal) continue;
+        if (strVal.indexOf("|") >= 0) {
+          strVal.split("|").forEach(function (p) {
+            var cleaned = String(p || "").trim();
+            if (cleaned && (cleaned.charAt(0) === "M" || cleaned.charAt(0) === "m")) paths.push(cleaned);
+          });
+        } else if (strVal.charAt(0) === "M" || strVal.charAt(0) === "m") {
+          paths.push(strVal);
+        }
+      }
+      if (paths.length > 0) out[String(kanji).trim()] = paths.length;
+    }
+  } catch (_) {}
+  return out;
+}
+
+function buildStrokeCountQuizQuestion_(item, strokeN, qIndex, setId) {
+  var k = String(item.kanji || "");
+  if (!k || strokeN < 1) return null;
+  var pool = [];
+  for (var d = -4; d <= 4; d++) {
+    if (d === 0) continue;
+    var v = strokeN + d;
+    if (v >= 1 && v <= 40) pool.push(v);
+  }
+  pool = shuffleKanjiQuizArray_(pool).slice(0, 4);
+  var choices = shuffleKanjiQuizArray_([strokeN].concat(pool));
+  var uniq = [];
+  var seen = {};
+  choices.forEach(function (c) {
+    var s = String(c);
+    if (!seen[s]) {
+      seen[s] = true;
+      uniq.push(s);
+    }
+  });
+  if (uniq.indexOf(String(strokeN)) < 0) uniq[0] = String(strokeN);
+  return {
+    type: "stroke_count",
+    kanji: k,
+    rowIndex: item.rowIndex,
+    prompt: "この漢字は何画ですか？",
+    choices: uniq,
+    correctAnswer: String(strokeN),
+    searchText: k + " " + strokeN,
+    questionIndex: qIndex,
+    questionId: "KANJI_Q_" + String(setId) + "_" + item.rowIndex + "_stroke_count_" + qIndex
+  };
+}
+
+function handleAppendKanjiWeakSignals(req) {
+  var userId = req.userId;
+  var signals = req.signals;
+  if (!userId) return sendResponse({ status: "error", message: "userId が必要です。" });
+  if (!Array.isArray(signals) || signals.length === 0) {
+    return sendResponse({ status: "success", merged: 0 });
+  }
+  if (signals.length > 24) signals = signals.slice(0, 24);
+
+  var props = PropertiesService.getScriptProperties();
+  var adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  var usersSheet = adminSs.getSheetByName("users");
+  var data = usersSheet.getDataRange().getValues();
+  var targetRowIdx = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      targetRowIdx = i + 1;
+      break;
+    }
+  }
+  if (targetRowIdx === -1) return sendResponse({ status: "error", message: "ユーザーが見つかりません" });
+
+  var historyJson = JSON.parse(data[targetRowIdx - 1][5] || "{}");
+  if (!historyJson.__kanjiWeak || typeof historyJson.__kanjiWeak !== "object") {
+    historyJson.__kanjiWeak = { v: 1, entries: {} };
+  }
+  var root = historyJson.__kanjiWeak;
+  if (!root.entries || typeof root.entries !== "object") root.entries = {};
+
+  var nowIso = new Date().toISOString();
+  var merged = 0;
+
+  signals.forEach(function (sig) {
+    var modeId = String(sig.modeId || "").trim();
+    var unitName = String(sig.unitName || "").trim();
+    var setId = String(sig.setId != null ? sig.setId : "").trim();
+    var kanji = String(sig.kanjiChar || sig.kanji || "").trim();
+    if (!modeId || !unitName || !setId || !kanji || kanji.length !== 1) return;
+    var key = kanjiWeakEntryKey_(modeId, unitName, setId, kanji);
+    var e = root.entries[key];
+    if (!e) {
+      e = {
+        modeId: modeId,
+        unitName: unitName,
+        setId: setId,
+        kanji: kanji,
+        w_strokeOrder: 0,
+        w_brush: 0,
+        w_strokeCount: 0,
+        w_reading: 0,
+        recent: []
+      };
+      root.entries[key] = e;
+    }
+    if (sig.hasStrokeOrderIssue === true) e.w_strokeOrder += 1;
+    if (sig.brushEndingAllOk === false) e.w_brush += 1;
+    if (sig.strokeCountMismatch === true) e.w_strokeCount += 1;
+    if (sig.readingMistake === true) e.w_reading += 1;
+    if (sig.strokeCountQuizWrong === true) e.w_strokeCount += 1;
+    e.updatedAt = nowIso;
+    var rec = {
+      at: sig.at || nowIso,
+      hso: !!sig.hasStrokeOrderIssue,
+      bak: sig.brushEndingAllOk !== false,
+      scm: !!sig.strokeCountMismatch,
+      rm: !!sig.readingMistake
+    };
+    if (!Array.isArray(e.recent)) e.recent = [];
+    e.recent.push(rec);
+    while (e.recent.length > KANJI_WEAK_RECENT_MAX_) e.recent.shift();
+    merged++;
+  });
+
+  trimKanjiWeakEntries_(root);
+  usersSheet.getRange(targetRowIdx, 6).setValue(JSON.stringify(historyJson));
+  return sendResponse({ status: "success", merged: merged, historyJson: historyJson });
+}
+
+function handleGetKanjiWeakReviewPlan(req) {
+  var userId = req.userId;
+  var modeId = String(req.modeId || "").trim();
+  var unitName = String(req.unitName || "").trim();
+  var setIds = Array.isArray(req.setIds) ? req.setIds.map(function (x) { return String(x); }) : [];
+  var axis = String(req.nigateAxis || "stroke_order").trim();
+  var limit = Math.max(1, Math.min(24, parseInt(req.limit, 10) || 12));
+
+  if (!userId || !modeId || !unitName) {
+    return sendResponse({ status: "error", message: "userId / modeId / unitName が必要です。" });
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var adminSs = SpreadsheetApp.openById(props.getProperty("ADMIN_SS_ID"));
+  var usersSheet = adminSs.getSheetByName("users");
+  var data = usersSheet.getDataRange().getValues();
+  var historyJson = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      historyJson = JSON.parse(data[i][5] || "{}");
+      break;
+    }
+  }
+
+  var weakRoot = historyJson.__kanjiWeak;
+  var entries = weakRoot && weakRoot.entries ? weakRoot.entries : {};
+  var axisField =
+    axis === "brush"
+      ? "w_brush"
+      : axis === "stroke_count"
+        ? "w_strokeCount"
+        : axis === "reading"
+          ? "w_reading"
+          : "w_strokeOrder";
+
+  var scored = [];
+  Object.keys(entries).forEach(function (k) {
+    var e = entries[k];
+    if (!e) return;
+    if (String(e.modeId) !== modeId) return;
+    if (String(e.unitName) !== unitName) return;
+    if (setIds.length && setIds.indexOf(String(e.setId)) < 0) return;
+    var w = Number(e[axisField]) || 0;
+    if (w < 1) return;
+    scored.push({ e: e, w: w, kanji: String(e.kanji || "") });
+  });
+  scored.sort(function (a, b) {
+    return b.w - a.w;
+  });
+
+  if (!scored.length) {
+    return sendResponse({ status: "success", questions: [], message: "このスコープ・軸では弱みデータがありません。" });
+  }
+
+  var got = getKanjiQuizParsedFromSpreadsheet_(modeId, unitName);
+  if (got.sheetMissing) return sendResponse({ status: "error", message: "指定シートが見つかりません。" });
+  var parsed = got.parsed;
+  var groups = (parsed.groups || []).filter(function (g) {
+    return !setIds.length || setIds.indexOf(String(g.setId)) >= 0;
+  });
+  if (!groups.length) return sendResponse({ status: "error", message: "セットが見つかりません。" });
+
+  var strokeMap = axis === "stroke_count" ? loadKanjiVgStrokeCounts_() : {};
+
+  function findItemForKanji(kanji) {
+    for (var gi = 0; gi < groups.length; gi++) {
+      var g = groups[gi];
+      for (var ii = 0; ii < (g.items || []).length; ii++) {
+        if (String(g.items[ii].kanji) === String(kanji)) return { group: g, item: g.items[ii] };
+      }
+    }
+    return null;
+  }
+
+  var questions = [];
+  var qCounter = 0;
+  for (var si = 0; si < scored.length && questions.length < limit; si++) {
+    var kanji = scored[si].kanji;
+    if (!kanji || kanji.length !== 1) continue;
+    var found = findItemForKanji(kanji);
+    if (!found) continue;
+    var item = found.item;
+    var setId = String(found.group.setId);
+    var q = null;
+    if (axis === "stroke_order" || axis === "brush") {
+      q = buildRubyToKanjiQuizQuestion_(item);
+    } else if (axis === "reading") {
+      if (Math.random() < 0.5) q = buildSentenceToRubyQuizQuestion_(item);
+      else q = buildOkuriganaShiftQuizQuestion_(item);
+    } else if (axis === "stroke_count") {
+      var sn = strokeMap[kanji];
+      if (!sn) continue;
+      q = buildStrokeCountQuizQuestion_(item, sn, qCounter, setId);
+    }
+    if (!q) continue;
+    q.questionIndex = qCounter;
+    q.questionId =
+      q.questionId ||
+      "KANJI_NIGATE_" + axis + "_" + setId + "_" + item.rowIndex + "_" + qCounter;
+    q.nigateSourceSetId = setId;
+    qCounter++;
+    questions.push(q);
+  }
+
+  questions = shuffleKanjiQuizArray_(questions).slice(0, limit);
+  return sendResponse({ status: "success", questions: questions, nigateAxis: axis });
 }
