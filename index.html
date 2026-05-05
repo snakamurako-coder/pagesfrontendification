@@ -2006,6 +2006,24 @@ window.KP_HTML_VERSION = "677d75004146";
       document.querySelectorAll('.cvs-wrapper.open').forEach(w => w.classList.remove('open'));
     });
 
+    function sanitizeRecoveryDraftsAtBoot(user) {
+      const userId = user && user.id ? String(user.id) : null;
+      const cleanup = (key, validator) => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!userId || !validator(parsed, userId)) {
+            localStorage.removeItem(key);
+          }
+        } catch (_) {
+          try { localStorage.removeItem(key); } catch (_) {}
+        }
+      };
+      cleanup(LS_QUIZ_RECOVERY_DRAFT, isRecoveryDraftValidForUser);
+      cleanup(LS_KANJI_QUIZ_RECOVERY_DRAFT, isKanjiRecoveryDraftValidForUser);
+    }
+
     function getQuizRecoveryDraft() {
       try {
         const raw = localStorage.getItem(LS_QUIZ_RECOVERY_DRAFT);
@@ -7736,12 +7754,14 @@ window.KP_HTML_VERSION = "677d75004146";
       } catch (_) {
         localStorage.removeItem('app_kid_user');
       }
+      sanitizeRecoveryDraftsAtBoot(user);
       if (user && user.id) {
         try {
           showHome(user);
           return;
         } catch (_) {
           localStorage.removeItem('app_kid_user');
+          sanitizeRecoveryDraftsAtBoot(null);
         }
       }
       fetchUsers();
