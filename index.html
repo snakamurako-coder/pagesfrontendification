@@ -117,6 +117,13 @@
     .pen-candidates { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .pen-candidate-btn { border:1px solid #666; border-radius:16px; background:#2a2a2a; color:#fff; padding:6px 12px; cursor:pointer; }
     .pen-recognize-btn { position: relative; min-width: 110px; }
+    .kanji-hw-submit-btn.is-loading {
+      background: #1565C0 !important;
+      color: #fff !important;
+      opacity: 0.95;
+      animation: pen-recognize-pulse 1s ease-in-out infinite;
+      pointer-events: none;
+    }
     .pen-recognize-btn.is-busy {
       background: #1565C0 !important;
       opacity: 0.95;
@@ -1572,7 +1579,7 @@
           </div>
           <div class="kanji-drill-hw-canvas-panel">
             <div id="kanji-hw-canvas-actions" class="kanji-drill-hw-panel-btns" style="display:none;">
-              <button type="button" class="kanji-drill-vbtn-small submit-btn-small" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
+              <button type="button" id="kanji-hw-submit-btn" class="kanji-drill-vbtn-small submit-btn-small kanji-hw-submit-btn" onclick="kanjiQuizRunHandwritingAnswer()">これでかいとう</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizRemoveLastStrokeDecoration()">かざりをけす</button>
               <button type="button" class="kanji-drill-vbtn-small" onclick="kanjiQuizClearWritePad(true)">この字を書き直す</button>
             </div>
@@ -5120,12 +5127,38 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       kanjiQuizParentStrokes[kanjiQuizParentStrokes.length - 1].type = "none";
       kanjiQuizRedrawParentCanvas();
     }
+    let kanjiQuizHandSubmitBusy = false;
+    let kanjiQuizHandSubmitAnimTimer = null;
+    function setKanjiQuizHandSubmitBusy(isBusy) {
+      const btn = document.getElementById("kanji-hw-submit-btn");
+      if (!btn) return;
+      kanjiQuizHandSubmitBusy = !!isBusy;
+      btn.disabled = !!isBusy;
+      btn.classList.toggle("is-loading", !!isBusy);
+      btn.setAttribute("aria-busy", isBusy ? "true" : "false");
+      if (kanjiQuizHandSubmitAnimTimer) {
+        clearInterval(kanjiQuizHandSubmitAnimTimer);
+        kanjiQuizHandSubmitAnimTimer = null;
+      }
+      if (isBusy) {
+        let tick = 0;
+        btn.textContent = "さいてん中.";
+        kanjiQuizHandSubmitAnimTimer = setInterval(function () {
+          tick = (tick + 1) % 3;
+          btn.textContent = "さいてん中" + ".".repeat(tick + 1);
+        }, 280);
+      } else {
+        btn.textContent = "これでかいとう";
+      }
+    }
     function kanjiQuizRunHandwritingAnswer() {
+      if (kanjiQuizHandSubmitBusy) return;
       if (!kanjiQuizParentStrokes.length) {
         alert("かんじを かいてください。");
         return;
       }
       if (!kanjiQuizSession) return;
+      setKanjiQuizHandSubmitBusy(true);
       function postEvalToFrame() {
         return (function () {
           const frame = document.getElementById("kp-pro-frame");
@@ -5173,11 +5206,16 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         if (frame) patchKanjiFrameForQuizPostMessage(frame);
         ensureKanjiFrameForQuizEval();
         if (!postEvalToFrame()) {
+          setKanjiQuizHandSubmitBusy(false);
           alert("さいてんようのびゅうが みつかりません。");
         }
+      }).catch(function () {
+        setKanjiQuizHandSubmitBusy(false);
+        alert("さいてんのじゅんびに しっぱいしました。もういちどためしてください。");
       });
     }
     function kanjiQuizOnHandwritingScored(sc) {
+      setKanjiQuizHandSubmitBusy(false);
       if (!kanjiQuizSession) return;
       const secHand = document.getElementById("section-kanji-quiz-play");
       if (!secHand || !secHand.classList.contains("active")) return;
@@ -5813,6 +5851,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       return "";
     }
     function resetKanjiQuizDrillPlayShell() {
+      setKanjiQuizHandSubmitBusy(false);
       const charEl = document.getElementById("kanji-play-char");
       if (charEl) {
         charEl.style.display = "";
@@ -6396,8 +6435,21 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             '<span style="color:#FF8A80;">ざんねん… 次はがんばろう</span>';
         }
       }
-      fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
-      .then(r => r.json()).then(d => {
+      function postKanjiScoreWithRetry(retryCount) {
+        return fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) })
+          .then(function (r) { return r.json(); })
+          .catch(function (e) {
+            const msg = String((e && (e.message || e)) || "");
+            const canRetry = retryCount > 0 && /Load failed|Failed to fetch|NetworkError|fetch/i.test(msg);
+            if (!canRetry) throw e;
+            return new Promise(function (resolve) {
+              setTimeout(resolve, 450);
+            }).then(function () {
+              return postKanjiScoreWithRetry(retryCount - 1);
+            });
+          });
+      }
+      postKanjiScoreWithRetry(1).then(d => {
         if (d.status !== "success") throw new Error(d.message || "保存に失敗");
         try {
           showKanjiEarnedPointsToast(d.earnedPoints);
@@ -7183,7 +7235,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
               <button type="button" id="pen-recognize-btn" class="submit-btn btn-blue pen-recognize-btn" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="recognizePenStrokes()">文字起こし</button>
               <button type="button" class="submit-btn btn-gray" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="appendTypeAnswerText(' ')">間をあける</button>
               <input type="text" id="type-answer" class="large-input" readonly placeholder="認識結果が入ります" style="margin:0;flex:1;min-width:260px;">
-              <button type="button" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
+              <button type="button" id="pen-typing-submit-btn" class="submit-btn btn-green" style="margin-top:0;padding:10px 14px;font-size:14px;" onclick="submitTypingFromPen()">答えを送信</button>
             </div>
           `;
         const activePen = handwritingState.penMode === 'pen' ? 'active' : '';
@@ -7254,12 +7306,37 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       if (sec) sec.classList.toggle('pen-mode-active', isPen);
     }
 
+    let isPenTypingSubmitInFlight = false;
+    function setPenTypingSubmitBusy(isBusy) {
+      isPenTypingSubmitInFlight = !!isBusy;
+      const btn = document.getElementById('pen-typing-submit-btn');
+      if (!btn) return;
+      btn.disabled = !!isBusy;
+      btn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      btn.innerText = isBusy ? '送信中...' : '答えを送信';
+    }
     function submitTypingFromPen() {
+      if (isPenTypingSubmitInFlight) return;
       if (handwritingState.pendingTempText) confirmTemporaryTypingInput();
-      const userA = (document.getElementById('type-answer') || {}).value || "";
+      const target = document.getElementById('type-answer');
+      const userA = target ? String(target.value || "") : "";
+      if (!normalizeText(userA)) {
+        setPenStatus('先に文字起こしして入力してください。');
+        return;
+      }
+      if (!Array.isArray(filteredQuestions) || currentQuestionIndex < 0 || currentQuestionIndex >= filteredQuestions.length) {
+        setPenStatus('問題データの読み込み待ちです。少し待って再度お試しください。');
+        return;
+      }
       const q = filteredQuestions[currentQuestionIndex];
-      const format = document.getElementById('setting-format').value;
+      if (!q) {
+        setPenStatus('問題の取得に失敗しました。次の問題に進んでください。');
+        return;
+      }
+      const formatEl = document.getElementById('setting-format');
+      const format = formatEl ? String(formatEl.value || "") : "";
       const correctA = (format.includes("qtext") || format.includes("qaudio")) ? q["英文"] : (q["英単語"] || q["英文"]);
+      setPenTypingSubmitBusy(true);
       checkAnswer(userA, correctA, q);
     }
 
@@ -7539,6 +7616,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
 
     function showQuestion() {
       if (currentQuestionIndex >= filteredQuestions.length) { finishQuiz(); return; }
+      setPenTypingSubmitBusy(false);
       maxDeduction = 0;
       voiceFailCount = 0;
       clearTimeout(autoNextTimer); 
