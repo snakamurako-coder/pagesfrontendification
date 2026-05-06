@@ -43,28 +43,49 @@
     return "";
   }
 
+  /** TSV の1行から { kanji, paths } を返す。不正行は null */
+  function parseKanjiVgLine(line) {
+    var row = String(line || "").trim();
+    if (!row || row.charAt(0) === "#") return null;
+    var cols = row.split("\t");
+    if (cols.length < 3) return null;
+    var kanji = firstIdeographFromTsvCell(cols[0]);
+    var unicodeCol = String(cols[1] || "").trim();
+    var strokesCol = String(cols[2] || "").trim();
+    if (!kanji) kanji = unicodeColToCharHexOnly(unicodeCol);
+    if (!kanji || !strokesCol) return null;
+    var paths = strokesCol
+      .split("|")
+      .map(function (p) {
+        return String(p || "").trim();
+      })
+      .filter(function (p) {
+        return p && (p.charAt(0) === "M" || p.charAt(0) === "m");
+      });
+    if (paths.length < 1) return null;
+    return { kanji: kanji.normalize("NFC"), paths: paths };
+  }
+
+  /**
+   * KanjiVG.txt の全文から、指定した1文字のストロークパスだけを検索（①問題の漢字 → ②TSV直接参照）
+   */
+  function pathsForChar(text, char) {
+    var want = String(char || "").normalize("NFC");
+    if (!want) return null;
+    var lines = String(text || "").split(/\r?\n/);
+    for (var li = 0; li < lines.length; li++) {
+      var parsed = parseKanjiVgLine(lines[li]);
+      if (parsed && parsed.kanji === want) return parsed.paths;
+    }
+    return null;
+  }
+
   function parseKanjiVgTsv(text) {
     var map = {};
     var lines = String(text || "").split(/\r?\n/);
     for (var li = 0; li < lines.length; li++) {
-      var row = lines[li].trim();
-      if (!row || row.charAt(0) === "#") continue;
-      var cols = row.split("\t");
-      if (cols.length < 3) continue;
-      var kanji = firstIdeographFromTsvCell(cols[0]);
-      var unicodeCol = String(cols[1] || "").trim();
-      var strokesCol = String(cols[2] || "").trim();
-      if (!kanji) kanji = unicodeColToCharHexOnly(unicodeCol);
-      if (!kanji || !strokesCol) continue;
-      var paths = strokesCol
-        .split("|")
-        .map(function (p) {
-          return String(p || "").trim();
-        })
-        .filter(function (p) {
-          return p && (p.charAt(0) === "M" || p.charAt(0) === "m");
-        });
-      if (paths.length > 0) map[kanji] = paths;
+      var parsed = parseKanjiVgLine(lines[li]);
+      if (parsed) map[parsed.kanji] = parsed.paths;
     }
     return map;
   }
@@ -86,6 +107,8 @@
   global.KanjiVg = {
     resolveTxtUrl: resolveKanjiVgTxtUrl,
     parseTsv: parseKanjiVgTsv,
+    parseLine: parseKanjiVgLine,
+    pathsForChar: pathsForChar,
     fetchMap: fetchMap
   };
 })(typeof window !== "undefined" ? window : globalThis);
