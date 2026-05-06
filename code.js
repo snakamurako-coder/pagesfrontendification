@@ -648,8 +648,16 @@ const KP_IFRAME_HTML = "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8
         initKeyboardAndSoundSettings();
         applyKanjiHwDominantHandToBody();
         syncKanjiHwHandSwitchUI();
-        if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); }
-        else fetchUsers(); 
+        if (saved) {
+          try {
+            showHome(JSON.parse(saved));
+            fetchAppSettings();
+            return;
+          } catch (_) {
+            localStorage.removeItem('app_kid_user');
+          }
+        }
+        fetchUsers(); 
     };
 
     function fetchAppSettings() { 
@@ -1445,7 +1453,51 @@ const KP_IFRAME_HTML = "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8
       }
     }
 
-    function fetchUsers() { fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_child_users" }) }).then(r=>r.json()).then(d=>{ if(d.status==="success") renderUsers(d.users); }); }
+    function fetchUsers() {
+      switchSection('section-users');
+      const c = document.getElementById('user-container');
+      if (c) c.innerHTML = "<p style='color:#888;text-align:center;'>ユーザー一覧を読み込み中...</p>";
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, 12000);
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "get_child_users" }),
+        signal: ctrl ? ctrl.signal : undefined
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === "success" && Array.isArray(d.users)) {
+            renderUsers(d.users);
+            return;
+          }
+          throw new Error((d && d.message) || "ユーザー情報の取得に失敗しました");
+        })
+        .catch((e) => {
+          const msg = e && e.name === "AbortError"
+            ? "読み込みがタイムアウトしました。通信状況を確認して再読み込みしてください。"
+            : (e && e.message) ? e.message : "ユーザー一覧の読み込みに失敗しました。";
+          renderUserListLoadError(msg);
+        })
+        .finally(() => clearTimeout(timer));
+    }
+    function renderUserListLoadError(message) {
+      const c = document.getElementById('user-container');
+      if (!c) return;
+      c.innerHTML = "";
+      const box = document.createElement('div');
+      box.style.textAlign = 'center';
+      box.style.color = '#c62828';
+      box.style.padding = '10px 6px';
+      box.style.lineHeight = '1.5';
+      box.innerText = message || "ユーザー一覧の読み込みに失敗しました。";
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.innerText = "再試行";
+      btn.style.marginTop = '10px';
+      btn.onclick = fetchUsers;
+      c.appendChild(box);
+      c.appendChild(btn);
+    }
     function renderUsers(users) { const c = document.getElementById('user-container'); c.innerHTML = ""; users.forEach(u => { const div = document.createElement('div'); div.className = 'user-card'; div.onclick = () => showPinScreen(u.id, u.name, false); div.innerHTML = `<div class="user-icon">${u.name.charAt(0)}</div><div>${u.name}</div>`; c.appendChild(div); }); }
     function showPinScreen(id, name, isReset) { selectedUserId = id; isPinResetMode = isReset; currentPin = ""; updatePinDisplay(); document.getElementById('selected-user-name').innerText = name; document.getElementById('pin-instruction').innerText = isReset ? "あたらしい暗証番号（4ケタ）" : "あんしょうばんごう（4ケタ）"; switchSection('section-pin'); }
     function addPin(num) { if(currentPin.length<4){ currentPin+=num; updatePinDisplay(); if(currentPin.length===4) { if(isPinResetMode) executePinReset(); else verifyPin(); } } }
