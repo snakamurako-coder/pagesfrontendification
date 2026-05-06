@@ -292,11 +292,17 @@
   }
 
   function switchProfile(id) {
-    ACTIVE_PROFILE_ID = parseInt(id);
+    let pid = parseInt(id, 10);
+    if (isNaN(pid)) pid = 0;
+    const len = USER_PROFILES.length;
+    if (len < 1) return;
+    if (pid < 0 || pid >= len) pid = Math.max(0, Math.min(len - 1, pid));
+    ACTIVE_PROFILE_ID = pid;
     const prof = USER_PROFILES[ACTIVE_PROFILE_ID];
+    if (!prof) return;
     if (prof.isEmpty) alert("このスロットは未登録です。「ペン調整」から設定を記録してください。");
     SafeStorage.set('kanjiPenProfiles', JSON.stringify({ profiles: USER_PROFILES, activeId: ACTIVE_PROFILE_ID }));
-    if (referenceStrokes.length > 0) redrawAllUserStrokes(); 
+    if (referenceStrokes.length > 0) redrawAllUserStrokes();
   }
 
   // ==========================================
@@ -309,7 +315,11 @@
     if (show) {
       Object.keys(STROKE_PARAMS).forEach(k => {
         const el = document.getElementById(`sl-${k}`);
-        if(el) { el.value = STROKE_PARAMS[k]; document.getElementById(`val-${k}`).innerText = STROKE_PARAMS[k]; }
+        const valEl = document.getElementById(`val-${k}`);
+        if (el && valEl) {
+          el.value = STROKE_PARAMS[k];
+          valEl.innerText = STROKE_PARAMS[k];
+        }
       });
       modal.classList.remove('hidden'); updateAllPreviews();
     } else {
@@ -318,7 +328,13 @@
     }
   }
 
-  function updateParam(k, v) { STROKE_PARAMS[k] = parseFloat(v); document.getElementById(`val-${k}`).innerText = v; SafeStorage.set('kanjiStrokeParamsV2', JSON.stringify(STROKE_PARAMS)); updateAllPreviews(); }
+  function updateParam(k, v) {
+    STROKE_PARAMS[k] = parseFloat(v);
+    const valEl = document.getElementById(`val-${k}`);
+    if (valEl) valEl.innerText = v;
+    SafeStorage.set('kanjiStrokeParamsV2', JSON.stringify(STROKE_PARAMS));
+    updateAllPreviews();
+  }
   function resetParams() { if(confirm("エフェクト設定を初期化しますか？")) { STROKE_PARAMS = { ...DEFAULT_PARAMS }; toggleSettings(true); } }
 
   // ==========================================
