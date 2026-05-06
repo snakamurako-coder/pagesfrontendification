@@ -2304,12 +2304,54 @@ window.KP_HTML = (window.KP_HTML && typeof window.KP_HTML.value === "string" && 
     let currentTrainingMenuId = 1;
     let isTrainingMode = false;
 
+    window.__kanjiVgMap = null;
+    function parseKanjiVgTsv(text) {
+      const map = {};
+      String(text || "").split(/\r?\n/).forEach(line => {
+        const row = line.trim();
+        if (!row || row.charAt(0) === '#') return;
+        const cols = row.split("\t");
+        if (cols.length < 3) return;
+        let kanji = String(cols[0] || "").trim();
+        const strokesCol = String(cols[2] || "").trim();
+        if (!kanji || !strokesCol) return;
+        const paths = strokesCol.split("|").map(p => p.trim()).filter(p => p && (p.startsWith("M") || p.startsWith("m")));
+        if (paths.length > 0) map[kanji] = paths;
+      });
+      return map;
+    }
+    function loadKanjiVgMap() {
+      if (window.__kanjiVgMap) return Promise.resolve(window.__kanjiVgMap);
+      const cacheKey = 'app_cached_kanjivg_map';
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          window.__kanjiVgMap = JSON.parse(cached);
+          console.log("KanjiVG loaded from cache.");
+          return Promise.resolve(window.__kanjiVgMap);
+        } catch(e) { localStorage.removeItem(cacheKey); }
+      }
+      return fetch("./KanjiVG.txt")
+        .then(r => { if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); })
+        .then(text => {
+          const map = parseKanjiVgTsv(text);
+          window.__kanjiVgMap = map;
+          try { localStorage.setItem(cacheKey, JSON.stringify(map)); } catch(e) {}
+          console.log("KanjiVG loaded from fetch and cached.");
+          return map;
+        }).catch(err => {
+          console.error("Failed to load KanjiVG:", err);
+          return null;
+        });
+    }
+
     window.onload = () => { 
         const saved = localStorage.getItem('app_kid_user'); 
         if (inputMethodMode !== 'pen' && inputMethodMode !== 'keyboard') inputMethodMode = 'keyboard';
         initKeyboardAndSoundSettings();
         applyKanjiHwDominantHandToBody();
         syncKanjiHwHandSwitchUI();
+        loadKanjiVgMap(); // 起動時に裏でロード開始
         if (saved) { showHome(JSON.parse(saved)); fetchAppSettings(); }
         else fetchUsers(); 
     };
@@ -4110,8 +4152,43 @@ window.KP_HTML = (window.KP_HTML && typeof window.KP_HTML.value === "string" && 
         })
       }).catch(function () {});
     }
+    /** KPiframeからのデータリクエストをローカル(window.__kanjiVgMap)で処理するブリッジ */
+    function initKpLocalDataBridge() {
+      if (window.__kpLocalDataBridgeBound) return;
+      window.__kpLocalDataBridgeBound = true;
+      window.addEventListener('message', function(ev) {
+        if (!ev || !ev.data) return;
+        var d = ev.data;
+        var frame = document.getElementById('kp-pro-frame');
+        if (!frame) return;
+        var frameWin = frame.contentWindow;
+        if (ev.source !== frameWin) return;
+
+        // 初期データ（シート一覧を装った固定リスト）
+        if (d.type === 'kpRequestInitData') {
+          // ローカルモードなので、固定のブック名と唯一のシート名を返す
+          var mockData = { status: 'success', bookName: 'Local KanjiVG', sheets: ['KanjiVG.txt'] };
+          try { frameWin.postMessage({ type: 'kpInitDataResponse', data: mockData }, '*'); } catch(e) {}
+        }
+
+        // 特定シート（KanjiVG.txt）のデータ
+        if (d.type === 'kpRequestSheetData') {
+          var sheetName = String(d.sheetName || 'KanjiVG.txt');
+          // 既に手元にあるデータを返す。なければロードを試みる
+          if (window.__kanjiVgMap) {
+            try { frameWin.postMessage({ type: 'kpSheetDataResponse', data: window.__kanjiVgMap, sheetName: sheetName }, '*'); } catch(e) {}
+          } else {
+            loadKanjiVgMap().then(map => {
+              try { frameWin.postMessage({ type: 'kpSheetDataResponse', data: map || {}, sheetName: sheetName }, '*'); } catch(e) {}
+            });
+          }
+        }
+      });
+    }
+
     function openKanjiPractice() {
       switchSection('section-kanji-practice');
+      initKpLocalDataBridge(); // ブリッジ開始
       openKanjiPracticePro();
       initKanjiPracticeScoreListener();
       initKanjiPracticeCatalog();
@@ -4125,8 +4202,7 @@ window.KP_HTML = (window.KP_HTML && typeof window.KP_HTML.value === "string" && 
       // 最低限の必須機能が欠けた埋め込みHTMLは読み込まない（無限ロード防止）
       const required = [
         "function loadKanjiData()",
-        "function parseKanjiVgTsv",
-        "fetch(\"./KanjiVG.txt\")",
+        "kpRequestSheetData",
         "kpKanjiDataReady"
       ];
       for (let i = 0; i < required.length; i++) {
@@ -6356,6 +6432,14 @@ window.KP_HTML = (window.KP_HTML && typeof window.KP_HTML.value === "string" && 
         return;
       }
       const proceed = function () {
+        // 各問題に手元の最新KanjiVGデータを注入（GASからのデータを上書きして安定させる）
+        if (window.__kanjiVgMap) {
+          questions.forEach(q => {
+            if (q.kanji && window.__kanjiVgMap[q.kanji]) {
+              q.kanjiVgStrokes = window.__kanjiVgMap[q.kanji];
+            }
+          });
+        }
         kanjiQuizSession = {
           modeId: ctx.modeId,
           modeName: ctx.modeName,
