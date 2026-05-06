@@ -4112,6 +4112,23 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
       initKanjiPracticeScoreListener();
       initKanjiPracticeCatalog();
     }
+    function getKpEmbeddedHtml_() {
+      const raw = (typeof window.KP_HTML === "string")
+        ? window.KP_HTML
+        : (window.KP_HTML && typeof window.KP_HTML.value === "string" ? window.KP_HTML.value : "");
+      if (!raw) return "";
+      // 最低限の必須機能が欠けた埋め込みHTMLは読み込まない（無限ロード防止）
+      const required = [
+        "function loadKanjiData()",
+        "function parseKanjiVgTsv",
+        "fetch(\"./KanjiVG.txt\")",
+        "kpKanjiDataReady"
+      ];
+      for (let i = 0; i < required.length; i++) {
+        if (raw.indexOf(required[i]) < 0) return "";
+      }
+      return raw;
+    }
     /** 漢字練習画面用: iframe 採点メッセージの受け口は initKanjiParentKanjiQuizScoredBridge と共有 */
     function initKanjiPracticeScoreListener() {
       initKanjiParentKanjiQuizScoredBridge();
@@ -4120,7 +4137,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
     function openKanjiPracticePro() {
       const frame = document.getElementById('kp-pro-frame');
       if (!frame) return;
-      const KP_EMBED_VER = "6";
+      const KP_EMBED_VER = "7";
       if (frame.dataset.kpEmbedVer !== KP_EMBED_VER) {
         frame.dataset.kpLoaded = "";
         frame.dataset.kpEmbedVer = KP_EMBED_VER;
@@ -4129,11 +4146,9 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
         kpResizeFrameToContent();
         return;
       }
-      const kpHtml = (typeof window.KP_HTML === "string")
-        ? window.KP_HTML
-        : (window.KP_HTML && typeof window.KP_HTML.value === "string" ? window.KP_HTML.value : "");
+      const kpHtml = getKpEmbeddedHtml_();
       if (!kpHtml) {
-        alert("高機能モードの読み込みに失敗しました。");
+        alert("高機能モードの読み込みに失敗しました（埋め込みデータ不整合）。");
         return;
       }
       frame.srcdoc = kpHtml;
@@ -5528,6 +5543,7 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             finish();
             return;
           }
+          let kickedReload = false;
 
           function check() {
             patchKanjiFrameForQuizPostMessage(frame);
@@ -5546,6 +5562,14 @@ window.KP_HTML = {"value":"<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UT
             if (check()) {
               finish();
               return;
+            }
+            // iframe側のロードが詰まっている時の再キック（同一オリジン前提）
+            if (!kickedReload && n >= 10) {
+              kickedReload = true;
+              try {
+                if (typeof win.syncData === "function") win.syncData();
+                else if (typeof win.loadKanjiData === "function") win.loadKanjiData();
+              } catch (_) {}
             }
             if (n >= 60) finish();
           }, 80);
