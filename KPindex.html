@@ -460,46 +460,85 @@
     if (overlay) { overlay.style.display = show ? 'flex' : 'none'; if(show) overlay.querySelector('span').textContent = msg; }
   }
 
+  // ==========================================
+  // postMessage ブリッジ: 親ページ(index.html)経由でGAS APIにアクセス
+  // ==========================================
+  var __kpMsgHandlerBound = false;
+  function bindKpParentMessageHandler() {
+    if (__kpMsgHandlerBound) return;
+    __kpMsgHandlerBound = true;
+    window.addEventListener('message', function(ev) {
+      if (!ev || !ev.data) return;
+      var d = ev.data;
+      // 親ページからの初期データ応答
+      if (d.type === 'kpInitDataResponse') {
+        showLoading(false);
+        try {
+          var initData = d.data;
+          if (!initData || initData.status !== 'success') {
+            showLoading(false);
+            return;
+          }
+          var cachedBook = SafeStorage.get('kanjiBookName');
+          if (cachedBook !== initData.bookName) { SafeStorage.clearData(); SafeStorage.set('kanjiBookName', initData.bookName); }
+          var sheetSelect = document.getElementById('sheet-selector');
+          sheetSelect.innerHTML = (initData.sheets || []).map(function(s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+          loadKanjiData();
+        } catch(e) { showLoading(false); }
+      }
+      // 親ページからのシートデータ応答
+      if (d.type === 'kpSheetDataResponse') {
+        showLoading(false);
+        try {
+          var sheetData = d.data;
+          var sheetName = d.sheetName || '';
+          if (sheetData && typeof sheetData === 'object') {
+            KANJI_DATA = sheetData;
+            if (sheetName) SafeStorage.set('kanjiData_' + sheetName, JSON.stringify(sheetData));
+            populateKanjiSelector();
+            // iframe準備完了を親ページへ通知
+            if (window.parent) window.parent.postMessage({ type: 'kpKanjiDataReady' }, '*');
+          }
+        } catch(e) { showLoading(false); }
+      }
+    });
+  }
+
   window.onload = () => {
     updateProfileSelectUI();
+    bindKpParentMessageHandler();
     showLoading(true, "初期化中...");
-    google.script.run
-      .withSuccessHandler(initData => {
-        showLoading(false); // エラーが起きる前に絶対に隠す
-        try {
-          const cachedBook = SafeStorage.get('kanjiBookName');
-          if (cachedBook !== initData.bookName) { SafeStorage.clearData(); SafeStorage.set('kanjiBookName', initData.bookName); }
-          const sheetSelect = document.getElementById('sheet-selector');
-          sheetSelect.innerHTML = initData.sheets.map(s => `<option value="${s}">${s}</option>`).join('');
-          loadKanjiData();
-        } catch(e) { alert("初期化エラー: " + e.message); }
-      })
-      .withFailureHandler(e => { alert("サーバー接続エラー: " + e.message); showLoading(false); })
-      .getAppInitData();
+    // 親ページへ初期データをリクエスト
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'kpRequestInitData' }, '*');
+    } else {
+      // スタンドアロン動作時はTEST_KANJIをフォールバックとして使用
+      showLoading(false);
+    }
   };
 
-  function syncData() { const name = document.getElementById('sheet-selector').value; if (name) SafeStorage.remove(`kanjiData_${name}`); loadKanjiData(); }
+  function syncData() {
+    var name = document.getElementById('sheet-selector').value;
+    if (name) SafeStorage.remove('kanjiData_' + name);
+    loadKanjiData();
+  }
 
   function loadKanjiData() {
-    const name = document.getElementById('sheet-selector').value;
+    var name = document.getElementById('sheet-selector').value;
     if (!name) { showLoading(false); return; }
-    const cached = SafeStorage.get(`kanjiData_${name}`);
-    
-    if (cached) { 
-      try { 
-        KANJI_DATA = JSON.parse(cached); populateKanjiSelector(); showLoading(false); return; 
-      } catch(e) { SafeStorage.remove(`kanjiData_${name}`); } 
+    var cached = SafeStorage.get('kanjiData_' + name);
+    if (cached) {
+      try {
+        KANJI_DATA = JSON.parse(cached); populateKanjiSelector(); showLoading(false); return;
+      } catch(e) { SafeStorage.remove('kanjiData_' + name); }
     }
-
-    showLoading(true, `${name} を読込中...`);
-    google.script.run
-      .withSuccessHandler(data => { 
-        showLoading(false); 
-        try { KANJI_DATA = data; SafeStorage.set(`kanjiData_${name}`, JSON.stringify(data)); populateKanjiSelector(); } 
-        catch(e) { alert("データ展開中にエラー: " + e.message); } 
-      })
-      .withFailureHandler(e => { alert("データ取得失敗: " + e.message); showLoading(false); })
-      .getKanjiDataFromSheet(name);
+    showLoading(true, name + ' を読込中...');
+    // 親ページへシートデータをリクエスト
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'kpRequestSheetData', sheetName: name }, '*');
+    } else {
+      showLoading(false);
+    }
   }
 
   function populateKanjiSelector() {
